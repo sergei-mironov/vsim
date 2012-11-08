@@ -8,6 +8,7 @@ import System.IO
 
 import VSimR.Waveform
 import VSimR.Signal
+import VSimR.Process
 import VSimR.Variable
 import VSimR.Ptr
 

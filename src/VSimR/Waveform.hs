@@ -38,15 +38,17 @@ advance now (Waveform w) = Waveform (filter future w) where
     future (Change u _) = u >= now
 
 -- | Return next waveform event
-event :: Waveform -> Change
-event (Waveform (c:_)) = c
-event (Waveform _) = error "event: empty waveform"
+event :: Waveform -> (Change, Waveform)
+event (Waveform (c:c':cs)) = (c, Waveform (c':cs))
+event (Waveform [x]) = error "event: attempt to unevent single-item waveform"
+event (Waveform []) = error "event: attempt to unevent empty waveform"
 
 -- | Return the value of a waveform at time t
 valueAt :: Time -> Waveform -> Int
 valueAt t (Waveform cs) = cvalue $ head future where
     (future,past) = partition (\(Change t' _) -> t' >= t) cs
 
+-- | Detect earliest change of a vaweform
 earliest :: Waveform -> Waveform -> Ordering
 earliest (Waveform ((Change t1 _):_)) (Waveform ((Change t2 _):_)) = compare t1 t2
 earliest (Waveform _) (Waveform _) = error "earliest: vmpty waveform"
