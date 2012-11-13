@@ -1,4 +1,7 @@
-module VSimR.Timeline where
+module VSimR.Timeline (
+      advance
+    , commit
+    ) where
 
 import Control.Applicative
 import Control.Monad
@@ -10,33 +13,34 @@ import VSimR.Signal
 import VSimR.Waveform
 import VSimR.Process
 
--- | Select signals to change
+-- | Returns the time of the next event, as well as signals to be changd
 --
 -- TODO: take waitable processes into account
 next_event :: (MonadIO m) => [Ptr Signal] -> m ([(Ptr Signal,Waveform)], Time)
 next_event ss = foldM cmp ([],time_max) ss where
     cmp o@(l,t) r = do
-        (Change t' c, w) <- event `liftM` wcurr `liftM` deref r
+        (Change t' _, w') <- event `liftM` wcurr `liftM` deref r
         case compare t' t of
-            LT -> return ([(r,w)], t'+1)
-            EQ -> return ((r,w):l, t)
+            LT -> return ([(r,w')], t')
+            EQ -> return ((r,w'):l, t)
             _ -> return o
 
--- | Trims signal's waveform
-advance :: (MonadIO m) => [Ptr Signal] -> m (Time, [Ptr Signal], [Ptr Process])
+-- | Trims signal's waveform and returns the time of next event
+advance :: (MonadIO m) => [Ptr Signal] -> m (Time, [Ptr Process])
 advance ss = do
     (cs,t) <- next_event ss
     ps <- forM cs $ \(r,w) -> do
-            s <- deref r
-            write r (chwave w s)
-            return (proc s)
-    return (t, map fst cs, concat ps)
-        
+        s <- deref r
+        write r (chwave w s)
+        return (proc s)
+    return (t, concat ps)
 
 -- | Invalidate assignments
-revalidate :: (MonadIO m) => [Assignment] -> m ()
-revalidate = undefined
-
-
-
+--
+-- TODO: monitor multiple assignments, implement resolvers
+commit :: (MonadIO m) => Time -> [Assignment] -> m ()
+commit t as = do
+    forM_ as $ \(Assignment r pw) -> do
+        (Signal' w o c p) <- deref r
+        write r (Signal' (unPW w pw) o c p)
 

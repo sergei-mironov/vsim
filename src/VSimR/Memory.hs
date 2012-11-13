@@ -14,13 +14,16 @@ import VSimR.Ptr
 
 data Memory = Memory {
       signals :: [Ptr Signal]
+    , processes :: [Ptr Process]
     }
     deriving(Show)
+
+emptyMem = Memory [] []
 
 alloc_signal :: (MonadIO m, MonadState Memory m) => Signal -> m (Ptr Signal)
 alloc_signal s = do
     r <- alloc s
-    modify (Memory . (r:) . signals)
+    modify $ \(Memory rs ps) -> Memory (r:rs) ps
     return r
 
 alloc_variable :: (MonadIO m) => Variable -> m (Ptr Variable)

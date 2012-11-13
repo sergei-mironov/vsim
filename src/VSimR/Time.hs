@@ -12,3 +12,4 @@ time_max = maxBound
 
 time_min :: Time
 time_min = 0
+

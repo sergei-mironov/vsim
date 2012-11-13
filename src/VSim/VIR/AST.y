@@ -247,12 +247,9 @@ import VSim.Data.TInt
 -- T'leftof/rightof -- шаг влево/вправо с учетом направления диапазона
 %%
 
---irParse :: { [IRTop] }
---        : toplevel_decl        { [$1] } -- []
---       | irParse toplevel_decl { $2 : $1 } -- []
-
 toplevel_decls :: { [IRTop] }
     : toplevel_decl toplevel_decls { $1 : $2 }
+    | '(' push_location toplevel_decls pop_location ')' { $3 }
     | {[]}
 
 toplevel_decl :: { IRTop }

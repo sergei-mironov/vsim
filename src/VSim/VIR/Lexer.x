@@ -363,10 +363,10 @@ irScan inp@(AlexInput pos cp str) =
                                  (fromIntegral len))), inp')
 
 irScanM :: Monad m => m AlexInput -> (AlexInput -> m ()) -> m (Int, Token)
-irScanM get set =
-    do (result, inp') <- liftM irScan get
-        set inp'
-        either fail return result
+irScanM get set = do
+    (result, inp') <- liftM irScan get
+    set inp'
+    either fail return result
 
 data AlexPosn = AlexPn !Int !Int
     deriving (Eq,Show)

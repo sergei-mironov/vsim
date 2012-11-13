@@ -1,9 +1,12 @@
-module VSimR.User where
+{-# LANGUAGE FlexibleContexts #-}
+module VSimR.User (simulate) where
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.BP
 
 import VSimR.Memory
 import VSimR.Time
@@ -12,28 +15,21 @@ import VSimR.Signal
 import VSimR.Process
 import VSimR.Ptr
 
--- | Step result
--- data SR = SR {
---       assigned :: [Ptr Signal]
---     }
+untilM :: (Monad m) => s -> (s -> m (s,Bool)) -> m s
+untilM s f = do
+    (s', stop) <- f s
+    if stop then return s' else untilM s' f
 
-class Simulable ss where
-    elab :: (MonadIO m) => ss -> m (Memory,ss)
+untilM_ :: (Monad m) => s -> (s -> m (s,Bool)) -> m ()
+untilM_ s f = do
+    (s', stop) <- f s
+    if stop then return () else untilM_ s' f
 
-simRun :: (MonadIO m, Simulable ss) => Time -> ss -> m ()
-simRun et ss = do
-    (m, ss') <- elab ss
-    runReaderT (sim_loop m et) ss'
-
--- | Arguments are: current_time end_time simstate
-sim_loop :: (MonadIO m, Simulable ss, MonadReader ss m)
-    => Memory -> Time -> m ()
-sim_loop m et = do
-    (t,cs,ps) <- advance (signals m)
-    as <- concat `liftM` mapM (deref >=> (flip handler t)) ps
-    revalidate as
-    case t >= et of
-        True -> return ()
-        False -> sim_loop m et
- 
+simulate :: (MonadIO m) => Time -> Memory -> ss -> m ()
+simulate et m ss = do
+    untilM_ (time_min,(processes m)) $ \(t,ps) -> do
+        as <- concat `liftM` mapM (deref >=> runProcess t ss) ps
+        commit t as
+        (t', ps') <- advance (signals m)
+        return ((t',ps'), t >= et)
 

@@ -6,7 +6,7 @@ import VSimR.Signal
 import VSimR.Variable
 
 
-main = do
-    elab
+-- main = do
+--     elab
 
 
