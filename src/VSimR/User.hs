@@ -18,17 +18,17 @@ import VSimR.Signal
 import VSimR.Process
 import VSimR.Ptr
 
-step :: (MonadSim s m) => (Time,[Ptr Process]) -> m ()
+step :: (Time,[Ptr (Process s)]) -> VSim s ()
 step (t,ps) = concat `liftM` mapM (deref >=> runProcess t) ps >>= commit t
 
-simulate :: (MonadSim s m) => Time -> Memory -> m ()
+simulate :: Time -> Memory s -> VSim s ()
 simulate et m = do
     loopM_ (time_min,(processes m)) $ \(t,ps) -> do
         step (t,ps)
         (t', ps') <- advance (signals m)
         return ((t',ps'), t >= et)
 
-runSim :: Time -> Elab ss -> IO ()
+runSim :: Time -> Elab s -> IO ()
 runSim et elab = do
     (ss,m) <- runElab elab
     runVSim (simulate et m) (BPS [] ss)
