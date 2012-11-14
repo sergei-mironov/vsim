@@ -63,12 +63,6 @@ import VSim.Data.TInt
     "i:f"           { L.ChoiceField }
     "i:e"           { L.ChoiceExpr }
 
--- Scalar types : enum, integer, physical, float (all ordered,
--- relational operations are predefined)
--- Discrete types : enum, integer
--- Numeric types : integer, float, physical
--- And discrete or physical type has an integer position number
-
     -- операторы
     -- logical_operator       ::= and | or  | nand | nor | xor | xnor
     -- bit/boolean, результат такой же как и аргумент
@@ -265,7 +259,6 @@ toplevel_decl :: { IRTop }
     | memory_map_range { IRTMM $1 }
     | instanced_by_correspondence { IRTCorresp ([],[]) }
     | '(' push_location toplevel_decl pop_location ')' { $3 }
-
 
 generate_decl :: { IRGen }
     : '(' if expr generate toplevel_decls ')'
@@ -557,79 +550,6 @@ expr :: {  IRExpr  }
     | '(' "i:vqualify_type" loc type_descr type_descr expr ')'
       { IEVQualifyType $3 $4 $5 $6 }
 
-{-
-#define TYPE_ATTR(_attr) \
-          '(' #_attr loc type_descr ')' { IETypeAttr $3 _attr $4 }
-        | TYPE_ATTR(T_left)
-        | TYPE_ATTR(T_right)
-        | TYPE_ATTR(T_high)
-        | TYPE_ATTR(T_low)
-        | TYPE_ATTR(T_ascending)
-#define TYPE_ATTR_1(_attr) \
-          '(' #_attr loc type_descr expr ')' { IETypeValueAttr $3 _attr $5 $4 }
-        | TYPE_ATTR_1(T_succ)
-        | TYPE_ATTR_1(T_pred)
-        | TYPE_ATTR_1(T_val)
-        | TYPE_ATTR_1(T_pos)
-#define ARR_ATTR(_attr) \
-          '(' #_attr loc expr expr_name ')' { IEArrayAttr $3 _attr $4 $5 }
-        | ARR_ATTR(A_left)
-        | ARR_ATTR(A_right)
-        | ARR_ATTR(A_high)
-        | ARR_ATTR(A_low)
-        | ARR_ATTR(A_ascending)
-        | ARR_ATTR(A_length)
-#define SIG_ATTR(_attr) \
-          '(' #_attr loc signal_name ')' { IESignalAttr $3 _attr $4 }
-        | SIG_ATTR(S_event)
-        | SIG_ATTR(S_active)
-        | SIG_ATTR(S_last_value)
-#define SIG_ATTR_T(_attr) \
-          '(' #_attr loc signal_name opt_time ')' { IESignalAttrTimed $3 _attr $4 $5 }
-        | SIG_ATTR_T(S_stable)
-        | SIG_ATTR_T(S_delayed)
-        | SIG_ATTR_T(S_quiet)        
-        | loc enum_ident { IEEnumIdent $1 $2 }
-        | loc int { IEInt $1 $2 }
-        | loc double { IEDouble $1 $2 }
-        | '{' withloc_int128 withloc_identifier '}' { IEPhysical $2 $3 }
-        | '(' withloc_hier_name  exprs loc ')' { IEFunctionCall $2 $3 $4 }
-#define REL_OP(_symbol, _op) \
-          '(' loc _symbol type_descr expr expr ')' { IERelOp $2 _op $4 $5 $6 }
-        | REL_OP('=' , IEq)
-        | REL_OP("/=", INeq)
-        | REL_OP('<' , ILess)
-        | REL_OP("<=", ILessEqual)
-        | REL_OP('>' , IGreater)
-        | REL_OP(">=", IGreaterEqual)
-#define BIN_OP(_symbol, _op) \
-          '(' loc _symbol expr expr ')' { IEBinOp $2 _op $4 $5 }
-        | BIN_OP(mod, IMod)
-        | BIN_OP(rem, IRem)
-        | BIN_OP('/', IDiv)
-        | BIN_OP('+', IPlus)
-        | BIN_OP('*', IMul)
-        | BIN_OP('-', IMinus)
-        | BIN_OP("**", IExp)
-          -- TODO: еще есть вариант real ** int ^
-        | '(' loc "/g" type_descr type_descr expr expr ')'
-          { IEGenericBinop $2 IDiv $4 $5 $6 $7 }
-        | '(' loc "*g" type_descr type_descr expr expr ')'
-          { IEGenericBinop $2 IMul $4 $5 $6 $7 }
-        | BIN_OP(and , IAnd)
-        | BIN_OP(nand, INand)
-        | BIN_OP(or  , IOr)
-        | BIN_OP(nor , INor)
-        | BIN_OP(xor , IXor)
-        | BIN_OP(xnor, IXNor)
-        | BIN_OP('&' , IConcat)
-#define UN_OP(_symbol, _op) \
-          '(' loc _symbol expr ')' { IEUnOp $2 _op $4 }
-        | UN_OP('+', IUPlus)
-        | UN_OP('-', IUMinus)
-        | UN_OP(abs, IAbs)
-        | UN_OP(not, INot)
--}
     | '(' "T_left" loc type_descr ')' { IETypeAttr $3 T_left $4 }
     | '(' "T_right" loc type_descr ')' { IETypeAttr $3 T_right $4 }
     | '(' "T_high" loc type_descr ')' { IETypeAttr $3 T_high $4 }

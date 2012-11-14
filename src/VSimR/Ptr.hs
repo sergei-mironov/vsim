@@ -3,6 +3,7 @@ module VSimR.Ptr where
 import Control.Monad.Trans
 import Data.IORef
 import System.IO
+import System.IO.Unsafe
 
 type Ptr x = IORef x
 
@@ -18,7 +19,7 @@ deref ptr = liftIO $ readIORef ptr
 -- modify :: (MonadIO m) => (a->a) -> Ptr a -> m ()
 -- modify f ptr = read ptr >>= write . f
 
-instance Show (IORef x) where
-    show _ = "Ptr"
+instance (Show x) => Show (IORef x) where
+    show x = "@" ++ show (unsafePerformIO $ deref x)
 
 

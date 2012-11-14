@@ -25,7 +25,7 @@ next_event ss = foldM cmp ([],time_max) ss where
             EQ -> return ((r,w'):l, t)
             _ -> return o
 
--- | Trims signal's waveform and returns the time of next event
+-- | Calculates next event's time
 advance :: (MonadIO m) => [Ptr Signal] -> m (Time, [Ptr Process])
 advance ss = do
     (cs,t) <- next_event ss
@@ -35,7 +35,7 @@ advance ss = do
         return (proc s)
     return (t, concat ps)
 
--- | Invalidate assignments
+-- | Invalidate signal assignments
 --
 -- TODO: monitor multiple assignments, implement resolvers
 commit :: (MonadIO m) => Time -> [Assignment] -> m ()

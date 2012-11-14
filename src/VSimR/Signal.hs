@@ -20,9 +20,6 @@ data Signal' a = Signal' {
 chwave :: Waveform -> Signal' a -> Signal' a
 chwave w s = s { wcurr = w }
 
-new :: Waveform -> Constraint -> [a] -> Signal' a
-new w c ps = Signal' w 0 c ps
-
 withinW :: Constraint -> Waveform -> Bool
 withinW c (Waveform cs) = and $ map (within c) . map cvalue $ cs
 

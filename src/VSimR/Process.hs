@@ -1,11 +1,14 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module VSimR.Process where
 
 import Control.Monad.Trans
 import Control.Monad.Reader
+import Control.Monad.State
 
+import VSimR.Monad
 import VSimR.Time
 import VSimR.Signal
 import VSimR.Ptr
@@ -18,19 +21,21 @@ data Assignment = Assignment {
     , wnext :: ProjectedWaveform
     } deriving(Show)
 
-data Process = Process {
+type ProcessHandler s = VProc (VSim s) [Assignment]
+
+data Process s = Process {
       pname :: String
-    , phandler :: forall ss m . (MonadIO m, MonadReader ss m) => Time -> m [Assignment]
+    , phandler :: ProcessHandler s
     -- ^ Returns newly-assigned signals
     }
 
 instance Show Process where
     show _ = "Process <handler>"
 
-runProcess :: (MonadIO m) => Time -> ss -> Process -> m [Assignment]
-runProcess t ss p = runReaderT ((phandler p) t) ss
+runProcess :: (MonadSim s m) => Time -> Process s -> m [Assignment]
+runProcess t (Process _ h) = runVProc t h
 
-assign :: (Monad m, MonadReader Time m) => Ptr Signal -> Waveform -> m Assignment
+assign :: (MonadProc s m) => Ptr Signal -> Waveform -> m Assignment
 assign p w = do
     t <- ask
     return $ Assignment p (PW t w)
