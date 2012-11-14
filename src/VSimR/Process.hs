@@ -13,28 +13,28 @@ import VSimR.Signal
 import VSimR.Ptr
 import VSimR.Waveform
 
-type Signal s = Signal' (Ptr (Process s))
+type Signal = Signal' (Ptr Process)
 
-data Assignment s = Assignment {
-      scurr :: Ptr (Signal s)
+data Assignment = Assignment {
+      scurr :: Ptr Signal
     , wnext :: ProjectedWaveform
     } deriving(Show)
 
-type ProcessHandler s = VProc (VSim s) [Assignment s]
+type ProcessHandler= VProc VSim [Assignment]
 
-data Process s = Process {
+data Process = Process {
       pname :: String
-    , phandler :: ProcessHandler s
+    , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
     }
 
-instance Show (Process s) where
+instance Show (Process) where
     show _ = "Process <handler>"
 
-runProcess :: Time -> Process s -> VSim s [Assignment s]
+runProcess :: Time -> Process -> VSim [Assignment]
 runProcess t (Process _ h) = runVProc t h
 
-assign :: (MonadProc s m) => Ptr (Signal s) -> Waveform -> m (Assignment s)
+assign :: (MonadProc m) => Ptr (Signal) -> Waveform -> m (Assignment)
 assign p w = do
     t <- ask
     return $ Assignment p (PW t w)

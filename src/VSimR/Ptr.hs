@@ -20,6 +20,6 @@ deref ptr = liftIO $ readIORef ptr
 -- modify f ptr = read ptr >>= write . f
 
 instance (Show x) => Show (IORef x) where
-    show x = "@" ++ show (unsafePerformIO $ deref x)
+    show x = "@(" ++ show (unsafePerformIO $ deref x) ++ ")"
 
 

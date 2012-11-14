@@ -16,7 +16,7 @@ import VSimR.Process
 -- | Returns the time of the next event, as well as signals to be changd
 --
 -- TODO: take waitable processes into account
-next_event :: (MonadIO m) => [Ptr (Signal s)] -> m ([(Ptr (Signal s),Waveform)], Time)
+next_event :: (MonadIO m) => [Ptr Signal] -> m ([(Ptr Signal,Waveform)], Time)
 next_event ss = foldM cmp ([],time_max) ss where
     cmp o@(l,t) r = do
         (Change t' _, w') <- event `liftM` wcurr `liftM` deref r
@@ -26,7 +26,7 @@ next_event ss = foldM cmp ([],time_max) ss where
             _ -> return o
 
 -- | Calculates next event's time
-advance :: (MonadIO m) => [Ptr (Signal s)] -> m (Time, [Ptr (Process s)])
+advance :: (MonadIO m) => [Ptr Signal] -> m (Time, [Ptr Process])
 advance ss = do
     (cs,t) <- next_event ss
     ps <- forM cs $ \(r,w) -> do
@@ -38,7 +38,7 @@ advance ss = do
 -- | Invalidate signal assignments
 --
 -- TODO: monitor multiple assignments, implement resolvers
-commit :: (MonadIO m) => Time -> [Assignment s] -> m ()
+commit :: (MonadIO m) => Time -> [Assignment] -> m ()
 commit t as = do
     forM_ as $ \(Assignment r pw) -> do
         (Signal' w o c p) <- deref r

@@ -13,18 +13,18 @@ import Control.Monad.Identity
 import VSimR.Time
 
 -- | Main simulation monad. Supports breakpoints and IO.
-newtype VSim ss a = VSim { unVSim :: BP (StateT (BPS ss) IO) a }
+newtype VSim a = VSim { unVSim :: BP (StateT (BPS ()) IO) a }
     deriving(Monad, MonadIO)
 
-instance MonadState ss (VSim ss) where
+instance MonadState () VSim where
     get = VSim $ get >>= \(BPS _ s) -> return s
     put s' = VSim $ get >>= \(BPS l _) -> put (BPS l s')
 
-class (MonadIO m, MonadState s m) => MonadSim s m
+class (MonadIO m, MonadState () m) => MonadSim m
 
-instance MonadSim ss (VSim ss)
+instance MonadSim VSim
 
-runVSim :: VSim ss a -> BPS ss -> IO (Either (VSim ss a) a, BPS ss)
+runVSim :: VSim a -> BPS () -> IO (Either (VSim a) a, BPS ())
 runVSim sim bps = do
     (e, bps) <- runStateT (runBP (unVSim sim)) bps
     case e of
@@ -39,7 +39,9 @@ instance (Monad m) => MonadReader Time (VProc m) where
     ask = VProc $ ask
     local f (VProc m) = VProc $ local f m
 
-class (MonadSim s m, MonadReader Time m) => MonadProc s m
+class (MonadReader Time m) => MonadProc m
+
+instance (MonadSim m) => MonadProc (VProc m)
 
 runVProc :: (Monad m) => Time -> VProc m a -> m a
 runVProc t (VProc r) = runReaderT r t
