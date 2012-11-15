@@ -15,6 +15,8 @@ module VSimR (
 import Control.Monad
 import Control.Monad.BP
 import Control.Monad.Trans
+import Text.Printf
+import System.IO
 
 import VSimR.Process
 import VSimR.Timeline
@@ -35,9 +37,28 @@ loop et m = do
         (t', ps') <- advance (signals m)
         return ((t',ps'), t >= et)
 
+askBreak :: IO Bool
+askBreak = hGetChar stdin >>= filter where
+    filter c | c `elem` "yY" = return True
+             | c == '\n' = askBreak
+             | otherwise = return False
+
+sim' :: Memory -> VSim () -> IO ()
+sim' m k = do
+    e <- runVSim k []
+    case e of
+        Right () -> do
+            return ()
+        Left (p,k') -> do
+            printf "paused: reason %s\n" (show p)
+            printf "memory: %s\n" (show m)
+            b <- askBreak
+            if b then return () else (sim' m k')
+
 sim :: Time -> Elab () -> IO ()
 sim et elab = do
+    hSetBuffering stdout NoBuffering
+    hSetBuffering stdin NoBuffering
     (_,m) <- runElab elab
-    runVSim (loop et m) (BPS [] ())
-    return ()
+    sim' m (loop et m)
 

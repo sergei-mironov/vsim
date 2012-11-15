@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module VSimR.Variable where
 
 import Control.Monad.Error
@@ -14,8 +15,11 @@ ranged a b = Constraint a b
 
 unranged = Constraint minBound maxBound
 
-within :: Constraint -> Int -> Bool
-within (Constraint l u) v = v >= l && v <= u
+class Constrained x where
+    within :: x -> Bool
+
+instance Constrained (Int, Constraint) where
+    within (v,(Constraint l u)) = v >= l && v <= u
 
 data Variable = Variable {
       vname :: String
@@ -23,8 +27,6 @@ data Variable = Variable {
     , vconstr :: Constraint
     } deriving(Show)
 
-assignV :: (Monad m) => Variable -> Int -> m Variable
-assignV (Variable n v c) v'
-    | within c v' = return $ Variable n v c
-    | otherwise = error $ printf "variable %s constraint failed" n
+instance Constrained Variable where
+    within v = within (vval v, vconstr v)
 

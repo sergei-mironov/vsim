@@ -14,4 +14,5 @@ milliSecond, microSecond, nanoSecond, picoSecond :: Time
 milliSecond = 1000*microSecond
 microSecond = 1000*nanoSecond
 nanoSecond  = 1000*picoSecond
-picoSecond  = 1000
+picoSecond  = 1000*femtoSecond
+femtoSecond  = 1

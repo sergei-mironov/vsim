@@ -36,8 +36,9 @@ wappend p f = (init p) ++ ((last p) `wcons` f)
 
 -- | Non-empty list of changes, sorted by (until::Time). The last element should
 -- specify value of the waveform at +infinity time
-data Waveform = Waveform [Change]
-    deriving(Show)
+data Waveform = Waveform {
+      wchanges :: [Change]
+    } deriving(Show)
 
 invariant :: Waveform -> Bool
 invariant w = and $ map ($w) [invariant1, invariant2]

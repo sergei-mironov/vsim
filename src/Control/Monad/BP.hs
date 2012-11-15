@@ -13,56 +13,62 @@ import Control.Monad.ST
 import Control.Monad.Trans
 import Control.Monad.Fix
 import Control.Monad.State
--- import Data.STRef
--- import Data.IORef
 import Text.Printf
 
-newtype BP m a = BP {
-    unBP :: forall r . (a -> m r) -> (BP m a -> m r) -> m r
+class MonadBP e m where
+    pause :: e -> m ()
+
+newtype BP e m a = BP {
+    unBP :: forall r . (a -> m r) -> (e -> BP e m a -> m r) -> m r
     }
 
-instance (Monad m) => Monad (BP m) where
+instance (Monad m) => MonadBP e (BP e m) where
+    pause = pauseBP
+
+instance (Monad m) => Monad (BP e m) where
     return a = BP $ \done _ -> done a
     fail msg = BP $ \_ _ -> fail msg
     (>>=) = bindBP
 
-bindBP :: (Monad m) => BP m a -> (a -> BP m b) -> BP m b
+bindBP :: (Monad m) => BP e m a -> (a -> BP e m b) -> BP e m b
 bindBP ma f = BP $ \done cont -> 
     let i_done a = unBP (f a) done cont
-        i_cont k = cont (bindBP k f)
+        i_cont e k = cont e (bindBP k f)
     in unBP ma i_done i_cont
 
 -- cont :: BP m a -> BP m a
 -- cont bp = BP $ \_ cont -> cont bp
 
-runBP :: (Monad m) => BP m a -> m (Either (BP m a) a)
+runBP :: (Monad m) => BP e m a -> m (Either (e, BP e m a) a)
 runBP bp = unBP bp i_done i_cont
     where i_done a = return (Right a)
-          i_cont k = return (Left k)
+          i_cont e k = return (Left (e,k))
 
--- run :: (Monad m) => Yteratee s m a -> m a
--- run i = runCheck i >>= either E.throw return
-
-instance (MonadIO m) => MonadIO (BP m) where
+instance (MonadIO m) => MonadIO (BP e m) where
     liftIO = lift . liftIO
 
-instance MonadTrans BP where
+instance MonadTrans (BP e) where
     lift m = BP $ \done _ -> m >>= done
 
-instance MonadState s m => MonadState s (BP m) where
+instance MonadState s m => MonadState s (BP e m) where
     get = lift get
     put a = lift $ put a
 
-instance (Functor m, Monad m) => Functor (BP m) where
+instance (Functor m, Monad m) => Functor (BP e m) where
   fmap f m = BP $ \done cont ->
     let i_done a = done (f a)
-        i_cont k = cont (fmap f k)
+        i_cont e k = cont e (fmap f k)
     in unBP m i_done i_cont
 
-instance (Monad m, Functor m) => Applicative (BP m) where
+instance (Monad m, Functor m) => Applicative (BP e m) where
     pure = return
     mf <*> a = mf `ap` a
-    
+
+-- | Pauses execution with reason e
+pauseBP :: (Monad m) => e -> BP e m ()
+pauseBP e = BP $ \_ cont -> cont e (return ())
+
+{-    
 
 data BPS s = BPS [Int] s
     deriving (Show)
@@ -105,3 +111,4 @@ runJumpy j s = do
             runJumpy k (BPS [1] i')
         Right x -> return x
 
+-}
