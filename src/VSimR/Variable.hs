@@ -1,8 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-
 module VSimR.Variable where
 
 import Control.Monad.Error
+import Text.Printf
 
 import VSimR.Time
 
@@ -19,12 +18,13 @@ within :: Constraint -> Int -> Bool
 within (Constraint l u) v = v >= l && v <= u
 
 data Variable = Variable {
-      vval :: Int
+      vname :: String
+    , vval :: Int
     , vconstr :: Constraint
     } deriving(Show)
 
-assignV :: (MonadError String m) => Variable -> Int -> m Variable
-assignV (Variable v c) v'
-    | within c v' = return $ Variable v c
-    | otherwise = error "variable constraint failed"
+assignV :: (Monad m) => Variable -> Int -> m Variable
+assignV (Variable n v c) v'
+    | within c v' = return $ Variable n v c
+    | otherwise = error $ printf "variable %s constraint failed" n
 

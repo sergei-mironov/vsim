@@ -59,6 +59,11 @@ instance (Functor m, Monad m) => Functor (BP m) where
         i_cont k = cont (fmap f k)
     in unBP m i_done i_cont
 
+instance (Monad m, Functor m) => Applicative (BP m) where
+    pure = return
+    mf <*> a = mf `ap` a
+    
+
 data BPS s = BPS [Int] s
     deriving (Show)
 

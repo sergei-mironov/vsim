@@ -10,7 +10,6 @@ import Data.IORef
 import System.IO
 
 import VSimR.Waveform
-import VSimR.Signal
 import VSimR.Process
 import VSimR.Variable
 import VSimR.Ptr
@@ -19,8 +18,7 @@ import VSimR.Monad
 data Memory = Memory {
       signals :: [Ptr Signal]
     , processes :: [Ptr Process]
-    }
-    deriving(Show)
+    } deriving(Show)
 
 class (MonadIO m, MonadState Memory m) => MonadElab m
 instance MonadElab (StateT Memory IO)
@@ -36,16 +34,21 @@ alloc_signal' s = do
     modify $ \(Memory rs ps) -> Memory (r:rs) ps
     return r
 
-alloc_signal :: (MonadElab m) => Waveform -> Constraint -> m (Ptr Signal)
-alloc_signal w c = alloc_signal' (Signal' w 0 c [])
+alloc_signal :: (MonadElab m) => String -> Waveform -> Constraint -> m (Ptr Signal)
+alloc_signal n w c = alloc_signal' (Signal n w 0 c [])
 
 alloc_variable' :: (MonadElab m) => Variable -> m (Ptr Variable)
 alloc_variable' v = alloc v
 
-alloc_variable :: (MonadElab m) => Int -> Constraint -> m (Ptr Variable)
-alloc_variable v c = alloc_variable' (Variable v c)
+alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variable)
+alloc_variable n v c = alloc_variable' (Variable n v c)
 
-alloc_process :: (MonadElab m) => ProcessHandler -> m (Ptr Process)
-alloc_process h = alloc (Process "process" h)
+-- | Registers the process in memory. Updates signal's reaction list
+alloc_process :: (MonadElab m) => [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
+alloc_process ss h = do
+    p <- alloc (Process "process" h)
+    forM_ ss (update (addproc p))
+    modify $ \(Memory rs ps) -> Memory rs (p:ps)
+    return p
 
 

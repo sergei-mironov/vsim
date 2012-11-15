@@ -11,6 +11,7 @@ import VSimR.Time
 
 -- | Change is a part of a waveform. More or less formal definition is:
 -- foreach t . t <= until => (value `at_time` t) == cvalue
+--             t > until => value is undefined
 data Change = Change {
       until :: Time
     , cvalue :: Int
@@ -48,16 +49,12 @@ invariant2 :: Waveform -> Bool
 invariant2 (Waveform cs) = and $ map check (cs `zip` (tail cs)) where
     check (Change t1 _ , Change t2 _) = t1 < t2
 
-
--- cbefore :: Time -> Change -> Bool
--- cbefore t (Change t' _) = t' < t
-
 -- | Returns waveform of a constant value
 wconst :: Int -> Waveform
 wconst val = Waveform [infinity val]
 
 -- | Modifies the Waveform, example:
--- *Waweform> after 5 2 $ wconst 0
+-- *Waweform> after 5 2 $ stable 0
 -- Waveform [Change {until = 5, cvalue = 0},Change {until = 2147483647, cvalue = 2}] 
 -- after :: Time -> Int -> Waveform -> Waveform
 -- after t v (Waveform cs) = Waveform (past ++ tweak future) where
@@ -78,13 +75,22 @@ wconst val = Waveform [infinity val]
 event :: Waveform -> (Change, Waveform)
 event (Waveform (c:c':cs)) = (c, Waveform (c':cs))
 event (Waveform [c]) = (c, Waveform [c])
-    -- error "event: attempt to unevent single-item waveform"
 event (Waveform []) = error "event: attempt to unevent empty waveform"
 
 -- | Return the value of a waveform at time t
 valueAt :: Time -> Waveform -> Int
-valueAt t (Waveform cs) = cvalue $ head future where
-    (future,past) = partition (\(Change t' _) -> t' >= t) cs
+valueAt t (Waveform []) = error "valueAt: infinity invariant failed"
+valueAt t (Waveform ((Change t' v):cs))
+    | t > t' = valueAt t (Waveform cs)
+    | otherwise = v
+
+-- | Returns the value of a waveform at time t. Fails if the value can't be
+-- aquired from the head change.
+valueAt1 :: Time -> Waveform -> Int
+valueAt1 t (Waveform []) = error "valueAt1: infinity invariant failed"
+valueAt1 t (Waveform ((Change t' v):_))
+    | t <= t' = v
+    | otherwise = error "valueAt1: accessability invariant failed"
 
 -- | Detect earliest change of a vaweform
 earliest :: Waveform -> Waveform -> Ordering

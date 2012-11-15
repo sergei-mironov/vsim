@@ -8,15 +8,17 @@ import VSimR
 
 elab :: Elab ()
 elab = do
-    a_s1 <- alloc_signal (wconst 0) (ranged 0 10)
-    a_s2 <- alloc_signal (wconst 0) (unranged)
-    a_clk <- alloc_signal (wconst 0) (unranged)
-    a_v <- alloc_variable 0 unranged
+    s1 <- alloc_signal "s1" (wconst 0) (ranged 0 10)
+    s2 <- alloc_signal "s2" (wconst 0) (unranged)
+    clk <- alloc_signal "clk" (wconst 0) (unranged)
+    v <- alloc_variable "v" 0 unranged
 
-    proc1 <- alloc_process $ do
-        assign a_s1 (wconst 0)
+    proc1 <- alloc_process [clk] $ do
+        s1  `assign` (now,  val clk)
+        s2  `assign` (now,  int 1)
+        clk `assign` (us 5, int 1 .+. val clk)
         return []
-
+ 
     return ()
 
 
