@@ -5,6 +5,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Test.QuickCheck
+import Text.Printf
 import Prelude hiding(until)
 
 import VSimR.Time
@@ -54,28 +55,10 @@ invariant2 (Waveform cs) = and $ map check (cs `zip` (tail cs)) where
 wconst :: Int -> Waveform
 wconst val = Waveform [infinity val]
 
--- | Modifies the Waveform, example:
--- *Waweform> after 5 2 $ stable 0
--- Waveform [Change {until = 5, cvalue = 0},Change {until = 2147483647, cvalue = 2}] 
--- after :: Time -> Int -> Waveform -> Waveform
--- after t v (Waveform cs) = Waveform (past ++ tweak future) where
---     (future,past) = partition (\(Change t' _) -> t' >= t) cs
---     tweak ((Change t' v'):[])
---         | t' == time_max = (Change t v'):(Change t' v):[]
---         | otherwise = error "Waveform invariant failed"
---     tweak ((Change t' v'):(Change t'' v''):cs)
---         | t == t' = (Change t' v'):(Change t'' v):cs
---         | otherwise = (Change t v'):((Change t' v)):(Change t'' v''):cs
-
--- | Cuts off all transitions before `now` from the waveform.
--- advance :: Time -> Waveform -> Waveform
--- advance now (Waveform w) = Waveform (filter future w) where
---     future (Change u _) = u >= now
-
 -- | Return next waveform event
-event :: Waveform -> (Change, Waveform)
-event (Waveform (c:c':cs)) = (c, Waveform (c':cs))
-event (Waveform [c]) = (c, Waveform [c])
+event :: Waveform -> (Time, Maybe Waveform)
+event (Waveform (c@(Change t _):c':cs)) = (t+1, Just (Waveform (c':cs)))
+event (Waveform [c]) = (time_max, Nothing)
 event (Waveform []) = error "event: attempt to unevent empty waveform"
 
 -- | Return the value of a waveform at time t
@@ -112,6 +95,14 @@ concatAt t (Waveform c1) (Waveform c2) = Waveform new where
     new = p `wappend` ((Change t v)`wcons`f)
     (p,(Change _ v):_) = span (\(Change t' _) -> t' < t) c1
     (_,f) = span (\(Change t' _) -> t' <= t) c2
+
+
+printWaveform :: Waveform -> String
+printWaveform (Waveform cs) = concat $ map pc cs where
+    pc (Change t c)
+        | t < time_max = printf "< %d until %d >" c t
+        | otherwise = printf "< %d until inf >" c
+
 
 -- | forall t . t >  psince => define (valueAt t PW) == valueAt t pwave
 --              t <= psince => (valueAt t PW) is undefined

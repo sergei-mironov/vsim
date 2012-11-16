@@ -19,8 +19,8 @@ data Severity = Low | High
 
 -- | A reason to pause the simulation
 data Pause =
-      Report Severity String
-    | BreakHit Int
+      Report Time Severity String
+    | BreakHit Time Int
     deriving(Show)
 
 -- | Main simulation monad. Supports breakpoints and IO.
@@ -28,7 +28,8 @@ newtype VSim a = VSim { unVSim :: BP Pause (StateT [Int] IO) a }
     deriving(Monad, MonadIO, Functor, Applicative)
 
 instance MonadBP Pause VSim where
-    pause e = VSim $ pause e
+    pause = VSim . pause
+    halt = VSim . halt
 
 instance MonadState [Int] VSim where
     get = VSim $ get
@@ -55,7 +56,8 @@ instance (Monad m) => MonadState s (VProc s m) where
     put = VProc . put
 
 instance (MonadSim m) => MonadBP Pause (VProc s m) where
-    pause e = VProc $ lift $ pause e
+    pause = VProc . lift . pause
+    halt =  VProc . lift . halt
 
 
 class (MonadIO m, Applicative m, MonadState s m, MonadBP Pause m) => MonadProc s m
@@ -65,12 +67,8 @@ instance (MonadSim m) => MonadProc s (VProc s m)
 runVProc :: (Monad m) => VProc s m () -> s -> m s
 runVProc (VProc r) s = execStateT r s
 
-report :: (MonadBP Pause m) => String -> m ()
-report s = pause $ Report Low s
-
-
-runtime :: (MonadBP Pause m) => String -> m ()
-runtime s = pause $ Report High s
+terminate :: (MonadBP Pause m) => Time -> String -> m ()
+terminate t s = halt $ Report t High s
 
 
 -- | Monadic loop helper. Runs the loop until True

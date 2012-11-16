@@ -22,4 +22,3 @@ update f ptr = deref ptr >>= write ptr . f
 instance (Show x) => Show (IORef x) where
     show x = "@(" ++ show (unsafePerformIO $ deref x) ++ ")"
 
-
