@@ -1,4 +1,4 @@
-module VSimR.Time where
+module VSim.Runtime.Time where
 
 import Control.Monad
 

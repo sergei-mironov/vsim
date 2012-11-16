@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module VSimR.Process where
+module VSim.Runtime.Process where
 
 import Control.Applicative
 import Control.Monad.Trans
@@ -9,11 +9,20 @@ import Control.Monad.State
 import Control.Monad.BP
 import Text.Printf
 
-import VSimR.Monad
-import VSimR.Time
-import VSimR.Ptr
-import VSimR.Waveform
-import VSimR.Variable
+import VSim.Runtime.Monad
+import VSim.Runtime.Time
+import VSim.Runtime.Ptr
+import VSim.Runtime.Waveform
+import VSim.Runtime.Constraint
+
+data Variable = Variable {
+      vname :: String
+    , vval :: Int
+    , vconstr :: Constraint
+    } deriving(Show)
+
+instance Constrained Variable where
+    within v = within (vval v, vconstr v)
 
 data Signal = Signal {
       sname :: String

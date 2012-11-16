@@ -1,4 +1,4 @@
-module VSimR.Timeline (
+module VSim.Runtime.Timeline (
       advance
     , commit
     ) where
@@ -8,12 +8,12 @@ import Control.Monad
 import Control.Monad.Trans
 import Text.Printf
 
-import VSimR.Monad
-import VSimR.Ptr
-import VSimR.Time
-import VSimR.Waveform
-import VSimR.Process
-import VSimR.Variable
+import VSim.Runtime.Monad
+import VSim.Runtime.Ptr
+import VSim.Runtime.Time
+import VSim.Runtime.Waveform
+import VSim.Runtime.Process
+import VSim.Runtime.Constraint
 
 -- | Invalidate signal assignments
 --

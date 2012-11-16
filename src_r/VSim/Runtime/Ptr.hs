@@ -1,4 +1,4 @@
-module VSimR.Ptr where
+module VSim.Runtime.Ptr where
 
 import Control.Monad.Trans
 import Data.IORef

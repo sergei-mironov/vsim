@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module VSimR.Monad where
+module VSim.Runtime.Monad where
 
 import Control.Monad.BP
 import Control.Monad.State
@@ -12,7 +12,7 @@ import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Applicative
 
-import VSimR.Time
+import VSim.Runtime.Time
 
 data Severity = Low | High
     deriving(Show)
@@ -59,7 +59,6 @@ instance (MonadSim m) => MonadBP Pause (VProc s m) where
     pause = VProc . lift . pause
     halt =  VProc . lift . halt
 
-
 class (MonadIO m, Applicative m, MonadState s m, MonadBP Pause m) => MonadProc s m
 
 instance (MonadSim m) => MonadProc s (VProc s m)
@@ -69,7 +68,6 @@ runVProc (VProc r) s = execStateT r s
 
 terminate :: (MonadBP Pause m) => Time -> String -> m ()
 terminate t s = halt $ Report t High s
-
 
 -- | Monadic loop helper. Runs the loop until True
 loopM :: (Monad m) => s -> (s -> m (s,Bool)) -> m s

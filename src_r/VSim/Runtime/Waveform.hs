@@ -1,4 +1,4 @@
-module VSimR.Waveform where
+module VSim.Runtime.Waveform where
 
 import Data.List
 import Control.Applicative
@@ -8,7 +8,7 @@ import Test.QuickCheck
 import Text.Printf
 import Prelude hiding(until)
 
-import VSimR.Time
+import VSim.Runtime.Time
 
 -- | Change is a part of a waveform. More or less formal definition is:
 -- foreach t . t <= until => (value `at_time` t) == cvalue

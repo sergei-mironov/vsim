@@ -2,18 +2,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module VSimR.Memory where
+module VSim.Runtime.Memory where
 
 import Control.Monad.Trans
 import Control.Monad.State
 import Data.IORef
 import System.IO
 
-import VSimR.Waveform
-import VSimR.Process
-import VSimR.Variable
-import VSimR.Ptr
-import VSimR.Monad
+import VSim.Runtime.Waveform
+import VSim.Runtime.Process
+import VSim.Runtime.Ptr
+import VSim.Runtime.Monad
+import VSim.Runtime.Constraint
 
 data Memory = Memory {
       msignals :: [Ptr Signal]

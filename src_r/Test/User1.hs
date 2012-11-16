@@ -1,10 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
 
 module Main where
 
-import Control.Monad.Trans
-
-import VSimR
+import VSim.Runtime
 
 elab :: Elab ()
 elab = do
@@ -13,9 +10,11 @@ elab = do
     clk <- alloc_signal "clk" (wconst 0) unranged
     v <- alloc_variable "v" 0 unranged
 
+
     proc1 <- alloc_process [clk] $ do
         breakpoint
-        s1  `assign` (now, val clk)
+        error "bug with this us 5"
+        s1  `assign` (us 5, (val clk))
         s2  `assign` (now, int 1)
         clk `assign` (now, int 1 .+. val clk)
         report "muhaha"
