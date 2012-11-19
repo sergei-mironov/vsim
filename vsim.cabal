@@ -20,11 +20,11 @@ Executable VirCheck
 Library
   hs-source-dirs:    src
   -- Modules exported by the library.
-  Exposed-modules: VSimR.Waveform, VSimR.Variable, VSimR.Time, VSimR.Sim, VSimR.Signal, VSimR.Ptr, VSimR.Process, VSimR.Memory, VSim.VIR, VSim.VIR.Types, VSim.VIR.Monad, VSim.VIR.Lexer, VSim.VIR.AST, VSim.Data.TInt, VSim.Data.NamePath, VSim.Data.Loc, VSim.Data.Line, VSim.Data.Int128
+  Exposed-modules: VSim.VIR.Types, VSim.VIR.Monad, VSim.VIR.Lexer, VSim.VIR.AST, VSim.Data.TInt, VSim.Data.NamePath, VSim.Data.Loc, VSim.Data.Line, VSim.Data.Int128
   
   -- Packages needed in order to build this package.
   Build-depends: base, mtl, syb, containers, bytestring, filepath, time, array,
-                 pretty-show, QuickCheck
+                 pretty-show, QuickCheck, haskell-src
   
   -- Modules not exported by this package.
   -- Other-modules:       

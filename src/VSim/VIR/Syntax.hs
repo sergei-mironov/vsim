@@ -1,7 +1,7 @@
 module VSim.VIR.Syntax where
 
 import Data.List
-import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS
 
 import Control.Monad
 import Control.Monad.State
@@ -21,10 +21,9 @@ data HGenState = HGS {
 type HGen m a = StateT HGenState m a
 
 makeIdent :: WLHierNameWPath -> HsName
-makeIdent (WithLoc _ (n,ns)) = intercalate "_" $ (BS.unpack n) : (map BS.unpack ns)
+makeIdent (WithLoc _ (n,ns)) = HsIdent $ intercalate "_" $ (BS.unpack n) : (map BS.unpack ns)
 
 declareSignal :: (Monad m) => IRSignal -> HGen m [HsStmt]
 declareSignal (IRSignal n t (IOEJustExpr _ _)) = error "not supported"
-declareSignal (IRSignal n t (IOENothing _)) = concat [
-    ]
+declareSignal (IRSignal n t (IOENothing _)) = return $ concat [ ]
 

@@ -22,7 +22,8 @@ import Prelude hiding (Ordering(..))
 
 import Foreign.Storable
 import Foreign.Ptr
-import Foreign.ForeignPtr
+import Foreign.ForeignPtr 
+import Foreign.ForeignPtr.Unsafe as FU
 
 import VSim.Data.Loc
 import System.IO.Unsafe
@@ -337,7 +338,7 @@ bsForeignPtr :: B.ByteString -> ForeignPtr Word8
 bsForeignPtr bs = fp
     where (fp, _offset, _length) = B.toForeignPtr bs
 bsPtr :: B.ByteString -> Ptr Word8
-bsPtr bs = unsafeForeignPtrToPtr $ bsForeignPtr bs
+bsPtr bs = FU.unsafeForeignPtrToPtr $ bsForeignPtr bs
 
 newIrScanInput :: B.ByteString -> AlexInput
 newIrScanInput str =
@@ -359,7 +360,7 @@ irScan inp@(AlexInput pos cp str) =
         AlexToken inp' len act ->
             (Right (snd (irScanLineColumn inp') - fromIntegral len,
                     act pos (B.fromForeignPtr str
-                                 (cp `minusPtr` unsafeForeignPtrToPtr str + 1)
+                                 (cp `minusPtr` FU.unsafeForeignPtrToPtr str + 1)
                                  (fromIntegral len))), inp')
 
 irScanM :: Monad m => m AlexInput -> (AlexInput -> m ()) -> m (Int, Token)

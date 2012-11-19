@@ -16,6 +16,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.BP
 import Control.Monad.Trans
+import Control.Monad.Loop
 import Text.Printf
 import System.IO
 

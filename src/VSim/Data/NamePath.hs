@@ -5,14 +5,12 @@ module VSim.Data.NamePath (
     , NamePathElem
     ) where
 
-import Data.HashTable (hashString)
 import Data.Bits (xor)
 import qualified Data.ByteString.Char8 as B
 import Data.List
 import Data.Maybe
 import Control.Monad
 import System.IO
-import Data.HashTable
 import Data.Char
 import Data.Int
 

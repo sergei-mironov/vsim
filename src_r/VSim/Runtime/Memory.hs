@@ -36,8 +36,8 @@ alloc_signal' s = do
     return r
 
 -- | Allocates signal from the memory
-alloc_signal :: (MonadElab m) => String -> Waveform -> Constraint -> m (Ptr Signal)
-alloc_signal n w c = alloc_signal' (Signal n w 0 c [])
+alloc_signal :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Signal)
+alloc_signal n i c = alloc_signal' (Signal n (wconst i) 0 c [])
 
 -- | Allocates variable from the memory
 alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variable)
@@ -50,6 +50,12 @@ alloc_process ss h = do
     forM_ ss (update (addproc p))
     modify $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
+
+alloc_ranged_type :: (MonadElab m) => Int -> Int -> m (Constraint)
+alloc_ranged_type a b = return $ ranged a b
+
+alloc_unranged_type :: (MonadElab m) => m (Constraint)
+alloc_unranged_type = return unranged
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
 printSignalsM m = liftIO $ mapM printSignalM >=> mapM_ putStrLn $ (msignals m)

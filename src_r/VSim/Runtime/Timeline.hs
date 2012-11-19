@@ -19,6 +19,7 @@ import VSim.Runtime.Constraint
 --
 -- FIXME: monitor multiple assignments, implement resolvers
 -- FIXME: return some hint on signals to process next
+-- FIXME: for each signal, take only the last assignment into account
 commit :: (MonadSim m) => Time -> [Assignment] -> m ()
 commit t as = do
     forM_ as $ \(Assignment r pw) -> do
@@ -30,7 +31,7 @@ commit t as = do
                 let err = printf "constraint check failed: signal %s" (sname s)
                 terminate t err
 
--- | Returns the time of the next event, as well as signals to be changd
+-- | Returns the time of the next event, as well as signals to be changed
 --
 -- FIXME: take waitable processes into account
 next_event :: (MonadIO m) => [Ptr Signal] -> m ([(Ptr Signal,Waveform)], Time)
@@ -42,7 +43,7 @@ next_event ss = foldM cmp ([],time_max) ss where
             (EQ, Just w') -> return ((r,w'):l, t)
             _ -> return o
 
--- | Calculates next event's time
+-- | Calculates the time of next event
 advance :: (MonadIO m) => [Ptr Signal] -> m (Time, [Ptr Process])
 advance ss = do
     (cs,t) <- next_event ss

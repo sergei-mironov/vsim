@@ -8,8 +8,8 @@ import VSimR
 
 elab :: Elab ()
 elab = do
-    s1 <- alloc_signal "s1" (wconst 0) (ranged 0 5)
-    clk <- alloc_signal "clk" (wconst 0) unranged
+    s1 <- alloc_signal "s1" 0 (ranged 0 5)
+    clk <- alloc_signal "clk" 0 unranged
 
     proc1 <- alloc_process [clk] $ do
         breakpoint

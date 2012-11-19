@@ -103,11 +103,13 @@ assign p (mt,mv) = do
     a <- Assignment <$> pure p <*> (PW <$> mt <*> (wconst <$> mv))
     modify (add_assignment a)
 
-(.+.) :: (MonadProc PS m) => m Int -> m Int -> m Int
-(.+.) a b = (+) <$> a <*> b
+add, (.+.) :: (MonadProc PS m) => m Int -> m Int -> m Int
+add a b = (+) <$> a <*> b
+(.+.) = add
 
-(.-.) :: (MonadProc PS m) => m Int -> m Int -> m Int
-(.-.) a b = (-) <$> a <*> b
+minus, (.-.) :: (MonadProc PS m) => m Int -> m Int -> m Int
+minus a b = (-) <$> a <*> b
+(.-.) = minus
 
 -- | Etracts signal's current value
 val :: (MonadProc PS m) => Ptr Signal -> m Int
