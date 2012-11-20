@@ -44,12 +44,15 @@ alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variabl
 alloc_variable n v c = alloc (Variable n v c)
 
 -- | Registers process in memory. Updates list of signal's reactions
-alloc_process :: (MonadElab m) => [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
-alloc_process ss h = do
-    p <- alloc (Process "process" h)
+alloc_process :: (MonadElab m) => String -> [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
+alloc_process n ss h = do
+    p <- alloc (Process n h)
     forM_ ss (update (addproc p))
     modify $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
+
+alloc_constant :: (MonadElab m) => String -> Int -> m Int
+alloc_constant _ v = return v
 
 alloc_ranged_type :: (MonadElab m) => Int -> Int -> m (Constraint)
 alloc_ranged_type a b = return $ ranged a b

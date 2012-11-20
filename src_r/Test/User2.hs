@@ -4,14 +4,14 @@ module Main where
 
 import Control.Monad.Trans
 
-import VSimR
+import VSim.Runtime
 
 elab :: Elab ()
 elab = do
     s1 <- alloc_signal "s1" 0 (ranged 0 5)
     clk <- alloc_signal "clk" 0 unranged
 
-    proc1 <- alloc_process [clk] $ do
+    proc1 <- alloc_process "main" [clk] $ do
         breakpoint
         s1  `assign` (now, val clk)
         clk `assign` (fs 2, int 1 .+. val clk)

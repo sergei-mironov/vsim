@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module VSim.Runtime.Process where
 
@@ -15,11 +17,20 @@ import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 import VSim.Runtime.Constraint
 
+class Valueable x where
+    val :: (MonadProc PS m) => x -> m Int
+
+instance Valueable Int where
+    val r = return r
+
 data Variable = Variable {
       vname :: String
     , vval :: Int
     , vconstr :: Constraint
     } deriving(Show)
+
+instance Valueable (Ptr Variable) where
+    val r = vval `liftM` deref r
 
 instance Constrained Variable where
     within v = within (vval v, vconstr v)
@@ -41,6 +52,9 @@ addproc p s = s { proc = p:(proc s) }
 instance Constrained Signal where
     within s = and $ map f $ wchanges $ scurr s where
         f (Change _ v) = within (v, sconstr s)
+
+instance Valueable (Ptr Signal) where
+    val r = valueAt1 <$> now <*> (scurr `liftM` deref r)
 
 printSignalM :: (MonadIO m) => Ptr Signal -> m String
 printSignalM r = deref r >>= return . printSignal
@@ -111,9 +125,20 @@ minus, (.-.) :: (MonadProc PS m) => m Int -> m Int -> m Int
 minus a b = (-) <$> a <*> b
 (.-.) = minus
 
--- | Etracts signal's current value
-val :: (MonadProc PS m) => Ptr Signal -> m Int
-val r = valueAt1 <$> now <*> (scurr `liftM` deref r)
+greater, (.>.) :: (MonadProc PS m) => m Int -> m Int -> m Bool
+greater a b = (>) <$> a <*> b
+(.>.) = greater
+
+greater_eq, (.>=.) :: (MonadProc PS m) => m Int -> m Int -> m Bool
+greater_eq a b = (>=) <$> a <*> b
+(.>=.) = greater_eq
+
+eq, (.==.) :: (MonadProc PS m) => m Int -> m Int -> m Bool
+eq a b = (==) <$> a <*> b
+(.==.) = eq
+
+iF :: (MonadProc PS m) => m Bool -> m () -> m () -> m ()
+iF exp m1 m2 = exp >>= \ r -> if r then m1 else m2
 
 stable :: (Monad m) => Int -> m Int
 stable i = return i
@@ -122,12 +147,11 @@ runProcess :: Time -> Process -> VSim [Assignment]
 runProcess t (Process _ h) = passignments <$> runVProc h (PS t [])
 
 report :: (MonadProc PS m) => String -> m ()
-report s = do
-    r <- Report <$> now <*> pure Low <*> pure s
-    pause r
+report s = pause =<< (Report <$> now <*> pure Low <*> pure s)
+
+assert :: (MonadProc PS m) => m ()
+assert = pause =<< (Report <$> now <*> pure High <*> pure "assert")
 
 breakpoint :: (MonadProc PS m) => m ()
-breakpoint = do
-    r <- BreakHit <$> now <*> pure 0
-    pause r
+breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
 

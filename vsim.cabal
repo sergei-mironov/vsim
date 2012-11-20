@@ -16,6 +16,9 @@ Executable VirCheck
   hs-source-dirs:    src
   main-is:           VirCheck.hs
 
+Executable VSim
+  hs-source-dirs:    src
+  main-is:           VSim.hs
 
 Library
   hs-source-dirs:    src

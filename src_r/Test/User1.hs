@@ -12,7 +12,7 @@ elab = do
     clk <- alloc_signal "clk" 0 t_int
     v <- alloc_variable "v" 0 t_0_5
 
-    proc1 <- alloc_process [clk] $ do
+    proc1 <- alloc_process "main" [clk] $ do
         breakpoint
         s1  `assign` (fs 5, (val clk))
         clk `assign` (now, (add (int 1) (val clk)))
