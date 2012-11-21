@@ -19,8 +19,10 @@ import Control.Monad.Fix
 import Control.Monad.State
 import Text.Printf
 
-class MonadBP e m where
+class (Monad m) => MonadBP e m where
+    -- | Pauses the monad, but allows it to continue
     pause :: e -> m ()
+    -- | Pauses the monad without allowing it to continue
     halt :: e -> m ()
 
 newtype BP e m a = BP {

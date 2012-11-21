@@ -30,7 +30,7 @@ import VSim.Runtime.Monad
 import VSim.Runtime.Constraint
 
 process :: (Time,[Ptr Process]) -> VSim [Assignment]
-process (t,ps) = concat `liftM` mapM (deref >=> runProcess t) ps
+process (t,ps) = concat `liftM` mapM (runProcess t) ps
 
 -- FIXME: inefficient algorithm - loop throw all signals in memory (see
 -- advance function call)

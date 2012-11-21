@@ -19,6 +19,10 @@ deref ptr = liftIO $ readIORef ptr
 update :: (MonadIO m) => (a->a) -> Ptr a -> m ()
 update f ptr = deref ptr >>= write ptr . f
 
+withPtr :: (MonadIO m) => (a->(a,b)) -> Ptr a -> m b
+withPtr f ptr = deref ptr >>= \a -> do
+    let (a',b) = f a in write ptr a' >> return b
+
 instance (Show x) => Show (IORef x) where
     show x = "@(" ++ show (unsafePerformIO $ deref x) ++ ")"
 

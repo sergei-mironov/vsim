@@ -34,19 +34,28 @@ commit t as = do
 -- | Returns the time of the next event, as well as signals to be changed
 --
 -- FIXME: take waitable processes into account
-next_event :: (MonadIO m) => [Ptr Signal] -> m ([(Ptr Signal,Waveform)], Time)
-next_event ss = foldM cmp ([],time_max) ss where
-    cmp o@(l,t) r = do
+signals_before' :: (MonadIO m) => Time -> [Ptr Signal] -> m (Time, [(Ptr Signal,Waveform)])
+signals_before' tmax ss = foldM cmp (tmax,[]) ss where
+    cmp o@(t,l) r = do
         (t', jw) <- event `liftM` scurr `liftM` deref r
         case (compare t' t, jw) of
-            (LT, Just w') -> return ([(r,w')], t')
-            (EQ, Just w') -> return ((r,w'):l, t)
+            (LT, Just w') -> return (t', [(r,w')])
+            (EQ, Just w') -> return (t, (r,w'):l)
             _ -> return o
+
+signals_before :: (MonadIO m) => Time -> [Ptr Signal] -> m (Time, [Ptr Process])
+signals_before tm ss = do
+    (t,cs) <- signals_before' tm ss
+    ps <- forM cs $ \(r,w) -> withPtr (\s -> (chwave w s, proc s)) r
+    return (t, concat ps)
+
+process_before :: (MonadIO m) => Time -> [Ptr Process] -> m ([Ptr Process], Time)
+process_before = undefined
 
 -- | Calculates the time of next event
 advance :: (MonadIO m) => [Ptr Signal] -> m (Time, [Ptr Process])
 advance ss = do
-    (cs,t) <- next_event ss
+    (t,cs) <- signals_before' time_max ss
     ps <- forM cs $ \(r,w) -> do
         s <- deref r
         write r (chwave w s)

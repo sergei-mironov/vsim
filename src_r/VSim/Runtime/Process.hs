@@ -87,6 +87,12 @@ data Process = Process {
     , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
     }
+    | Waitable {
+      pname :: String
+    -- ^ The name of a process
+    , pwait :: Maybe ProcessHandler
+    , pcurrrent :: ProcessHandler
+    }
 
 instance Show Process where
     show p = printf "Process { pname = \"%s\", <handler> }" (pname p)
@@ -125,9 +131,8 @@ str = return
 -- delta-cycle" since our delta cycle is 1 fs. So we have to substract 1 cycle
 -- from 'after' time @t@ if it is greater then current time @n@.
 tweak_after :: Time -> Time -> Time
-tweak_after n t
-    | t <= n = t
-    | t > n = t-1
+tweak_after n t | t <= n = t
+                | t > n = t-1
 
 -- | Assigns new constant waveform to a signal
 assign :: (MonadProc PS m) => Ptr Signal -> (m Time, m Int) -> m ()
@@ -162,8 +167,29 @@ iF exp m1 m2 = exp >>= \ r -> if r then m1 else m2
 stable :: (Monad m) => Int -> m Int
 stable i = return i
 
-runProcess :: Time -> Process -> VSim [Assignment]
-runProcess t (Process _ h) = passignments <$> runVProc h (PS t [])
+runProcess :: Time -> Ptr Process -> VSim [Assignment]
+runProcess t r = do
+    p <- deref r
+    (as,p') <- runProcess' t p
+    write r p'
+    return as
+
+runProcess' :: Time -> Process -> VSim ([Assignment], Process)
+runProcess' t p@(Process _ h) = do
+    e <- runVProc h (PS t [])
+    case e of
+        Left _ -> error "BUG"
+        Right (PS _ as) -> return (as,p)
+runProcess' t (Waitable n (Just k) h) = do
+    e <- runVProc k (PS t [])
+    case e of
+        Left ((t,PS _ as),k') -> return (as,(Waitable n (Just k') h))
+        Right (PS _ as) -> return (as,(Waitable n Nothing h))
+runProcess' t (Waitable n Nothing h) = do
+    e <- runVProc h (PS t [])
+    case e of
+        Left ((t,PS _ as),k') -> return (as,(Waitable n (Just k') h))
+        Right (PS _ as) -> return (as,(Waitable n Nothing h))
 
 report :: (MonadProc PS m) => m String -> m ()
 report s = pause =<< (Report <$> now <*> pure Low <*> s)

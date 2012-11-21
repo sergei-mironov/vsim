@@ -23,7 +23,8 @@ data Pause =
     | BreakHit Time Int
     deriving(Show)
 
--- | Main simulation monad. Supports breakpoints and IO.
+-- | Main simulation monad. Supports breakpoints and IO. [Int] is a list of
+-- active breakpoint identifiers
 newtype VSim a = VSim { unVSim :: BP Pause (StateT [Int] IO) a }
     deriving(Monad, MonadIO, Functor, Applicative)
 
@@ -47,24 +48,32 @@ runVSim sim s = do
         Left (p,bp) -> return (Left (p,VSim bp))
         Right a -> return (Right a)
 
--- | Monad for process execution. Provides user with current time.
-newtype VProc s m a = VProc { unProc :: StateT s m a }
+-- | Monad for process execution.
+newtype VProc s m a = VProc { unProc :: BP (Time,s) (StateT s m) a }
     deriving (Monad, MonadIO, Functor, Applicative)
+
+instance (MonadSim m) => MonadBP Pause (VProc s m) where
+    pause = VProc . lift . lift . pause
+    halt =  VProc . lift . lift . halt
 
 instance (Monad m) => MonadState s (VProc s m) where
     get = VProc $ get
     put = VProc . put
 
-instance (MonadSim m) => MonadBP Pause (VProc s m) where
-    pause = VProc . lift . pause
-    halt =  VProc . lift . halt
+class (MonadIO m, Applicative m, MonadState s m, MonadBP Pause m) => MonadProc s m where
+    wait :: Time -> m ()
 
-class (MonadIO m, Applicative m, MonadState s m, MonadBP Pause m) => MonadProc s m
+instance (MonadSim m) => MonadProc s (VProc s m) where
+    wait t = do
+        s <- get
+        VProc $ pause (t,s)
 
-instance (MonadSim m) => MonadProc s (VProc s m)
-
-runVProc :: (Monad m) => VProc s m () -> s -> m s
-runVProc (VProc r) s = execStateT r s
+runVProc :: (Monad m) => VProc s m () -> s -> m (Either ((Time,s),VProc s m ()) s)
+runVProc (VProc r) s = do
+    (e,s') <- runStateT (runBP r) s
+    case e of
+        Left (x,k) -> return (Left (x, VProc k))
+        Right _ -> return (Right s')
 
 terminate :: (MonadBP Pause m) => Time -> String -> m ()
 terminate t s = halt $ Report t High s
