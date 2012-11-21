@@ -15,7 +15,7 @@ elab = do
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint
         s1  `assign` (fs 5, (val clk))
-        clk `assign` (now, (add (int 1) (val clk)))
+        clk `assign` (now, ((int 1) .+. (val clk)))
         report (str "muhaha")
         return ()
  

@@ -9,6 +9,7 @@ import Control.Monad.Trans
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.BP
+import Control.Monad
 import Text.Printf
 
 import VSim.Runtime.Monad
@@ -114,10 +115,25 @@ int = return
 str :: (MonadProc s m) => String -> m String
 str = return
 
+-- | Tweaks time for 'after' clause
+--
+-- VHDL standatd says:
+-- > If the after clause of a waveform element is not present, then an
+-- > implicit “after 0 ns” is assumed.
+--
+-- So "after 0 fs" means "next delta-cycle" and "after 1 fs" means "next
+-- delta-cycle" since our delta cycle is 1 fs. So we have to substract 1 cycle
+-- from 'after' time @t@ if it is greater then current time @n@.
+tweak_after :: Time -> Time -> Time
+tweak_after n t
+    | t <= n = t
+    | t > n = t-1
+
 -- | Assigns new constant waveform to a signal
 assign :: (MonadProc PS m) => Ptr Signal -> (m Time, m Int) -> m ()
 assign p (mt,mv) = do
-    a <- Assignment <$> pure p <*> (PW <$> mt <*> (wconst <$> mv))
+    time <- liftM2 tweak_after now mt
+    a <- Assignment <$> pure p <*> (PW <$> pure time <*> (wconst <$> mv))
     modify (add_assignment a)
 
 add, (.+.) :: (MonadProc PS m) => m Int -> m Int -> m Int
