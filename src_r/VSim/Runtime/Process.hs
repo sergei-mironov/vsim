@@ -111,6 +111,9 @@ fs t = (+) <$> now <*> (pure $ t * femtoSecond)
 int :: (MonadProc s m) => Int -> m Int
 int = return
 
+str :: (MonadProc s m) => String -> m String
+str = return
+
 -- | Assigns new constant waveform to a signal
 assign :: (MonadProc PS m) => Ptr Signal -> (m Time, m Int) -> m ()
 assign p (mt,mv) = do
@@ -146,8 +149,8 @@ stable i = return i
 runProcess :: Time -> Process -> VSim [Assignment]
 runProcess t (Process _ h) = passignments <$> runVProc h (PS t [])
 
-report :: (MonadProc PS m) => String -> m ()
-report s = pause =<< (Report <$> now <*> pure Low <*> pure s)
+report :: (MonadProc PS m) => m String -> m ()
+report s = pause =<< (Report <$> now <*> pure Low <*> s)
 
 assert :: (MonadProc PS m) => m ()
 assert = pause =<< (Report <$> now <*> pure High <*> pure "assert")

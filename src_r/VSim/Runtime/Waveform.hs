@@ -104,8 +104,8 @@ printWaveform (Waveform cs) = concat $ map pc cs where
         | otherwise = printf "< %d until inf >" c
 
 
--- | forall t . t >  psince => define (valueAt t PW) == valueAt t pwave
---              t <= psince => (valueAt t PW) is undefined
+-- | forall t . t >  psince => (valueAt t PW) == (valueAt t pwave)
+--              t <= psince => (valueAt t PW) == undefined
 data ProjectedWaveform = PW {
       psince :: Time
     , pwave :: Waveform

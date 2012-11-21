@@ -16,7 +16,7 @@ elab = do
         breakpoint
         s1  `assign` (fs 5, (val clk))
         clk `assign` (now, (add (int 1) (val clk)))
-        report "muhaha"
+        report (str "muhaha")
         return ()
  
     return ()

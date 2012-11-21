@@ -29,15 +29,16 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Monad
 import VSim.Runtime.Constraint
 
-step :: (Time,[Ptr Process]) -> VSim ()
-step (t,ps) = concat `liftM` mapM (deref >=> runProcess t) ps >>= commit t
+process :: (Time,[Ptr Process]) -> VSim [Assignment]
+process (t,ps) = concat `liftM` mapM (deref >=> runProcess t) ps
 
 -- FIXME: inefficient algorithm - loop throw all signals in memory (see
 -- advance function call)
 loop :: Time -> Memory -> VSim ()
 loop et m = do
     loopM_ (time_min,(mprocesses m)) $ \(t,ps) -> do
-        step (t,ps)
+        ass <- process (t,ps)
+        hint <- commit t ass
         (t', ps') <- advance (msignals m)
         return ((t',ps'), t >= et)
 

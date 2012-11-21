@@ -31,7 +31,7 @@ instance AsIdent (Ident, [Ident]) where
     gen_ident (_,x:_) = gen_ident x
     gen_ident _ = error "gen_ident (hierPath): strange hierPath"
 
-instance AsIdent a => AsIdent (WithLoc a) where
+instance (AsIdent a) => AsIdent (WithLoc a) where
     gen_ident (WithLoc _ a) = gen_ident a
 
 instance AsIdent IRNameG where
@@ -55,9 +55,9 @@ instance (AsInt a) => AsInt (WithLoc a) where
 
 noLoc = SrcLoc "<unknown>" 0 0
 
--- Use short name for now
 unHierPath :: WLHierNameWPath -> String
 unHierPath (WithLoc _ (_,(s:_))) = BS.unpack s
+unHierPath p = error "unHierPath: unsupported " ++ (show p)
 
 gen_return = HsApp (HsCon $ UnQual $ HsIdent "return") (unit_con)
 
@@ -69,9 +69,10 @@ gen_appl' n (a:as) = HsApp (gen_appl' n as) a
 gen_appl :: (AsIdent n) => n -> [HsExp] -> HsExp
 gen_appl n as = HsParen $ gen_appl' n (reverse as)
 
-gen_function [] n [] = HsQualifier (HsVar $ UnQual $ HsIdent n)
+gen_function :: (AsIdent n) => String -> n -> [HsExp] -> HsStmt
+gen_function [] n [] = HsQualifier (gen_ident n)
 gen_function [] n as = HsQualifier (gen_appl' n (reverse as))
-gen_function r n [] = HsGenerator noLoc (HsPVar $ HsIdent r) (HsVar $ UnQual $ HsIdent n)
+gen_function r n [] = HsGenerator noLoc (HsPVar $ HsIdent r) (gen_ident n)
 gen_function r n as = HsGenerator noLoc (HsPVar $ HsIdent r) (gen_appl' n (reverse as))
 
 gen_list es = HsList es
@@ -163,9 +164,11 @@ gen_elab ts = [
                 ]
             ]
         gen_stmt (ISAssert loc e1 e2 e3) = [gen_function [] "assert" []]
-        gen_stmt e = error $ "gen_expr: unknown expr: " ++ show e
+        gen_stmt (ISReport loc e1 e2) = [gen_function [] "report" [gen_expr e1]]
+        gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
 
         gen_expr (IEInt loc i) = gen_appl "int" [gen_int i]
+        gen_expr (IEString loc bs) = gen_appl "str" [gen_str $ BS.unpack bs]
         gen_expr (IEName loc n) = gen_appl "val" [gen_ident n]
         gen_expr (IEBinOp loc IPlus e1 e2) = gen_appl "add" [gen_expr e1, gen_expr e2]
         gen_expr (IERelOp loc IGreaterEqual _ e1 e2) =
