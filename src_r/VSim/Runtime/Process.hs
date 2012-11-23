@@ -12,113 +12,43 @@ import Control.Monad.BP
 import Control.Monad
 import Text.Printf
 
+import VSim.Runtime.Ptr
 import VSim.Runtime.Monad
 import VSim.Runtime.Time
 import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 import VSim.Runtime.Constraint
 
-class Valueable x where
-    val :: (MonadProc PS m) => x -> m Int
-
-instance Valueable Int where
-    val r = return r
-
-data Variable = Variable {
-      vname :: String
-    , vval :: Int
-    , vconstr :: Constraint
-    } deriving(Show)
-
-instance Valueable (Ptr Variable) where
-    val r = vval `liftM` deref r
-
-instance Constrained Variable where
-    within v = within (vval v, vconstr v)
-
-data Signal = Signal {
-      sname :: String
-    , scurr :: Waveform
-    , oldvalue :: Int
-    , sconstr :: Constraint
-    , proc :: [Ptr Process]
-    } deriving(Show)
-
-chwave :: Waveform -> Signal -> Signal
-chwave w s = s { scurr = w }
-
-addproc :: Ptr Process -> Signal -> Signal
-addproc p s = s { proc = p:(proc s) }
-
-instance Constrained Signal where
-    within s = and $ map f $ wchanges $ scurr s where
-        f (Change _ v) = within (v, sconstr s)
-
-instance Valueable (Ptr Signal) where
-    val r = valueAt1 <$> now <*> (scurr `liftM` deref r)
-
-printSignalM :: (MonadIO m) => Ptr Signal -> m String
-printSignalM r = deref r >>= return . printSignal
+printSignalM :: (MonadIO m) => Memory -> Ptr Signal -> m String
+printSignalM m r = deref m r >>= return . printSignal
 
 printSignal :: Signal -> String
 printSignal s = printf "signal %s wave %s" (sname s) (printWaveform (scurr s))
 
--- | Assignment event
-data Assignment = Assignment {
-      acurr :: Ptr Signal
-    , anext :: ProjectedWaveform
-    } deriving(Show)
+-- ps_mem :: (MonadProc m) => m Memory
+-- ps_mem = get >>= \(PS _ _ m) -> return m
 
--- | Process State
-data PS = PS {
-      ptime :: Time
-    , passignments :: [Assignment]
-    } deriving(Show)
+-- derefP r = ps_mem >>= \m-> deref m r
 
-add_assignment :: Assignment -> PS -> PS
-add_assignment a (PS t as) = PS t (a:as)
+ms :: (MonadProc m) => Int -> m NextTime
+ms t = ticked <$> now <*> (tweak $ t * milliSecond)
 
-type ProcessHandler = VProc PS VSim ()
+us :: (MonadProc m) => Int -> m NextTime
+us t = ticked <$> now <*> (tweak $ t * microSecond)
 
--- | Representation of VHDL's process
-data Process = Process {
-      pname :: String
-    -- ^ The name of a process
-    , phandler :: ProcessHandler
-    -- ^ Returns newly-assigned signals
-    }
-    | Waitable {
-      pname :: String
-    -- ^ The name of a process
-    , pwait :: Maybe ProcessHandler
-    , pcurrrent :: ProcessHandler
-    }
+ps :: (MonadProc m) => Int -> m NextTime
+ps t = ticked <$> now <*> (tweak $ t * picoSecond)
 
-instance Show Process where
-    show p = printf "Process { pname = \"%s\", <handler> }" (pname p)
+ns :: (MonadProc m) => Int -> m NextTime
+ns t = ticked <$> now <*> (tweak $ t * nanoSecond)
 
-now :: (MonadProc PS m) => m Time
-now = ptime <$> get
+fs :: (MonadProc m) => Int -> m NextTime
+fs t = ticked <$> now <*> (tweak $ t * femtoSecond)
 
-ms :: (MonadProc PS m) => Time -> m Time
-ms t = (+) <$> now <*> (pure $ t * milliSecond)
-
-us :: (MonadProc PS m) => Time -> m Time
-us t = (+) <$> now <*> (pure $ t * microSecond)
-
-ps :: (MonadProc PS m) => Time -> m Time
-ps t = (+) <$> now <*> (pure $ t * picoSecond)
-
-ns :: (MonadProc PS m) => Time -> m Time
-ns t = (+) <$> now <*> (pure $ t * nanoSecond)
-
-fs :: (MonadProc PS m) => Time -> m Time
-fs t = (+) <$> now <*> (pure $ t * femtoSecond)
-
-int :: (MonadProc s m) => Int -> m Int
+int :: (MonadProc m) => Int -> m Int
 int = return
 
-str :: (MonadProc s m) => String -> m String
+str :: (MonadProc m) => String -> m String
 str = return
 
 -- | Tweaks time for 'after' clause
@@ -130,73 +60,62 @@ str = return
 -- So "after 0 fs" means "next delta-cycle" and "after 1 fs" means "next
 -- delta-cycle" since our delta cycle is 1 fs. So we have to substract 1 cycle
 -- from 'after' time @t@ if it is greater then current time @n@.
-tweak_after :: Time -> Time -> Time
-tweak_after n t | t <= n = t
-                | t > n = t-1
+tweak :: (Monad m) => Int -> m Int
+tweak n | n <= 0  = return n
+        | n > 0 = return $ n-1
 
 -- | Assigns new constant waveform to a signal
-assign :: (MonadProc PS m) => Ptr Signal -> (m Time, m Int) -> m ()
+assign :: (MonadProc m) => Ptr Signal -> (m Time, m Int) -> m ()
 assign p (mt,mv) = do
-    time <- liftM2 tweak_after now mt
-    a <- Assignment <$> pure p <*> (PW <$> pure time <*> (wconst <$> mv))
+    a <- Assignment <$> pure p <*> (PW <$> mt <*> (wconst <$> mv))
     modify (add_assignment a)
 
-add, (.+.) :: (MonadProc PS m) => m Int -> m Int -> m Int
+add, (.+.) :: (MonadProc m) => m Int -> m Int -> m Int
 add a b = (+) <$> a <*> b
 (.+.) = add
 
-minus, (.-.) :: (MonadProc PS m) => m Int -> m Int -> m Int
+minus, (.-.) :: (MonadProc m) => m Int -> m Int -> m Int
 minus a b = (-) <$> a <*> b
 (.-.) = minus
 
-greater, (.>.) :: (MonadProc PS m) => m Int -> m Int -> m Bool
+greater, (.>.) :: (MonadProc m) => m Int -> m Int -> m Bool
 greater a b = (>) <$> a <*> b
 (.>.) = greater
 
-greater_eq, (.>=.) :: (MonadProc PS m) => m Int -> m Int -> m Bool
+greater_eq, (.>=.) :: (MonadProc m) => m Int -> m Int -> m Bool
 greater_eq a b = (>=) <$> a <*> b
 (.>=.) = greater_eq
 
-eq, (.==.) :: (MonadProc PS m) => m Int -> m Int -> m Bool
+eq, (.==.) :: (MonadProc m) => m Int -> m Int -> m Bool
 eq a b = (==) <$> a <*> b
 (.==.) = eq
 
-iF :: (MonadProc PS m) => m Bool -> m () -> m () -> m ()
+iF :: (MonadProc m) => m Bool -> m () -> m () -> m ()
 iF exp m1 m2 = exp >>= \ r -> if r then m1 else m2
 
 stable :: (Monad m) => Int -> m Int
 stable i = return i
 
-runProcess :: Time -> Ptr Process -> VSim [Assignment]
-runProcess t r = do
-    p <- deref r
-    (as,p') <- runProcess' t p
-    write r p'
-    return as
-
-runProcess' :: Time -> Process -> VSim ([Assignment], Process)
-runProcess' t p@(Process _ h) = do
+runProcess :: Time -> Process -> VSim [Assignment]
+runProcess t p@(Process _ h) = do
     e <- runVProc h (PS t [])
     case e of
-        Left _ -> error "BUG"
-        Right (PS _ as) -> return (as,p)
-runProcess' t (Waitable n (Just k) h) = do
+        Left _ -> error "runProcess: BUG: wait incide non-waitable process??"
+        Right (PS _ as) -> return as
+
+runWaitable :: Time -> (x,Waitable) -> VSim ([Assignment], (x,Waitable))
+runWaitable t (x,Waitable n (Just (_,k)) h) = do
     e <- runVProc k (PS t [])
     case e of
-        Left ((t,PS _ as),k') -> return (as,(Waitable n (Just k') h))
-        Right (PS _ as) -> return (as,(Waitable n Nothing h))
-runProcess' t (Waitable n Nothing h) = do
+        Left ((t',PS _ as), k') -> return (as, (x,Waitable n (Just (t',k')) h))
+        Right (PS _ as) -> return (as, (x,Waitable n Nothing h))
+
+runWaitable t (x,Waitable n Nothing h) = do
     e <- runVProc h (PS t [])
     case e of
-        Left ((t,PS _ as),k') -> return (as,(Waitable n (Just k') h))
-        Right (PS _ as) -> return (as,(Waitable n Nothing h))
+        Left ((t', PS _ as), k') -> return (as, (x,Waitable n (Just (t',k')) h))
+        Right (PS _ as) -> return (as, (x,Waitable n Nothing h))
 
-report :: (MonadProc PS m) => m String -> m ()
-report s = pause =<< (Report <$> now <*> pure Low <*> s)
 
-assert :: (MonadProc PS m) => m ()
-assert = pause =<< (Report <$> now <*> pure High <*> pure "assert")
 
-breakpoint :: (MonadProc PS m) => m ()
-breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
 

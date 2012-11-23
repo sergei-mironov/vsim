@@ -1,10 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
--- To declare MonadState instances
-{-# LANGUAGE UndecidableInstances #-}
 
 module Control.Monad.BP (
       BP(..)
@@ -54,10 +51,6 @@ instance (MonadIO m) => MonadIO (BP e m) where
 
 instance MonadTrans (BP e) where
     lift m = BP $ \done _ -> m >>= done
-
-instance MonadState s m => MonadState s (BP e m) where
-    get = lift get
-    put a = lift $ put a
 
 instance (Functor m, Monad m) => Functor (BP e m) where
   fmap f m = BP $ \done cont ->

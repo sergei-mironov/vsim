@@ -12,6 +12,7 @@ module VSim.Runtime (
     , sim
     ) where
 
+-- import Control.Arrow
 import Control.Applicative
 import Control.Monad
 import Control.Monad.BP
@@ -29,8 +30,7 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Monad
 import VSim.Runtime.Constraint
 
-process :: (Time,[Ptr Process]) -> VSim [Assignment]
-process (t,ps) = concat `liftM` mapM (runProcess t) ps
+
 
 -- FIXME: inefficient algorithm - loop throw all signals in memory (see
 -- advance function call)

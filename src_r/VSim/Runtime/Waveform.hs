@@ -14,15 +14,15 @@ import VSim.Runtime.Time
 -- foreach t . t <= until => (value `at_time` t) == cvalue
 --             t > until => value is undefined
 data Change = Change {
-      until :: Time
+      until :: NextTime
     , cvalue :: Int
-    } deriving(Show)
+    } deriving(Show,Eq)
 
-fromPair :: (Time,Int) -> Change
+fromPair :: (NextTime,Int) -> Change
 fromPair (a,b) = Change a b
 
 infinity :: Int -> Change
-infinity v = Change time_max v
+infinity v = Change maxBound v
 
 wcons :: Change -> [Change] -> [Change]
 wcons c [] = [c]
@@ -39,41 +39,41 @@ wappend p f = (init p) ++ ((last p) `wcons` f)
 -- specify value of the waveform at +infinity time
 data Waveform = Waveform {
       wchanges :: [Change]
-    } deriving(Show)
-
-invariant :: Waveform -> Bool
-invariant w = and $ map ($w) [invariant1, invariant2]
-
-invariant1 :: Waveform -> Bool
-invariant1 (Waveform cs) = (length cs > 0) && (until $ last cs) == time_max
-
-invariant2 :: Waveform -> Bool
-invariant2 (Waveform cs) = and $ map check (cs `zip` (tail cs)) where
-    check (Change t1 _ , Change t2 _) = t1 < t2
+    } deriving(Show,Eq)
 
 -- | Returns waveform of a constant value
 wconst :: Int -> Waveform
 wconst val = Waveform [infinity val]
 
--- | Return next waveform event
-event :: Waveform -> (Time, Maybe Waveform)
-event (Waveform (c@(Change t _):c':cs)) = (t+1, Just (Waveform (c':cs)))
-event (Waveform [c]) = (time_max, Nothing)
+invariant :: Waveform -> Bool
+invariant w = and $ map ($w) [invariant1, invariant2]
+
+invariant1 :: Waveform -> Bool
+invariant1 (Waveform cs) = (length cs > 0) && (until $ last cs) == maxBound
+
+invariant2 :: Waveform -> Bool
+invariant2 (Waveform cs) = and $ map check (cs `zip` (tail cs)) where
+    check (Change t1 v1 , Change t2 v2) = t1 < t2 && v1 /= v2
+
+-- | Returns time t such that: t <= t_really_next_event
+event :: Waveform -> (NextTime, Waveform)
+event (Waveform (c@(Change t _):c':cs)) = (t, Waveform (c':cs))
+event (Waveform (c@(Change t _):[])) = (t, undefined)
 event (Waveform []) = error "event: attempt to unevent empty waveform"
 
 -- | Return the value of a waveform at time t
 valueAt :: Time -> Waveform -> Int
 valueAt t (Waveform []) = error "valueAt: infinity invariant failed"
 valueAt t (Waveform ((Change t' v):cs))
-    | t > t' = valueAt t (Waveform cs)
-    | otherwise = v
+    | t `time_before` t' = v
+    | otherwise = valueAt t (Waveform cs)
 
 -- | Returns the value of a waveform at time t. Fails if the value can't be
 -- aquired from the head change.
-valueAt1 :: Time -> Waveform -> Int
+valueAt1 :: (Timeable t) => t -> Waveform -> Int
 valueAt1 t (Waveform []) = error "valueAt1: infinity invariant failed"
 valueAt1 t (Waveform ((Change t' v):_))
-    | t <= t' = v
+    | t `time_before` t' = v
     | otherwise = error "valueAt1: accessability invariant failed"
 
 -- | Detect earliest change of a vaweform
@@ -88,30 +88,40 @@ earliest (Waveform _) (Waveform _) = error "earliest: vmpty waveform"
 -- w2- - -\_ _ _
 --         t
 --
--- r _ _/- -\_ _
+-- r _ _/-\_ _ _
 --         t
-concatAt :: Time -> Waveform -> Waveform -> Waveform
-concatAt t (Waveform c1) (Waveform c2) = Waveform new where
+concatAt :: NextTime -> Waveform -> Waveform -> Waveform
+concatAt t w1 w2 = Waveform new where
     new = p `wappend` ((Change t v)`wcons`f)
-    (p,(Change _ v):_) = span (\(Change t' _) -> t' < t) c1
-    (_,f) = span (\(Change t' _) -> t' <= t) c2
+    (p, v) = past_and_current t w1
+    f = future t w2
+
+past_and_current :: NextTime -> Waveform -> ([Change],[Change],Int)
+past_and_current t (Waveform c1)
+    | tb == t = (p,[c],v)
+    | otherwise = (p,[], v)
+    where
+        (p,c@(Change tb v):_) = span (\(Change t' _) -> t' `time_before` t) c1
+
+future :: NextTime -> Waveform -> [Change]
+future t (Waveform c2) = f where
+    (_,f) = span (\(Change t' _) -> t' `time_not_greater` t) c2
 
 
 printWaveform :: Waveform -> String
 printWaveform (Waveform cs) = concat $ map pc cs where
     pc (Change t c)
-        | t < time_max = printf "< %d until %d >" c t
+        | t < maxBound = printf "< %d until %d >" c (unTime t)
         | otherwise = printf "< %d until inf >" c
-
 
 -- | forall t . t >  psince => (valueAt t PW) == (valueAt t pwave)
 --              t <= psince => (valueAt t PW) == undefined
 data ProjectedWaveform = PW {
-      psince :: Time
+      psince :: NextTime
     , pwave :: Waveform
     } deriving(Show)
 
-nullPW = PW time_max (wconst 0)
+nullPW = PW maxBound (wconst 0)
 
 -- | Takes the current and the projected waveforms, returns resulting waveform
 unPW :: Waveform -> ProjectedWaveform -> Waveform
@@ -120,8 +130,8 @@ unPW w (PW s w') = concatAt s w w'
 appendPW :: ProjectedWaveform -> ProjectedWaveform -> ProjectedWaveform
 appendPW (PW s1 w1) (PW s2 w2) = PW (s1 `min` s2) (concatAt (s1`max`s2) w1 w2)
 
-concatProjectedAt :: Time -> Waveform -> ProjectedWaveform -> Waveform
-concatProjectedAt t w p = concatAt t w (unPW w p)
+-- concatProjectedAt :: Time -> Waveform -> ProjectedWaveform -> Waveform
+-- concatProjectedAt t w p = concatAt t w (unPW w p)
 
 
 {- Tests -}
@@ -132,13 +142,10 @@ instance Arbitrary Change where
 instance Arbitrary Waveform where
     arbitrary = oneof [
           do
-            let max = 5
+            let max = 1
             sz <- elements [1..max]
             vs <- vectorOf (max+1) arbitrary
-            let foldM' a b f = foldM f a b
-            ts <- reverse <$> snd <$> (foldM' (0,[]) [1..sz] $ \(m, vs) _ -> do
-                v <- suchThat arbitrary (>m)
-                return (v, v:vs))
+            ts <- arbitrary_timeline sz
             let l = map fromPair (ts`zip`vs) ++ [infinity $ last vs]
             return $ Waveform $ l
         , do
@@ -148,34 +155,26 @@ instance Arbitrary Waveform where
 instance Arbitrary ProjectedWaveform where
     arbitrary = do
         w@(Waveform (c:_)) <- arbitrary
-        s <- choose (0,until c)
+        s <- suchThat arbitrary (<=(until c))
         return $ PW s w
 
--- | Container for time
-data TestTime = TestTime Time
-    deriving(Show)
+prop_border1 w1 = (future maxBound w1) == []
 
-instance Arbitrary TestTime where
-    arbitrary = TestTime <$> frequency [
-        (1, pure 0),
-        (1, pure 1),
-        (1, pure time_max),
-        (1, pure (time_max-1)),
-        (10, suchThat arbitrary (>=0))]
+prop_border2 (TestTime nt t) w1 = (snd $ past_and_current nt w1) == valueAt t w1
 
-prop_concat1 (TestTime t) w1 w2 = (valueAt t (concatAt t w1 w2)) == (valueAt t w1)
+-- prop_border2 w1 w2 = (concatAt maxBound w1 w2) == w1 
 
-prop_concat2 (TestTime t) w1 w2 =
-    t < time_max && t >= 0 ==> (valueAt (t+1) (concatAt t w1 w2)) == (valueAt (t+1) w2)
+prop_border3 w1 w2 = invariant (concatAt maxBound w1 w2)
 
-prop_concat3 (TestTime t) w1 w2 =
-    t <= time_max && t > 0 ==> (valueAt (t-1) (concatAt t w1 w2)) == (valueAt (t-1) w1)
+prop_concat2 (TestTime nt t) w1 w2 = (valueAt t (concatAt nt w1 w2)) == (valueAt t w2)
 
-prop_concat4 (TestTime t) w1 w2 = invariant (concatAt t w1 w2)
+prop_concat3 (TestTime nt t) w1 w2 = (valueAt t (concatAt (nt`ticked`1) w1 w2)) == (valueAt t w1)
 
-prop_pconcat1 (TestTime t) w pw = invariant (concatProjectedAt t w pw)
+prop_concat4 (TestTime nt t) w1 w2 = invariant (concatAt nt w1 w2)
+
+{-
+-- prop_pconcat1 (TestTime t) w pw = invariant (concatProjectedAt t w pw)
     
 prop_pw1 (TestTime t) w = valueAt t (unPW w nullPW) == valueAt t w
 
-
-
+-}

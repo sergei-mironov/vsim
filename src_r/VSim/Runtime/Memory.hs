@@ -15,24 +15,12 @@ import VSim.Runtime.Ptr
 import VSim.Runtime.Monad
 import VSim.Runtime.Constraint
 
-data Memory = Memory {
-      msignals :: [Ptr Signal]
-    , mprocesses :: [Ptr Process]
-    } deriving(Show)
-
-class (MonadIO m, MonadState Memory m) => MonadElab m
-instance MonadElab (StateT Memory IO)
-type Elab s = (StateT Memory IO) s
-
 runElab elab = runStateT elab emptyMem
-
-emptyMem :: Memory
-emptyMem = Memory [] []
 
 alloc_signal' :: (MonadElab m) => Signal -> m (Ptr Signal)
 alloc_signal' s = do
-    r <- alloc s
-    modify $ \(Memory rs ps) -> Memory (r:rs) ps
+    r <- allocM s
+    modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
     return r
 
 -- | Allocates signal from the memory
@@ -41,14 +29,14 @@ alloc_signal n i c = alloc_signal' (Signal n (wconst i) 0 c [])
 
 -- | Allocates variable from the memory
 alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variable)
-alloc_variable n v c = alloc (Variable n v c)
+alloc_variable n v c = allocM (Variable n v c)
 
 -- | Registers process in memory. Updates list of signal's reactions
 alloc_process :: (MonadElab m) => String -> [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
-    p <- alloc (Process n h)
-    forM_ ss (update (addproc p))
-    modify $ \(Memory rs ps) -> Memory rs (p:ps)
+    p <- allocM (Process n h)
+    forM_ ss (updateM (addproc p))
+    modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
 
 alloc_constant :: (MonadElab m) => String -> Int -> m Int
@@ -61,5 +49,5 @@ alloc_unranged_type :: (MonadElab m) => m (Constraint)
 alloc_unranged_type = return unranged
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
-printSignalsM m = liftIO $ mapM printSignalM >=> mapM_ putStrLn $ (msignals m)
+printSignalsM m = liftIO $ mapM (printSignalM m) >=> mapM_ putStrLn $ (msignals m)
 
