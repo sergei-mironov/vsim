@@ -13,14 +13,13 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Ptr
 import VSim.Runtime.Monad
-import VSim.Runtime.Constraint
 
 runElab elab = runStateT elab emptyMem
 
 alloc_signal' :: (MonadElab m) => Signal -> m (Ptr Signal)
 alloc_signal' s = do
     r <- allocM s
-    modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
+    modify_mem $ \(Memory rs ps ws) -> Memory (r:rs) ps ws
     return r
 
 -- | Allocates signal from the memory
@@ -31,13 +30,20 @@ alloc_signal n i c = alloc_signal' (Signal n (wconst i) 0 c [])
 alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variable)
 alloc_variable n v c = allocM (Variable n v c)
 
--- | Registers process in memory. Updates list of signal's reactions
+-- | Registers process in the memory. Updates list of signal's reactions
 alloc_process :: (MonadElab m) => String -> [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
     p <- allocM (Process n h)
     forM_ ss (updateM (addproc p))
-    modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
+    modify_mem $ \(Memory rs ps ws) -> Memory rs (p:ps) ws
     return p
+
+-- | Registers waitable process in the memory.
+alloc_waitable :: (MonadElab m) => String -> ProcessHandler -> m (Ptr Waitable)
+alloc_waitable n h = do
+    w <- allocM (Waitable n Nothing h)
+    modify_mem $ \(Memory rs ps ws) -> Memory rs ps (w:ws)
+    return w
 
 alloc_constant :: (MonadElab m) => String -> Int -> m Int
 alloc_constant _ v = return v

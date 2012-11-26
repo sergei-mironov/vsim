@@ -20,7 +20,6 @@ import System.IO.Unsafe
 import VSim.Runtime.Ptr
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
-import VSim.Runtime.Constraint
 
 type Ptr x = IORef x
 
@@ -190,8 +189,8 @@ instance Monoid Event where
     mempty = Event [] []
     mappend (Event a b) (Event x y) = Event (a`mappend`x) (b`mappend`y)
 
-start_event :: Memory -> Event
-start_event m = Event (mprocesses m) (mwaitbales m)
+start_event :: Memory -> (Time, Event)
+start_event m = (minBound, Event (mprocesses m) (mwaitbales m))
 
 
 data Severity = Low | High
@@ -235,7 +234,8 @@ newtype VProc s m a = VProc { unProc :: BP (NextTime,s) (StateT s m) a }
     deriving (Monad, MonadIO, Functor, Applicative)
 
 class (MonadMem m, Applicative m, MonadState PS m, MonadBP Pause m) => MonadProc m where
-    wait :: Int -> m ()
+    ppause :: NextTime -> m ()
+    -- ^ pauses the process until NextTime
 
 instance (MonadSim m) => MonadBP Pause (VProc s m) where
     pause = VProc . lift . lift . pause
@@ -250,10 +250,7 @@ instance (MonadMem m) => MonadMem (VProc PS m) where
     put_mem = VProc . lift . lift . put_mem
 
 instance (MonadSim m) => MonadProc (VProc PS m) where
-    wait d = do
-        s <- get
-        t <- now
-        VProc $ pause (t`ticked`d,s)
+    ppause nt = get >>= \s -> VProc (pause (nt,s))
 
 runVProc :: (Monad m) => VProc s m () -> s -> m (Either ((NextTime,s),VProc s m ()) s)
 runVProc (VProc r) s = do

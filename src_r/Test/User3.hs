@@ -10,14 +10,19 @@ elab = do
 
     s1 <- alloc_signal "s1" 0 t_int
     clk <- alloc_signal "clk" 0 t_int
-    v <- alloc_variable "v" 0 t_0_5
 
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint
-        s1  `assign` (fs 5, (val clk))
-        clk `assign` (next, ((int 1) .+. (val clk)))
+        s1  `assign` (next, (val clk))
         report (str "muhaha")
         return ()
+
+    wait1 <- alloc_waitable "waitable" $ do
+        clk `assign` (next, ((int 1) .+. (val clk)))
+        wait (fs 5)
+        clk `assign` (next, ((int 1) .+. (val clk)))
+        wait (fs 10)
+        
  
     return ()
 

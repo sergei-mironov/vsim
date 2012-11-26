@@ -4,13 +4,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module VSim.Runtime.Timeline (
-      tupdate
+      timewheel
     ) where
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
-import Control.Monad.Maybe
 import Data.Maybe
 import Data.Monoid
 import Text.Printf
@@ -19,47 +18,38 @@ import VSim.Runtime.Monad
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
 import VSim.Runtime.Process
-import VSim.Runtime.Constraint
 
-data E1 = E1 {
-      e1signal :: [(Ptr Signal, Waveform)]
-    , e1event :: Event
-    } deriving(Show)
+data ES = ES [(Ptr Signal, Waveform)] Event
+    deriving(Show)
 
-instance Monoid E1 where
-    mempty = E1 mempty mempty
-    mappend (E1 a b) (E1 x y) = E1 (a`mappend`x) (b`mappend`y)
+instance Monoid ES where
+    mempty = ES mempty mempty
+    mappend (ES a b) (ES x y) = ES (a`mappend`x) (b`mappend`y)
 
 class Eventable x where
     next_event :: (MonadIO m, Applicative m, MonadMem m)
-        => NextTime -> x -> m (Maybe (NextTime, E1))
-
-instance MonadMem m => MonadMem (MaybeT m) where
-    get_mem = lift $ get_mem
-    put_mem = lift . put_mem
+        => NextTime -> x -> m (NextTime, ES)
 
 instance Eventable (Ptr Signal) where
-    next_event tdef r = runMaybeT $ do
+    next_event tdef r = do
         s <- derefM r
-        (t,w) <- MaybeT $ return $ event $ scurr s
-        return (t, E1 [(r,w)] $ Event (proc s) [])
+        let (t,w) = event $ scurr s
+        return (t, ES [(r,w)] $ Event (proc s) [])
 
 instance Eventable (Ptr Waitable) where
     next_event tdef r = do
         t' <- fst <$> fromMaybe (tdef, undefined) <$> wnext <$> derefM r
-        return $ Just (t', E1 [] $ Event [] [r])
+        return (t', ES [] $ Event [] [r])
 
 collect :: (MonadIO m, Applicative m, Eventable e, MonadMem m)
-    => NextTime -> [e] -> (NextTime, E1) -> m (NextTime, E1)
+    => NextTime -> [e] -> (NextTime, ES) -> m (NextTime, ES)
 collect tdef es init = foldM cmp init es where
     cmp (t,e) x = do
-        me <- next_event tdef x
-        case me of
-            Nothing -> return (t,e)
-            Just (t',e') -> case (compare t' t) of
-                LT -> return (t', e')
-                EQ -> return (t, e'`mappend`e)
-                _ -> return (t,e)
+        (t',e') <- next_event tdef x
+        case (compare t' t) of
+            LT -> return (t', e')
+            EQ -> return (t, e'`mappend`e)
+            _ -> return (t,e)
 
 -- | Commits signal assignments
 -- FIXME: monitor multiple assignments, implement resolvers
@@ -76,21 +66,19 @@ commit t as = do
                 let err = printf "constraint check failed: signal %s" (sname s)
                 terminate t err
 
--- | Next time
-advance :: (MonadSim m) =>
-    NextTime -> [Ptr Signal] -> [Ptr Waitable] -> m (NextTime, Event)
-advance tn ss ws = do
-    (t', E1 us ev) <- (collect tn ss >=> collect tn ws) (maxBound, mempty)
-    forM_ us (\(r,w) -> updateM (chwave w) r)
+-- | Calculates next event and updates the memory
+update_mem :: (MonadSim m) => NextTime -> m (NextTime, Event)
+update_mem tdef = do
+    (ss,ws) <- (\a b -> (a,b)) <$> (msignals<$>get_mem) <*> (mwaitbales<$>get_mem)
+    (t', ES sas ev) <- (collect tdef ss >=> collect tdef ws) (maxBound, mempty)
+    forM_ sas (\(r,w) -> updateM (chwave w) r)
     return (t', ev)
 
-tupdate :: (Time, Event) -> VSim (NextTime, Event)
-tupdate (t, Event ps ws) = do
+timewheel :: (Time, Event) -> VSim (NextTime, Event)
+timewheel (t, Event ps ws) = do
+    let wupdate (x,(r,w)) = writeM r w >> return x
     as1 <- concat <$> mapM (derefM >=> runProcess t) ps
     as2 <- concat <$> mapM (derefM' >=> runWaitable t >=> wupdate) ws
     commit t $ concat [as1,as2]
-    m <- get_mem
-    advance (t`ticked`1) (msignals m) (mwaitbales m)
-    where
-        wupdate (x,(r,w)) = writeM r w >> return x
+    update_mem (t`ticked`1)
 
