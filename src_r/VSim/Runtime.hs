@@ -2,10 +2,8 @@
 
 module VSim.Runtime (
       module VSim.Runtime.Process
-    , module VSim.Runtime.Timeline
     , module VSim.Runtime.Time
     , module VSim.Runtime.Memory
-    , module VSim.Runtime.Ptr
     , module VSim.Runtime.Waveform
     , module VSim.Runtime.Monad
     , sim
@@ -19,10 +17,9 @@ import Text.Printf
 import System.IO
 
 import VSim.Runtime.Process
-import VSim.Runtime.Timeline
+import VSim.Runtime.Timewheel
 import VSim.Runtime.Time
 import VSim.Runtime.Memory
-import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 import VSim.Runtime.Monad
 
@@ -37,6 +34,7 @@ sim' m k = do
     e <- runVSim k (m,[])
     case e of
         Right () -> do
+            printf "end-of-sim\n"
             return ()
         Left (Report t Low msg, m', k') -> do
             printf "report: time %d text %s\n" (watch t) msg
@@ -50,7 +48,7 @@ sim' m k = do
             b <- askBreak
             if b then return () else (sim' m' k')
 
-loop :: NextTime -> (Time,Event) -> VSim ()
+loop :: NextTime -> (Time,SimStep) -> VSim ()
 loop et (t,e) = do
     (nt,e') <- timewheel (t,e)
     case move_time nt et of
@@ -63,5 +61,5 @@ sim et elab = do
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
     (_,m) <- runElab elab
-    sim' m (loop et (start_event m))
+    sim' m (loop et (start_step m))
 

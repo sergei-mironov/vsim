@@ -12,12 +12,12 @@ import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Applicative
 import Data.Monoid
+import Data.List
 import Data.IORef
 import Text.Printf
 import System.IO
 import System.IO.Unsafe
 
-import VSim.Runtime.Ptr
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
 
@@ -74,7 +74,6 @@ withPtrM f ptr = get_mem >>= \m -> withPtr m f ptr >>= \(m',b) -> put_mem m' >> 
 instance (Show x) => Show (IORef x) where
     show x = "@(" ++ show (unsafePerformIO $ deref undefined x) ++ ")"
 
-
 data Constraint = Constraint {
       lower :: Int
     , upper :: Int
@@ -93,7 +92,7 @@ class Valueable x where
     val :: (MonadProc m) => x -> m Int
 
 instance Constrained Signal where
-    within s = and $ map f $ wchanges $ scurr s where
+    within s = and $ map f $ wchanges $ swave s where
         f (Change _ v) = within (v, sconstr s)
 
 instance Valueable Int where
@@ -111,23 +110,31 @@ instance Valueable (Ptr Variable) where
 instance Constrained Variable where
     within v = within (vval v, vconstr v)
 
-
 data Signal = Signal {
       sname :: String
-    , scurr :: Waveform
+    , swave :: Waveform
     , oldvalue :: Int
     , sconstr :: Constraint
-    , proc :: [Ptr Process]
+    , sproc :: [Ptr Process]
     } deriving(Show)
 
 instance Valueable (Ptr Signal) where
-    val r = valueAt1 <$> now <*> (scurr `liftM` derefM r)
+    val r = valueAt1 <$> now <*> (swave `liftM` derefM r)
 
-chwave :: Waveform -> Signal -> Signal
-chwave w s = s { scurr = w }
+sigassign1 :: (MonadSim m) => Assignment -> m (Either String ())
+sigassign1 (Assignment r pw) = do
+    s <- derefM r
+    let w' = unPW (swave s) pw
+    let s' = s { swave = w' }
+    case (within s') of
+        False -> return (Left (sname s))
+        True -> writeM r s' >> return (Right ())
 
-addproc :: Ptr Process -> Signal -> Signal
-addproc p s = s { proc = p:(proc s) }
+sigassign2 :: (MonadSim m) => Ptr Signal -> Waveform -> m [Ptr Process]
+sigassign2 r w = do
+    s <- derefM r
+    writeM r s{swave = w}
+    return (sproc s)
 
 -- | Assignment event
 data Assignment = Assignment {
@@ -155,42 +162,42 @@ data Process = Process {
     -- ^ The name of a process
     , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
+    , pawake :: Maybe NextTime
+    , psignals :: [Ptr Signal]
     }
 
 instance Show Process where
     show p = printf "Process { pname = \"%s\" }" (pname p)
 
-data Waitable = Waitable {
-      wname :: String
-    , wnext :: Maybe (NextTime,ProcessHandler)
-    , wbegin :: ProcessHandler
-    }
+relink :: (MonadSim m) => Ptr Process -> [Ptr Signal] -> m ()
+relink r ss = do
+    p <- derefM r
+    mapM_ (updateM (rmproc r)) (psignals p)
+    mapM_ (updateM (addproc r)) ss
+    writeM r p{psignals = ss}
+    where 
+        rmproc r s = s{ sproc = delete r (sproc s)}
+        addproc r s = s{ sproc = r:(sproc s)}
 
-instance Show Waitable where
-    show p = printf "Waitable { wname = \"%s\" }" (wname p)
-
+rewind :: (MonadSim m) => Ptr Process -> ProcessHandler -> Maybe NextTime -> m ()
+rewind r h nt = do
+    p <- derefM r
+    writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
       msignals :: [Ptr Signal]
     , mprocesses :: [Ptr Process]
-    , mwaitbales :: [Ptr Waitable]
     } deriving(Show)
 
 emptyMem :: Memory
-emptyMem = Memory [] [] []
+emptyMem = Memory [] []
 
 -- | Simulation event
-data Event = Event {
-      ekick :: [Ptr Process]
-    , eawake :: [Ptr Waitable]
-    } deriving(Show)
+newtype SimStep = SimStep [Ptr Process]
+    deriving(Show)
 
-instance Monoid Event where
-    mempty = Event [] []
-    mappend (Event a b) (Event x y) = Event (a`mappend`x) (b`mappend`y)
-
-start_event :: Memory -> (Time, Event)
-start_event m = (minBound, Event (mprocesses m) (mwaitbales m))
+start_step :: Memory -> (Time, SimStep)
+start_step m = (minBound, SimStep (mprocesses m))
 
 
 data Severity = Low | High
@@ -202,7 +209,7 @@ data Pause =
     | BreakHit Time Int
     deriving(Show)
 
-type VState = (Memory,[Int])
+type VState = (Memory, [Int])
 
 -- | Main simulation monad. Supports breakpoints and IO. [Int] is a list of
 -- active breakpoint identifiers
@@ -229,13 +236,16 @@ runVSim sim st = do
         Left (p,bp) -> return (Left (p, m, VSim bp))
         Right a -> return (Right a)
 
+data ProcPause = PP [Ptr Signal] (Maybe NextTime)
+    deriving (Show)
+
 -- | Monad for process execution.
-newtype VProc s m a = VProc { unProc :: BP (NextTime,s) (StateT s m) a }
+newtype VProc s m a = VProc { unProc :: BP (ProcPause,s) (StateT s m) a }
     deriving (Monad, MonadIO, Functor, Applicative)
 
 class (MonadMem m, Applicative m, MonadState PS m, MonadBP Pause m) => MonadProc m where
-    ppause :: NextTime -> m ()
-    -- ^ pauses the process until NextTime
+    wait_until :: NextTime -> m ()
+    wait_on :: [Ptr Signal] -> m ()
 
 instance (MonadSim m) => MonadBP Pause (VProc s m) where
     pause = VProc . lift . lift . pause
@@ -250,14 +260,15 @@ instance (MonadMem m) => MonadMem (VProc PS m) where
     put_mem = VProc . lift . lift . put_mem
 
 instance (MonadSim m) => MonadProc (VProc PS m) where
-    ppause nt = get >>= \s -> VProc (pause (nt,s))
+    wait_until nt = get >>= \s -> VProc (pause (PP [] (Just nt),s))
+    wait_on ss = get >>= \s -> VProc (pause (PP ss Nothing,s))
 
-runVProc :: (Monad m) => VProc s m () -> s -> m (Either ((NextTime,s),VProc s m ()) s)
+runVProc :: (Monad m) => VProc s m () -> s -> m ((ProcPause,s),VProc s m ())
 runVProc (VProc r) s = do
     (e,s') <- runStateT (runBP r) s
     case e of
-        Left (x,k) -> return (Left (x, VProc k))
-        Right _ -> return (Right s')
+        Left (x,k) -> return (x, VProc k)
+        Right _ -> error "runVProc: some process has been terminated"
 
 terminate :: (MonadBP Pause m) => Time -> String -> m ()
 terminate t s = halt $ Report t High s

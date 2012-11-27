@@ -22,11 +22,6 @@ import VSim.Runtime.Process
 data ES = ES [(Ptr Signal, Waveform)] [Ptr Process]
     deriving(Show)
 
-instance ShortShow ES where
-    shortShow (ES ss ps) = printf "ES %s %s "
-        (shortShow $ map fst ss)
-        (shortShow ps)
-
 instance Monoid ES where
     mempty = ES mempty mempty
     mappend (ES a b) (ES x y) = ES (a`mappend`x) (b`mappend`y)
@@ -61,14 +56,14 @@ scan_event es init = foldM cmp init es where
 timewheel :: (Time, SimStep) -> VSim (NextTime, SimStep)
 timewheel (t, SimStep ps) = do
 
-    as <- kick_processes t ps
-    commit_assignments t as
+    as <- kick_processes ps
+    commit_assignments as
     update_signals
     
     where
 
-        kick_processes :: Time -> [Ptr Process] -> VSim [Assignment]
-        kick_processes t ps = concat <$> mapM kick ps where
+        kick_processes :: [Ptr Process] -> VSim [Assignment]
+        kick_processes ps = concat <$> mapM kick ps where
             kick r = do
                 p <- derefM r
                 ((PP ss nt, PS _ as), h') <- runVProc (phandler p) (PS t [])
@@ -79,8 +74,8 @@ timewheel (t, SimStep ps) = do
         -- | Commits signal assignments
         -- FIXME: monitor multiple assignments, implement resolvers
         -- FIXME: for each signal, take only the last assignment into account
-        commit_assignments :: (MonadSim m) => Time -> [Assignment] -> m ()
-        commit_assignments t as = do
+        commit_assignments :: (MonadSim m) => [Assignment] -> m ()
+        commit_assignments as = do
             forM_ as $ \a -> do
                 ok <- sigassign1 a
                 case ok of
@@ -91,6 +86,8 @@ timewheel (t, SimStep ps) = do
                         return ()
 
         -- | Calculates next event and updates the memory
+        --
+        -- FIXME: inefficient, loops throw all signals and processes
         update_signals :: (MonadSim m) => m (NextTime, SimStep)
         update_signals = do
             ss <- msignals <$> get_mem

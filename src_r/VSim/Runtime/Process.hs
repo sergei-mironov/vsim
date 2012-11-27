@@ -12,17 +12,15 @@ import Control.Monad.BP
 import Control.Monad
 import Text.Printf
 
-import VSim.Runtime.Ptr
 import VSim.Runtime.Monad
 import VSim.Runtime.Time
-import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 
 printSignalM :: (MonadIO m) => Memory -> Ptr Signal -> m String
 printSignalM m r = deref m r >>= return . printSignal
 
 printSignal :: Signal -> String
-printSignal s = printf "signal %s wave %s" (sname s) (printWaveform (scurr s))
+printSignal s = printf "signal %s wave %s" (sname s) (printWaveform (swave s))
 
 ms :: (MonadProc m) => Int -> m NextTime
 ms t = ticked <$> now <*> (pure $ t * milliSecond)
@@ -49,7 +47,7 @@ str :: (MonadProc m) => String -> m String
 str = return
 
 wait :: (MonadProc m) => m NextTime -> m ()
-wait nt = nt >>= ppause
+wait nt = nt >>= wait_until
 
 -- | Assigns new constant waveform to a signal
 assign :: (MonadProc m) => Ptr Signal -> (m NextTime, m Int) -> m ()
@@ -82,27 +80,4 @@ iF exp m1 m2 = exp >>= \ r -> if r then m1 else m2
 
 stable :: (Monad m) => Int -> m Int
 stable i = return i
-
-runProcess :: Time -> Process -> VSim [Assignment]
-runProcess t p@(Process _ h) = do
-    e <- runVProc h (PS t [])
-    case e of
-        Left _ -> error "runProcess: BUG: wait incide non-waitable process??"
-        Right (PS _ as) -> return as
-
-runWaitable :: Time -> (x,Waitable) -> VSim ([Assignment], (x,Waitable))
-runWaitable t (x,Waitable n (Just (_,k)) h) = do
-    e <- runVProc k (PS t [])
-    case e of
-        Left ((t',PS _ as), k') -> return (as, (x,Waitable n (Just (t',k')) h))
-        Right (PS _ as) -> return (as, (x,Waitable n Nothing h))
-
-runWaitable t (x,Waitable n Nothing h) = do
-    e <- runVProc h (PS t [])
-    case e of
-        Left ((t', PS _ as), k') -> return (as, (x,Waitable n (Just (t',k')) h))
-        Right (PS _ as) -> return (as, (x,Waitable n Nothing h))
-
-
-
 

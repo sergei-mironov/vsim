@@ -145,7 +145,7 @@ gen_elab ts = [
         gen_stmt (ISSignalAssign _ n _ []) = [
               gen_function [] "assign" [
                   gen_ident n
-                , gen_ident "now"
+                , gen_ident "next"
                 ]
             ]
         gen_stmt (ISSignalAssign _ n _ [IRAfter v t]) = [
@@ -165,6 +165,7 @@ gen_elab ts = [
             ]
         gen_stmt (ISAssert loc e1 e2 e3) = [gen_function [] "assert" []]
         gen_stmt (ISReport loc e1 e2) = [gen_function [] "report" [gen_expr e1]]
+        gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function [] "wait" [gen_expr e]]
         gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
 
         gen_expr (IEInt loc i) = gen_appl "int" [gen_int i]
@@ -179,7 +180,7 @@ gen_elab ts = [
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing
 
 gen_main = (:[]) $ HsFunBind [HsMatch noLoc (HsIdent "main") [] (HsUnGuardedRhs body) []] where
-    body = HsDo [gen_function [] "sim" [gen_ident "time_max", gen_ident "elab" ]]
+    body = HsDo [gen_function [] "sim" [gen_ident "maxBound", gen_ident "elab" ]]
 
 gen_module :: [IRTop] -> HsModule
 gen_module ts = HsModule noLoc (Module "Main") Nothing imports body where

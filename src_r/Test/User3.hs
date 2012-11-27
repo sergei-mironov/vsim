@@ -12,20 +12,14 @@ elab = do
     clk <- alloc_signal "clk" 0 t_int
 
     proc1 <- alloc_process "main" [clk] $ do
-        breakpoint
-        s1  `assign` (next, (val clk))
         report (str "muhaha")
         return ()
 
-    wait1 <- alloc_waitable "waitable" $ do
+    wait1 <- alloc_process "waitable" [] $ do
+        breakpoint
         clk `assign` (next, ((int 1) .+. (val clk)))
         wait (fs 5)
-        clk `assign` (next, ((int 1) .+. (val clk)))
-        wait (fs 10)
-        
- 
     return ()
-
 
 main = do
    sim maxBound elab
