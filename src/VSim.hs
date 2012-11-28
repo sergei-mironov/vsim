@@ -108,9 +108,22 @@ gen_elab ts = [
     gen_elab_constants (t:ts) = gen_elab_constants ts
 
     gen_elab' [] = []
+    gen_elab' ((IRTType t):ts) = (gen_alloc_type t) ++ (gen_elab' ts)
     gen_elab' ((IRTSignal s):ts) = (gen_alloc_signal s) ++ (gen_elab' ts)
     gen_elab' ((IRTProcess p):ts) = (gen_alloc_process p) ++ (gen_elab' ts)
     gen_elab' (t:ts) = gen_elab' ts
+
+    gen_alloc_type (IRType p (ITDArray [c] _)) =
+        let (a,b) = gen_array_constr c in [
+          gen_function (unHierPath p) "alloc_array_type" [
+              gen_elab_expr a, gen_elab_expr b
+            , gen_ident "t_int"
+            ]
+        ]
+    gen_alloc_type _ = []
+
+    gen_array_constr (Constrained _ (IRARDConstrained loc tn (IRDRange loc2 a DirTo b))) = (a,b)
+    gen_array_constr _ = error "gen_array_constr: simple integer 1-dim arrays, please"
 
     gen_alloc_signal (IRSignal p _ (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_signal" [
@@ -119,7 +132,17 @@ gen_elab ts = [
             , gen_ident "t_int"
             ]
         ]
-    gen_alloc_signal (IRSignal p _ _) = error "gen_alloc_signal: want default value expression"
+    gen_alloc_signal (IRSignal p (ITDName t) (IOENothing loc)) = [
+          gen_function (unHierPath p) "alloc_signal" [
+              gen_str $ unHierPath p
+            , gen_expr_unit
+            , gen_ident t
+            ]
+        ]
+    gen_alloc_signal _ = error $ concat [
+          "gen_alloc_signal: want default value expression for simple signal"
+        , "gen_alloc_signal: or simple int array without default val"
+        ]
 
     gen_alloc_constant (IRConstant p _ loc e) = [
           gen_function (unHierPath p) "alloc_constant" [
@@ -136,17 +159,6 @@ gen_elab ts = [
             ]
         ]
     gen_alloc_variable v = error "gen_alloc_variable: specify default value, please"
-
-    -- gen_alloc_process (IRProcess p ns [] s) = [
-    --       gen_function (unHierPath p) "alloc_process" [
-    --           gen_str $ unHierPath p
-    --         , gen_list $ map scan_sens ns
-    --         , gen_process $ s
-    --         ]
-    --     ]
-    --     where
-    --         scan_sens (INIdent hp) = gen_ident hp
-    --         scan_sens _ = error "scan_sens: only idents are supported"
 
     gen_alloc_process (IRProcess p ns lets s) = [
           gen_function (unHierPath p) "alloc_process_let" [

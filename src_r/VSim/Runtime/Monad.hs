@@ -74,6 +74,7 @@ withPtrM f ptr = get_mem >>= \m -> withPtr m f ptr >>= \(m',b) -> put_mem m' >> 
 instance (Show x) => Show (IORef x) where
     show x = "@(" ++ show (unsafePerformIO $ deref undefined x) ++ ")"
 
+-- | VHDL constrained type
 data Constraint = Constraint {
       lower :: Int
     , upper :: Int
@@ -81,6 +82,13 @@ data Constraint = Constraint {
 
 ranged a b = Constraint a b
 unranged = Constraint minBound maxBound
+
+-- | VHDL array type
+data Array = Array {
+      aconstr :: Constraint
+    , abegin :: Int
+    , aend :: Int
+    } deriving(Show)
 
 class Constrained x where
     within :: x -> Bool
@@ -98,6 +106,7 @@ instance Constrained Signal where
 instance Valueable Int where
     val r = return r
 
+-- | VHDL variable
 data Variable = Variable {
       vname :: String
     , vval :: Int
@@ -110,6 +119,7 @@ instance Valueable (Ptr Variable) where
 instance Constrained Variable where
     within v = within (vval v, vconstr v)
 
+-- | VHDL signal
 data Signal = Signal {
       sname :: String
     , swave :: Waveform
@@ -136,7 +146,14 @@ sigassign2 r w = do
     writeM r s{swave = w}
     return (sproc s)
 
--- | Assignment event
+-- VHDL arrays
+data Compound = Compound {
+      cname :: String
+    , csignals :: [Ptr Signal]
+    , cconstr :: Array
+    } deriving(Show)
+
+-- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
       acurr :: Ptr Signal
     , anext :: ProjectedWaveform

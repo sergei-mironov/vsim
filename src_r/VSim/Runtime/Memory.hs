@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module VSim.Runtime.Memory where
 
 import Control.Monad.Trans
@@ -14,17 +16,41 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Monad
 
+class Generator x where
+    type SR x :: *
+    -- ^ Signal representation
+    type DV x :: *
+    -- ^ Default value representation
+    alloc_signal :: (MonadElab m) => String -> (DV x) -> x -> m (SR x)
+    -- ^ Allocate signal for this type representation
+
+instance Generator Constraint where
+    type SR Constraint = Ptr Signal
+    type DV Constraint = Int
+    alloc_signal = alloc_primitive_signal
+
+instance Generator Array where
+    type SR Array = Ptr Compound
+    type DV Array = ()
+    alloc_signal = alloc_array_signal
+
 runElab elab = runStateT elab emptyMem
 
-alloc_signal' :: (MonadElab m) => Signal -> m (Ptr Signal)
-alloc_signal' s = do
-    r <- allocM s
+-- | Allocates signal from the memory
+alloc_primitive_signal :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Signal)
+alloc_primitive_signal n i c = do
+    r <- allocM (Signal n (wconst i) 0 c [])
     modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
     return r
 
 -- | Allocates signal from the memory
-alloc_signal :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Signal)
-alloc_signal n i c = alloc_signal' (Signal n (wconst i) 0 c [])
+alloc_array_signal :: (MonadElab m) => String -> () -> Array -> m (Ptr Compound)
+alloc_array_signal n _ a = do
+    let indexes = [(abegin a) .. (aend a)]
+    ss <- forM indexes (\i -> do
+        let sn = n ++ (printf "[%d]" i)
+        alloc_primitive_signal sn 0 (aconstr a))
+    allocM (Compound n ss a)
 
 -- | Allocates variable from the memory
 alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variable)
@@ -47,11 +73,14 @@ alloc_process_let n ss lh = lh >>= alloc_process n ss
 alloc_constant :: (MonadElab m) => String -> Int -> m Int
 alloc_constant _ v = return v
 
-alloc_ranged_type :: (MonadElab m) => Int -> Int -> m (Constraint)
+alloc_ranged_type :: (MonadElab m) => Int -> Int -> m Constraint
 alloc_ranged_type a b = return $ ranged a b
 
-alloc_unranged_type :: (MonadElab m) => m (Constraint)
+alloc_unranged_type :: (MonadElab m) => m Constraint
 alloc_unranged_type = return unranged
+
+alloc_array_type :: (MonadElab m) => Int -> Int -> Constraint -> m Array
+alloc_array_type b e c = return $ Array c b e
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
 printSignalsM m = liftIO $ mapM (printSignalM m) >=> mapM_ putStrLn $ (msignals m)
