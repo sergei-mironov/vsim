@@ -55,15 +55,14 @@ scan_event es init = foldM cmp init es where
 -- | The simulation algorithm
 timewheel :: (Time, SimStep) -> VSim (NextTime, SimStep)
 timewheel (t, SimStep ps) = do
-
-    as <- kick_processes ps
+    as <- kick_processes
     commit_assignments as
     update_signals
     
     where
 
-        kick_processes :: [Ptr Process] -> VSim [Assignment]
-        kick_processes ps = concat <$> mapM kick ps where
+        -- Kicks all the processes from the previous step
+        kick_processes = concat <$> mapM kick ps where
             kick r = do
                 p <- derefM r
                 ((PP ss nt, PS _ as), h') <- runVProc (phandler p) (PS t [])
@@ -71,10 +70,8 @@ timewheel (t, SimStep ps) = do
                 relink r ss
                 return as
 
-        -- | Commits signal assignments
         -- FIXME: monitor multiple assignments, implement resolvers
         -- FIXME: for each signal, take only the last assignment into account
-        commit_assignments :: (MonadSim m) => [Assignment] -> m ()
         commit_assignments as = do
             forM_ as $ \a -> do
                 ok <- sigassign1 a
@@ -85,10 +82,8 @@ timewheel (t, SimStep ps) = do
                     Right () -> do
                         return ()
 
-        -- | Calculates next event and updates the memory
-        --
+        -- Calculates next event and updates the memory
         -- FIXME: inefficient, loops throw all signals and processes
-        update_signals :: (MonadSim m) => m (NextTime, SimStep)
         update_signals = do
             ss <- msignals <$> get_mem
             ws <- mprocesses <$> get_mem
