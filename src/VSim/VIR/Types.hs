@@ -59,7 +59,7 @@ data IRType = IRType WLHierNameWPath IRTypeDescr
     deriving(Show, Data, Typeable)
 
 data IRTypeDescr
-    = ITDName (WithLoc Ident)
+    = ITDName WLHierNameWPath
     | ITDRangeDescr IRRangeDescr
     | ITDEnum [EnumElement]
     | ITDArray [Constrained IRArrayRangeDescr] IRTypeDescr

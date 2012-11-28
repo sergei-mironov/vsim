@@ -279,7 +279,7 @@ enum_element :: { EnumElement }
     | identifier { EnumId $1 }
 
 type_descr :: { IRTypeDescr }
-    : withloc_hier_name                      { ITDName $1 }
+    : withloc_hier_name_wpath                { ITDName $1 }
     | range_descr                            { ITDRangeDescr $1 }
     | '(' enum enum_element_list ')'         { ITDEnum $3 }
     | '(' array '(' constrained_array_range_descr_list1 ')'
@@ -289,7 +289,7 @@ type_descr :: { IRTypeDescr }
     | '(' record record_field_list ')'       { ITDRecord $3 }
     | '(' access type_descr ')'              { ITDAccess $3 }
     | '(' resolved loc hier_name type_descr ')' { ITDResolved $3 $4 $5 }
-    | '(' withloc_hier_name
+    | '(' withloc_hier_name_wpath
           array_range_descr_list1 ')'
           { ITDConstraint (withLocLoc $2) (ITDName $2) $3 }
 
@@ -312,9 +312,9 @@ range_descr :: { IRRangeDescr }
 
 array_range_descr :: { IRArrayRangeDescr }
     : range_descr                           { IRARDRange $1 }
-    | withloc_hier_name
+    | withloc_hier_name_wpath
       { IRARDTypeMark (withLocLoc $1) (ITDName $1) }
-    | '(' withloc_hier_name range_descr ')'
+    | '(' withloc_hier_name_wpath range_descr ')'
       { IRARDConstrained (withLocLoc $2) (ITDName $2) $3 }
 
 constrained_array_range_descr :: { Constrained IRArrayRangeDescr }
