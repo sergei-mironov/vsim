@@ -17,8 +17,6 @@ import VSim.Data.TInt
 import VSim.Data.NamePath (Ident)
 import VSim.VIR.Lexer as L
 
--- type Ident = B.ByteString
-
 -- | VIR-file toplevel decarations
 data IRTop
     = IRTProcess IRProcess
@@ -32,33 +30,33 @@ data IRTop
     | IRTGenerate IRGen
     | IRTMM MemoryMapRange
     | IRTCorresp ([Ident],[Ident])
-    deriving(Show)
+    deriving(Show, Data, Typeable)
 
 data UnitDecl = UnitDecl Loc Ident Int128 Ident
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data Constrained t
     = Unconstrained t
     | Constrained Bool t
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data, Typeable)
 
 -- | Диапазон адресов, четвёрка:
 -- ( суффикс процессора в иерархии , суффикс сигнала с адресами
 -- , стартовый адрес , конечный адрес (не включается)).
 data MemoryMapRange = MemoryMapRange [B.ByteString] [B.ByteString] Integer Integer
-    deriving (Show)
+    deriving (Show, Data, Typeable)
     
 data IRProcess
     = IRProcess WLHierNameWPath [IRNameG] [IRLetDecl] IRStat
-    deriving(Show)
+    deriving(Show, Data, Typeable)
 
 data IRGen
     = IRGenIf IRExpr [IRTop]
     | IRGenFor String WLHierNameWPath Integer Integer [IRTop]
-    deriving(Show)
+    deriving(Show, Data, Typeable)
 
 data IRType = IRType WLHierNameWPath IRTypeDescr
-    deriving(Show)
+    deriving(Show, Data, Typeable)
 
 data IRTypeDescr
     = ITDName (WithLoc Ident)
@@ -70,20 +68,23 @@ data IRTypeDescr
     | ITDAccess IRTypeDescr
     | ITDResolved Loc Ident IRTypeDescr
     | ITDConstraint Loc IRTypeDescr [IRArrayRangeDescr]
-    deriving (Show)
+    deriving (Show, Data, Typeable)
+
+data Direction = DirTo | DirDownto
+    deriving(Show, Data, Typeable)
 
 data IRRangeDescr
-    = IRDRange Loc IRExpr Bool IRExpr
+    = IRDRange Loc IRExpr Direction IRExpr
     | IRDARange Loc IRExpr IRName
     | IRDAReverseRange Loc IRExpr IRName
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRArrayRangeDescr
     = IRARDRange IRRangeDescr
     | IRARDTypeMark Loc IRTypeDescr
     | IRARDConstrained Loc IRTypeDescr IRRangeDescr
     --  ^ вместо IRTypeDescr был TypeMark, но с ним фиг передашь статичность
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRElementAssociation
     = IEAExpr Loc IRExpr
@@ -91,7 +92,7 @@ data IRElementAssociation
     | IEAType Loc IRArrayRangeDescr IRExpr
     | IEAField Loc Ident IRExpr
     | IEAExprIndex Loc IRExpr IRExpr
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRNameG
     = INAggregate Loc [IRElementAssociation] IRTypeDescr
@@ -99,22 +100,22 @@ data IRNameG
     | INField IRNameG Loc Ident
     | INIndex NameExprKind IRNameG Loc IREGList
     | INSlice NameExprKind IRNameG Loc IRArrayRangeDescr
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 type IREGList = [(Loc, IRExpr)]
 
 data NameCheck = ExprCheck | AssignCheck | SignalCheck | TypeCheck
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRName = IRName IRNameG NameCheck
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 -- | Old VIR parser legacy. FIXME: remove it from this layer
 data NameExprKind
     = NEKStatic [B.ByteString]
     -- ^ string suffix
     | NEKDynamic
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRTypeAttr
     = T_left
@@ -122,14 +123,14 @@ data IRTypeAttr
     | T_high
     | T_low
     | T_ascending
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRTypeValueAttr
     = T_succ
     | T_pred
     | T_val
     | T_pos
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRArrayAttr
     = A_left
@@ -138,7 +139,7 @@ data IRArrayAttr
     | A_low
     | A_ascending
     | A_length
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRValueAttr
     = V_image
@@ -149,19 +150,19 @@ data IRValueAttr
     | V_pred
     | V_leftof
     | V_rightof
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRSignalAttr
     = S_event
     | S_active
     | S_last_value
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRSignalAttrTimed
     = S_stable
     | S_delayed
     | S_quiet
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRRelOp
     = IEq
@@ -170,17 +171,17 @@ data IRRelOp
     | ILessEqual
     | IGreater
     | IGreaterEqual
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRBinOp
     = IMod | IRem | IDiv | IPlus | IMinus | IMul | IExp
     | IAnd | INand | IOr | INor | IXor | IXNor
     | IConcat
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRUnOp
     = IUPlus | IUMinus | IAbs | INot
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRExpr
     = IEName       Loc IRName
@@ -204,15 +205,15 @@ data IRExpr
     | IEBinOp      Loc IRBinOp IRExpr IRExpr
     | IEUnOp       Loc IRUnOp IRExpr
     | IECurrentTime Loc
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRGenericBinOp = IRGenericDiv | IRGenericMul
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRAfter
     = IRAfter IRExpr (Maybe IRExpr)
     -- ^      value  time
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 type WLHierNameWPath = WithLoc (Ident, [Ident])
 
@@ -237,12 +238,12 @@ data IRStat
     | ISExit  Loc LoopLabel
     | ISNext  Loc LoopLabel
     | ISNil
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRCaseElement
     = ICEExpr   Loc IREGList IRStat
     | ICEOthers Loc IRStat
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRLetDecl
     = ILDConstant  IRConstant
@@ -251,34 +252,34 @@ data IRLetDecl
     | ILDType      WLHierNameWPath IRTypeDescr
     | ILDFunction  IRFunction
     | ILDProcedure IRProcedure
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRConstant = IRConstant WLHierNameWPath IRTypeDescr Loc IRExpr
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 data IRVariable = IRVariable WLHierNameWPath IRTypeDescr IROptExpr
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 data IRSignal   = IRSignal   WLHierNameWPath IRTypeDescr IROptExpr
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 data IRPort     = IRPort     WLHierNameWPath IRTypeDescr IROptExpr
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 data IRAlias    = IRAlias    WLHierNameWPath IRTypeDescr Loc IRName
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IROptExpr
     = IOEJustExpr Loc IRExpr
     | IOENothing  Loc
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data IRFunction = IRFunction WLHierNameWPath [IRArg] IRTypeDescr IRStat
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 data IRProcedure = IRProcedure WLHierNameWPath [IRArg] IRStat
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data ArgMode
     = AMIn
     | AMOut
     | AMInout
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data, Typeable)
 
 data NamedItemKind
     = NIKConstant
@@ -286,10 +287,10 @@ data NamedItemKind
     | NIKSignal
     | NIKFile
     | NIKAlias NamedItemKind
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Data, Typeable)
 
 data IRArg = IRArg (WithLoc Ident) IRTypeDescr NamedItemKind ArgMode
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data LetEnv = LetEnv {
       leCurFunc :: LetName
@@ -299,7 +300,7 @@ data LetEnv = LetEnv {
     , leVars  :: [LetName]
     , leTypes :: [LetName]
     }
-    deriving (Show)
+    deriving (Show, Data, Typeable)
 
 data LetName = LetName {
       -- | var1
@@ -308,7 +309,7 @@ data LetName = LetName {
     , lnPath :: Ident
     , lnLevel :: Int
     }
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Data, Typeable)
 
 instance Show LetName where
     show (LetName {..}) = "\"" ++ unpack (append lnPath lnName)

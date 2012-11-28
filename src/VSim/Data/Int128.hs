@@ -1,18 +1,22 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module VSim.Data.Int128
     ( Int128
     ) where
 
-import Foreign.Storable
-import Foreign.Ptr
+import Data.Typeable
+import Data.Generics
 import Data.Bits
 import Data.Word
 import Data.Int
+import Foreign.Storable
+import Foreign.Ptr
 
 -- TODO: надо сделать честный Int128 со всеми ошибками переполнения
 
 data Int128 = Int128 {-# UNPACK #-} !Int64 {-# UNPACK #-} !Word64
+    deriving(Data, Typeable)
 
 instance Eq Int128 where
     Int128 ha la == Int128 hb lb = ha == hb && la == lb

@@ -45,7 +45,7 @@ data HappyAbsSyn
 	| HappyAbsSyn9 (IRTypeDescr)
 	| HappyAbsSyn10 (UnitDecl)
 	| HappyAbsSyn11 ((Loc, Ident, IRTypeDescr))
-	| HappyAbsSyn12 (Bool)
+	| HappyAbsSyn12 (Direction)
 	| HappyAbsSyn13 (IRRangeDescr)
 	| HappyAbsSyn14 (IRArrayRangeDescr)
 	| HappyAbsSyn15 (Constrained IRArrayRangeDescr)
@@ -5450,13 +5450,13 @@ happyReduction_31 (_ `HappyStk`
 happyReduce_32 = happySpecReduce_1  12 happyReduction_32
 happyReduction_32 _
 	 =  HappyAbsSyn12
-		 (True
+		 (DirTo
 	)
 
 happyReduce_33 = happySpecReduce_1  12 happyReduction_33
 happyReduction_33 _
 	 =  HappyAbsSyn12
-		 (False
+		 (DirDownto
 	)
 
 happyReduce_34 = happyReduce 7 13 happyReduction_34

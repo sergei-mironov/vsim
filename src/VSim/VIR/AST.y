@@ -300,9 +300,9 @@ unit_decl :: { UnitDecl }
 record_field :: { (Loc, Ident, IRTypeDescr) }
     : '(' loc identifier type_descr ')' { ($2, $3, $4) }
 
-direction :: { Bool }
-    : to     { True }
-    | downto { False }
+direction :: { Direction }
+    : to     { DirTo }
+    | downto { DirDownto }
 
 range_descr :: { IRRangeDescr }
     : '(' loc range expr direction expr ')' { IRDRange $2 $4 $5 $6 }
@@ -332,9 +332,7 @@ variable_decl :: { IRVariable }
               IRVariable $3 $4 $5
             }
 signal_decl :: { IRSignal }
-    : '(' signal withloc_hier_name_wpath type_descr opt_expr ')'  {
-              IRSignal $3 $4 $5
-            }
+    : '(' signal withloc_hier_name_wpath type_descr opt_expr ')'  { IRSignal $3 $4 $5 }
 opt_expr :: { IROptExpr }
     : loc expr     { IOEJustExpr $1 $2 }
         | loc          { IOENothing $1 }
