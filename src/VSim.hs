@@ -7,6 +7,7 @@ import qualified Data.ByteString.Char8 as BS
 import Language.Haskell.Syntax
 import Language.Haskell.Pretty
 
+import Data.Maybe
 import System.IO
 import System.Exit
 import System.Environment
@@ -59,7 +60,7 @@ unHierPath :: WLHierNameWPath -> String
 unHierPath (WithLoc _ (_,(s:_))) = BS.unpack s
 unHierPath p = error "unHierPath: unsupported " ++ (show p)
 
-gen_return = HsApp (HsCon $ UnQual $ HsIdent "return") (unit_con)
+gen_return x = gen_function [] "return" [x]
 
 gen_appl' :: (AsIdent n) => n -> [HsExp] -> HsExp
 gen_appl' n [] = error "gen_appl': no args"
@@ -83,7 +84,7 @@ gen_str s = HsLit $ HsString s
 
 gen_elab_expr :: IRExpr -> HsExp
 gen_elab_expr (IEInt loc i) = gen_int i
-gen_elab_expr _ = error "I support int constants only"
+gen_elab_expr _ = error "gen_elab_expr: int constants only, please"
 
 gen_expr_unit = unit_con
 
@@ -98,9 +99,10 @@ gen_elab ts = [
           [gen_function "t_int" "alloc_unranged_type" []]
         , gen_elab_constants ts
         , gen_elab' ts
-        , [gen_function [] "return" [unit_con]] 
+        , [gen_return unit_con] 
         ]
 
+    -- move all th constants to the top
     gen_elab_constants [] = []
     gen_elab_constants ((IRTConstant c):ts) = (gen_alloc_constant c) ++ (gen_elab_constants ts)
     gen_elab_constants (t:ts) = gen_elab_constants ts
@@ -126,32 +128,48 @@ gen_elab ts = [
             ]
         ]
 
-    gen_alloc_process (IRProcess p ns [] s) = [
-          gen_function (unHierPath p) "alloc_process" [
+    gen_alloc_variable (IRVariable p _ (IOEJustExpr _ e)) = [
+          gen_function (unHierPath p) "alloc_variable" [
+              gen_str $ unHierPath p
+            , gen_elab_expr e
+            , gen_ident "t_int"
+            ]
+        ]
+    gen_alloc_variable v = error "gen_alloc_variable: specify default value, please"
+
+    -- gen_alloc_process (IRProcess p ns [] s) = [
+    --       gen_function (unHierPath p) "alloc_process" [
+    --           gen_str $ unHierPath p
+    --         , gen_list $ map scan_sens ns
+    --         , gen_process $ s
+    --         ]
+    --     ]
+    --     where
+    --         scan_sens (INIdent hp) = gen_ident hp
+    --         scan_sens _ = error "scan_sens: only idents are supported"
+
+    gen_alloc_process (IRProcess p ns lets s) = [
+          gen_function (unHierPath p) "alloc_process_let" [
               gen_str $ unHierPath p
             , gen_list $ map scan_sens ns
-            , gen_process $ s
+            , gen_lets lets (gen_process s)
             ]
         ]
         where
             scan_sens (INIdent hp) = gen_ident hp
-            scan_sens _ = error "scan_sens: only idents are supported"
-
-    gen_alloc_process _ = error "gen_alloc_process: no let-decs, please"
+            scan_sens _ = error "scan_sens: use idents, please"
+            gen_lets ls s = HsParen $ HsDo $ (concat $ map gen_lets' ls) ++ [gen_return s]
+            gen_lets' (ILDConstant c) = gen_alloc_constant c
+            gen_lets' (ILDVariable v) = gen_alloc_variable v
 
     gen_process ss = HsParen $ HsDo $ gen_stmt ss where
 
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
-        gen_stmt (ISSignalAssign _ n _ []) = [
-              gen_function [] "assign" [
-                  gen_ident n
-                , gen_ident "next"
-                ]
-            ]
+        gen_stmt (ISSignalAssign _ n _ []) = error "gen_stmt: no afters"
         gen_stmt (ISSignalAssign _ n _ [IRAfter v t]) = [
               gen_function [] "assign" [
                   gen_ident n
-                , gen_pair [gen_expr t, gen_expr v]
+                , gen_pair [maybe (gen_ident "next") (gen_expr) t, gen_expr v]
                 ]
             ]
         gen_stmt (ISNop loc) = [gen_function [] "return" [unit_con]]

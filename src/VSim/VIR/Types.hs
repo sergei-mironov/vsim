@@ -210,7 +210,7 @@ data IRGenericBinOp = IRGenericDiv | IRGenericMul
     deriving (Show)
 
 data IRAfter
-    = IRAfter IRExpr IRExpr
+    = IRAfter IRExpr (Maybe IRExpr)
     -- ^      value  time
     deriving (Show)
 

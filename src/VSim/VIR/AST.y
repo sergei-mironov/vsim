@@ -417,8 +417,8 @@ statement_no_let :: { IRStat }
       { ISIf $2 $4 $6 $9 }
     | '(' loc ":=" assignment_name loc expr ')' { ISAssign $2 $4 $5 $6 }
     | '(' loc send signal_name loc expr ')'
-      { ISSignalAssign $2 $4 $5
-        [IRAfter $6 (IEPhysical (WithLoc $5 0) (WithLoc $5 (fsLit "sec")))]
+      { ISSignalAssign $2 $4 $5 [IRAfter $6 Nothing]
+        --[IRAfter $6 (IEPhysical (WithLoc $5 0) (WithLoc $5 (fsLit "sec")))]
       }
     | '(' loc send signal_name loc afters ')'
       { ISSignalAssign $2 $4 $5 $6 }
@@ -454,7 +454,7 @@ next_label :: { LoopLabel }
     | identifier   { $1 }
 
 after_expr :: { IRAfter }
-    : expr after expr { IRAfter $1 $3 }
+    : expr after expr { IRAfter $1 (Just $3) }
 afters :: { [IRAfter] }
     : after_expr_list1 { $1 }
 

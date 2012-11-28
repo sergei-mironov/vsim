@@ -5919,8 +5919,8 @@ happyReduction_78 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn31
-		 (ISSignalAssign happy_var_2 happy_var_4 happy_var_5
-        [IRAfter happy_var_6 (IEPhysical (WithLoc happy_var_5 0) (WithLoc happy_var_5 (fsLit "sec")))]
+		 (ISSignalAssign happy_var_2 happy_var_4 happy_var_5 [IRAfter happy_var_6 Nothing]
+        --[IRAfter happy_var_6 (IEPhysical (WithLoc happy_var_5 0) (WithLoc happy_var_5 (fsLit "sec")))]
 	) `HappyStk` happyRest
 
 happyReduce_79 = happyReduce 7 32 happyReduction_79
@@ -6100,7 +6100,7 @@ happyReduction_95 (HappyAbsSyn40  happy_var_3)
 	_
 	(HappyAbsSyn40  happy_var_1)
 	 =  HappyAbsSyn35
-		 (IRAfter happy_var_1 happy_var_3
+		 (IRAfter happy_var_1 (Just happy_var_3)
 	)
 happyReduction_95 _ _ _  = notHappyAtAll 
 

@@ -31,13 +31,18 @@ alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variabl
 alloc_variable n v c = allocM (Variable n v c)
 
 -- | Registers process in the memory. Updates list of signal's reactions
-alloc_process :: (MonadElab m) => String -> [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
+alloc_process :: (MonadElab m)
+    => String -> [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
     let encycle [] = forever h
         encycle xs = forever (h >> wait_on xs)
     p <- allocM (Process n (encycle ss) Nothing [])
     modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
+
+alloc_process_let :: (MonadElab m)
+    => String -> [Ptr Signal] -> m ProcessHandler -> m (Ptr Process)
+alloc_process_let n ss lh = lh >>= alloc_process n ss
 
 alloc_constant :: (MonadElab m) => String -> Int -> m Int
 alloc_constant _ v = return v
