@@ -299,3 +299,5 @@ instance MonadElab (StateT Memory IO)
 
 type Elab s = (StateT Memory IO) s
 
+runElab elab = runStateT elab emptyMem
+

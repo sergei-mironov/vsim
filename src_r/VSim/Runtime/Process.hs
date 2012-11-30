@@ -55,15 +55,15 @@ next :: (MonadProc m) => m NextTime
 next = fs 1
 
 -- | Type hint for ints
-int :: (MonadProc m) => Int -> m Int
+int :: (Monad m) => Int -> m Int
 int = return
 
 -- | Type hint for strings
-str :: (MonadProc m) => String -> m String
+str :: (Monad m) => String -> m String
 str = return
 
 -- | Signal accessor
-sig :: (MonadProc m) => Ptr Signal -> m (Ptr Signal)
+sig :: (Monad m) => Ptr Signal -> m (Ptr Signal)
 sig = return
 
 wait :: (MonadProc m) => m NextTime -> m ()
