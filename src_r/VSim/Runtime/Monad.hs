@@ -12,6 +12,7 @@ import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Applicative
 import Data.Monoid
+import qualified Data.IntMap as IntMap
 import Data.List
 import Data.IORef
 import Text.Printf
@@ -21,6 +22,7 @@ import System.IO.Unsafe
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
 
+-- | Pointer type used in the simulator
 type Ptr x = IORef x
 
 class (MonadIO m) => MonadMem m where
@@ -83,6 +85,12 @@ data Constraint = Constraint {
 ranged a b = Constraint a b
 unranged = Constraint minBound maxBound
 
+class Constrained x where
+    within :: x -> Bool
+
+instance Constrained (Int, Constraint) where
+    within (v,(Constraint l u)) = v >= l && v <= u
+
 -- | VHDL array type
 data Array = Array {
       aconstr :: Constraint
@@ -90,31 +98,12 @@ data Array = Array {
     , aend :: Int
     } deriving(Show)
 
-class Constrained x where
-    within :: x -> Bool
-
-instance Constrained (Int, Constraint) where
-    within (v,(Constraint l u)) = v >= l && v <= u
-
-class Valueable x where
-    val :: (MonadProc m) => x -> m Int
-
-instance Constrained Signal where
-    within s = and $ map f $ wchanges $ swave s where
-        f (Change _ v) = within (v, sconstr s)
-
-instance Valueable Int where
-    val r = return r
-
 -- | VHDL variable
 data Variable = Variable {
       vname :: String
     , vval :: Int
     , vconstr :: Constraint
     } deriving(Show)
-
-instance Valueable (Ptr Variable) where
-    val r = vval `liftM` derefM r
 
 instance Constrained Variable where
     within v = within (vval v, vconstr v)
@@ -128,8 +117,9 @@ data Signal = Signal {
     , sproc :: [Ptr Process]
     } deriving(Show)
 
-instance Valueable (Ptr Signal) where
-    val r = valueAt1 <$> now <*> (swave `liftM` derefM r)
+instance Constrained Signal where
+    within s = and $ map f $ wchanges $ swave s where
+        f (Change _ v) = within (v, sconstr s)
 
 sigassign1 :: (MonadSim m) => Assignment -> m (Either String ())
 sigassign1 (Assignment r pw) = do
@@ -149,7 +139,7 @@ sigassign2 r w = do
 -- VHDL arrays
 data Compound = Compound {
       cname :: String
-    , csignals :: [Ptr Signal]
+    , csignals :: IntMap.IntMap (Ptr Signal)
     , cconstr :: Array
     } deriving(Show)
 

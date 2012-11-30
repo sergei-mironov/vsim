@@ -8,6 +8,7 @@ module VSim.Runtime.Memory where
 
 import Control.Monad.Trans
 import Control.Monad.State
+import Data.IntMap as IntMap
 import Data.IORef
 import Text.Printf
 import System.IO
@@ -47,10 +48,11 @@ alloc_primitive_signal n i c = do
 alloc_array_signal :: (MonadElab m) => String -> () -> Array -> m (Ptr Compound)
 alloc_array_signal n _ a = do
     let indexes = [(abegin a) .. (aend a)]
-    ss <- forM indexes (\i -> do
+    pairs <- forM indexes (\i -> do
         let sn = n ++ (printf "[%d]" i)
-        alloc_primitive_signal sn 0 (aconstr a))
-    allocM (Compound n ss a)
+        s <- alloc_primitive_signal sn 0 (aconstr a)
+        return (i,s))
+    allocM (Compound n (IntMap.fromList pairs) a)
 
 -- | Allocates variable from the memory
 alloc_variable :: (MonadElab m) => String -> Int -> Constraint -> m (Ptr Variable)

@@ -6,6 +6,7 @@ module VSim.Runtime (
     , module VSim.Runtime.Memory
     , module VSim.Runtime.Waveform
     , module VSim.Runtime.Monad
+    , module Control.Applicative
     , sim
     ) where
 

@@ -58,7 +58,7 @@ timewheel (t, SimStep ps) = do
     as <- kick_processes
     commit_assignments as
     update_signals
-    
+
     where
 
         -- Kicks all the processes from the previous step
@@ -90,5 +90,4 @@ timewheel (t, SimStep ps) = do
             (t', es@(ES ss' ps1)) <- (scan_event ss >=> scan_event ws) (maxBound, mempty)
             ps2 <- concat <$> mapM (\(r,w) -> sigassign2 r w) ss'
             return (t', SimStep (ps1`mappend`ps2))
-
 
