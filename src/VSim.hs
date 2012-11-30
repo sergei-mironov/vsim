@@ -20,27 +20,33 @@ import VSim.Data.NamePath
 import VSim.VIR
 
 class AsIdent x where
-    gen_ident :: x -> HsExp
+    mkName :: x -> HsName
 
 instance AsIdent String where
-    gen_ident s = HsVar $ UnQual $ HsIdent s
+    mkName s = HsIdent s
 
 instance AsIdent Ident where
-    gen_ident = gen_ident . BS.unpack
+    mkName = mkName . BS.unpack
 
 instance AsIdent (Ident, [Ident]) where
-    gen_ident (_,x:_) = gen_ident x
-    gen_ident _ = error "gen_ident (hierPath): strange hierPath"
+    mkName (_,x:_) = mkName x
+    mkName _ = error "mkName (hierPath): strange hierPath"
 
 instance (AsIdent a) => AsIdent (WithLoc a) where
-    gen_ident (WithLoc _ a) = gen_ident a
+    mkName (WithLoc _ a) = mkName a
 
-instance AsIdent IRNameG where
-    gen_ident (INIdent p) = gen_ident p
-    gen_ident _ = error "gen_ident: INIdent only, please"
+-- instance AsIdent IRNameG where
+--     mkName (INIdent p) = mkName p
+--     mkName _ = error "mkName: INIdent only, please"
 
-instance AsIdent IRName where
-    gen_ident (IRName ng _) = gen_ident ng
+-- instance AsIdent IRName where
+--     mkName (IRName ng _) = mkName ng
+
+gen_ident :: (AsIdent x) => x -> HsExp
+gen_ident x = HsVar $ UnQual $ mkName x
+
+gen_pat :: (AsIdent x) => x -> HsPat
+gen_pat x = HsPVar $ mkName x
 
 class AsInt x where
     gen_int :: x -> HsExp
@@ -48,6 +54,9 @@ class AsInt x where
 instance AsInt TInt where
     gen_int i = HsLit $ HsInt $ fromIntegral i
     
+instance AsInt Int where
+    gen_int i = HsLit $ HsInt $ fromIntegral i
+
 instance AsInt Int128 where
     gen_int i = HsLit $ HsInt $ fromIntegral i
     
@@ -83,10 +92,16 @@ gen_pair es = HsTuple es
 gen_str s = HsLit $ HsString s
 
 gen_elab_expr :: IRExpr -> HsExp
-gen_elab_expr (IEInt loc i) = gen_int i
+gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
 gen_elab_expr _ = error "gen_elab_expr: int constants only, please"
 
 gen_expr_unit = unit_con
+
+gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
+
+gen_int_ident tn@(ITDName n)
+    | mkName n == HsIdent "integer" = gen_ident "integer"
+    | otherwise = error $ "gen_int_ident: integer type, please. (got: " ++ show tn ++ ")"
 
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
@@ -96,7 +111,7 @@ gen_elab ts = [
     ] where
       
     body = HsDo $ concat [
-          [gen_function "t_int" "alloc_unranged_type" []]
+          [gen_function "integer" "alloc_unranged_type" []]
         , gen_elab_constants ts
         , gen_elab' ts
         , [gen_return unit_con] 
@@ -125,17 +140,17 @@ gen_elab ts = [
     gen_array_constr (Constrained _ (IRARDConstrained loc tn (IRDRange loc2 a DirTo b))) = (a,b)
     gen_array_constr _ = error "gen_array_constr: simple integer 1-dim arrays, please"
 
-    gen_alloc_signal (IRSignal p _ (IOEJustExpr _ e)) = [
+    gen_alloc_signal (IRSignal p t (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_signal" [
               gen_str $ unHierPath p
             , gen_elab_expr e
-            , gen_ident "t_int"
+            , gen_int_ident t
             ]
         ]
     gen_alloc_signal (IRSignal p (ITDName t) (IOENothing loc)) = [
           gen_function (unHierPath p) "alloc_signal" [
               gen_str $ unHierPath p
-            , gen_expr_unit
+            , gen_appl "rnd" [gen_ident t]
             , gen_ident t
             ]
         ]
@@ -151,14 +166,20 @@ gen_elab ts = [
             ]
         ]
 
-    gen_alloc_variable (IRVariable p _ (IOEJustExpr _ e)) = [
+    gen_alloc_variable (IRVariable p t (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_variable" [
               gen_str $ unHierPath p
             , gen_elab_expr e
-            , gen_ident "t_int"
+            , gen_int_ident t
             ]
         ]
-    gen_alloc_variable v = error "gen_alloc_variable: specify default value, please"
+    gen_alloc_variable (IRVariable p t (IOENothing _)) = [
+          gen_function (unHierPath p) "alloc_variable" [
+              gen_str $ unHierPath p
+            , gen_int (0 :: Int)
+            , gen_int_ident t
+            ]
+        ]
 
     gen_alloc_process (IRProcess p ns lets s) = [
           gen_function (unHierPath p) "alloc_process_let" [
@@ -177,10 +198,16 @@ gen_elab ts = [
     gen_process ss = HsParen $ HsDo $ gen_stmt ss where
 
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
+        gen_stmt (ISAssign _ n _ e) = [
+              gen_function [] "vassign" [
+                  gen_name_ident n
+                , gen_expr e
+                ]
+            ]
         gen_stmt (ISSignalAssign _ n _ []) = error "gen_stmt: no afters"
         gen_stmt (ISSignalAssign _ n _ [IRAfter v t]) = [
               gen_function [] "assign" [
-                  gen_ident n
+                  gen_name_ident n
                 , gen_pair [maybe (gen_ident "next") (gen_expr) t, gen_expr v]
                 ]
             ]
@@ -196,16 +223,31 @@ gen_elab ts = [
         gen_stmt (ISAssert loc e1 e2 e3) = [gen_function [] "assert" []]
         gen_stmt (ISReport loc e1 e2) = [gen_function [] "report" [gen_expr e1]]
         gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function [] "wait" [gen_expr e]]
+        gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
         gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
+
+        gen_for (IRDRange loc e1 dir e2) ei s = [
+              gen_function [] "for" [
+                  gen_pair [gen_expr e1, gen_ident "To", gen_expr e2]
+                , gen_lambda ei (gen_stmt s) 
+                ]
+            ]
 
         gen_expr (IEInt loc i) = gen_appl "int" [gen_int i]
         gen_expr (IEString loc bs) = gen_appl "str" [gen_str $ BS.unpack bs]
-        gen_expr (IEName loc n) = gen_appl "val" [gen_ident n]
+        gen_expr (IEName loc n) = gen_name_ident n
         gen_expr (IEBinOp loc IPlus e1 e2) = gen_appl "add" [gen_expr e1, gen_expr e2]
         gen_expr (IERelOp loc IGreaterEqual _ e1 e2) =
             gen_appl "greater_eq" [gen_expr e1, gen_expr e2]
         gen_expr (IEPhysical val un) = gen_appl un [gen_int val]
         gen_expr e = error $ "gen_expr: unsupported expr " ++ show e
+
+
+        gen_name_ident (IRName n _) = gen_name_ident' n
+        gen_name_ident' (INIdent p) = gen_appl "pure" [gen_ident p]
+        gen_name_ident' (INIndex _ p _ [(_,e)]) = gen_appl "index" [
+            gen_name_ident' p, gen_expr e]
+
 
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing
 
