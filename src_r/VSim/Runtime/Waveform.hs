@@ -23,8 +23,8 @@ import Prelude hiding(until)
 import VSim.Runtime.Time
 
 -- | Change is a part of a waveform. More or less formal definition is:
--- foreach t . t <= until => (value `at_time` t) == cvalue
---             t > until => value is undefined
+-- foreach t . t < until => (value `at_time` t) == cvalue
+--             t >= until => value is undefined
 data Change = Change {
       until :: NextTime
     , cvalue :: Int
@@ -139,10 +139,6 @@ unPW w (PW s w') = concatAt s w w'
 appendPW :: ProjectedWaveform -> ProjectedWaveform -> ProjectedWaveform
 appendPW (PW s1 w1) (PW s2 w2) = PW (s1 `min` s2) (concatAt (s1`max`s2) w1 w2)
 
--- concatProjectedAt :: Time -> Waveform -> ProjectedWaveform -> Waveform
--- concatProjectedAt t w p = concatAt t w (unPW w p)
-
-
 {- Tests -}
 
 instance Arbitrary Change where
@@ -176,9 +172,3 @@ prop_concat2 (TestTime nt t) w1 w2 = (valueAt t (concatAt nt w1 w2)) == (valueAt
 
 prop_concat3 (TestTime nt t) w1 w2 = (valueAt t (concatAt (nt`ticked`1) w1 w2)) == (valueAt t w1)
 
-{-
--- prop_pconcat1 (TestTime t) w pw = invariant (concatProjectedAt t w pw)
-    
-prop_pw1 (TestTime t) w = valueAt t (unPW w nullPW) == valueAt t w
-
--}

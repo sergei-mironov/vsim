@@ -4,15 +4,12 @@ module VSim.Runtime.Time (
     , TestTime(..)
     , Timeable(..)
     , move_time
-    -- , time_after
-    -- , time_not_greater
     , before
     , milliSecond
     , microSecond
     , nanoSecond
     , picoSecond
     , femtoSecond
-    -- , arbitrary_timeline
     ) where
 
 import Control.Applicative
@@ -20,9 +17,12 @@ import Control.Monad
 import Text.Printf
 import Test.QuickCheck
 
+-- | Current simulation time representation. Time is measured in femtoseconds.
+-- User normally can't do anything with this time except watching at it.
 newtype Time = Time { unTime :: Int }
     deriving(Show,Eq,Ord)
 
+-- | Next time representation for future planning.
 newtype NextTime = NextTime { unNextTime :: Int }
     deriving(Show,Eq,Ord)
 
@@ -60,14 +60,6 @@ instance Timeable NextTime where
         | (x + v) <= x = error "ticked: can not decrement time"
         | otherwise = NextTime (x + v)
 
--- | >
--- time_after :: (Timeable t1, Timeable t2) => t1 -> t2 -> Bool
--- time_after t1 t2 = (unTime t1) > (unTime t2)
-
--- | <=
--- time_not_greater :: (Timeable t1, Timeable t2) => t1 -> t2 -> Bool
--- time_not_greater t1 t2 = (unTime t1) <= (unTime t2)
-
 milliSecond, microSecond, nanoSecond, picoSecond, femtoSecond :: Int
 milliSecond = 1000*microSecond
 microSecond = 1000*nanoSecond
@@ -78,7 +70,8 @@ femtoSecond  = 1
 instance Arbitrary NextTime where
     arbitrary = suchThat (NextTime <$> arbitrary) (\t -> t>=minBound && t<=maxBound)
 
--- | Container for time
+-- | Helper for testing purposes. Generates a pir of Time and NextTime
+-- which represent the same moment of time.
 data TestTime = TestTime NextTime Time
     deriving(Show)
 
@@ -94,11 +87,4 @@ instance Arbitrary TestTime where
             , (1, pure mx)
             ]
         return $ TestTime (NextTime t) (Time t)
-
--- arbitrary_timeline :: Int -> Gen [NextTime]
--- arbitrary_timeline sz = do
---     let foldM' a b f = foldM f a b
---     reverse <$> snd <$> (foldM' (minBound,[]) [1..sz] $ \(m, vs) _ -> do
---         v <- suchThat arbitrary (>m)
---         return (v, v:vs))
 
