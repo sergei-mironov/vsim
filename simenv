@@ -1,0 +1,157 @@
+#!/bin/sh
+
+EIDE=$HOME/proj/eide20
+
+die() {
+	local p=$1 ; shift ;
+	echo "$@" >&2 ; exit 1 ;
+}
+
+cpto() {
+	case $# in
+		1) local to=$1 ;;
+		*) die "usage: cpto DEST" ;;
+	esac
+	read -r from
+	test -f "$from" || die cpto "cpto: invalid source file read from stdin"
+	cp "$from" "$to" && echo "$to"
+}
+
+
+xargs() {
+	local args=""
+	while read -r a ; do args="$args $a" ; done
+	"$@" $args
+}
+
+ospath() {
+	case $OS in
+		*indows*) cygpath -w "$1" ;;
+		*) echo $1 ;;
+	esac
+}
+
+stime() {
+	/usr/bin/time -f '%e' "$@"
+}
+
+vircheck() {
+	runtr "$@" | xargs dist/build/VirCheck/VirCheck
+}
+
+vsim() {
+	runtr "$@" | xargs dist/build/VSim/VSim
+}
+
+runaldec() { (
+	CWD=`pwd`
+	case $1 in
+		/*vhd|/*vhdl) VHD=$1 ;;
+		*vhd|*vhdl) VHD=$PWD/$1 ;;
+		*) die runtr "usage: runtr VHDL_FILE" ;;
+	esac
+
+	WORK=.aldec
+	rm -rf $WORK >/dev/null 2>&1
+	mkdir $WORK >/dev/null 2>&1
+	cd $WORK ||
+		die runaldec "can't cd into $WORK"
+
+	ENTITY=`sed -n 's@entity \(.*\) is@\1@ p' $VHD | head -n 1`
+	echo "Using entity name $ENTITY" >&2
+
+	(
+	echo vlib -global work
+	echo set worklib work
+	echo vcom `ospath $CWD/IEEE/std_logic_1164.vhdl` `ospath $VHD`
+	echo vsim work.$ENTITY
+	echo trace -verbose '*'
+	echo run 9999ms
+	) > './a.do'
+
+	stime vsimsa '-do' 'a.do' ||
+		die runaldec "Aldec reported error $?"
+) }
+
+aldecwave() {
+	avhdl.exe _aldec/wave.asdb
+}
+
+
+runghdl() { (
+	CWD=`pwd`
+	case $1 in
+		/*vhd|/*vhdl) VHD=$1 ;;
+		*vhd|*vhdl) VHD=$PWD/$1 ;;
+		*) die runghdl "usage: runtr VHDL_FILE" ;;
+	esac
+
+	WORK=.ghdl
+	rm -rf $WORK >/dev/null 2>&1
+	mkdir $WORK >/dev/null 2>&1
+	cd $WORK ||
+		die runghdl "can't cd into $WORK"
+
+	cp $VHD file.vhd
+
+	ENTITY=`sed -n 's@entity \(.*\) is@\1@ p' $VHD | head -n 1`
+	echo "Using entity name $ENTITY" >&2
+
+	ghdl -a file.vhd
+	ghdl -r $ENTITY
+) }
+
+runtr() { (
+	CWD=`pwd`
+	case $1 in
+		/*vhd|/*vhdl) VHD=$1 ;;
+		*vhd|*vhdl) VHD=$PWD/$1 ;;
+		*) die runtr "usage: runtr VHDL_FILE" ;;
+	esac
+
+	JAVABIN=$CWD/tr/bin
+	TRANSL=com.prosoft.vhdl.test.Test
+	WORK=.transl
+	VHDL=$CWD/vhdl
+
+	rm -rf $WORK >/dev/null 2>&1
+	mkdir $WORK >/dev/null 2>&1
+	cd $WORK ||
+		die runtr "can't cd into $WORK"
+
+	(
+	echo STD
+	ospath $VHDL/STD
+	echo standard.vhd
+	) >./standard.cfg
+
+	(
+	echo IEEE
+	ospath $VHDL/IEEE
+	echo std_logic_1164.vhdl
+	echo numeric_bit.vhdl
+	echo numeric_std.vhdl
+	echo synopsys/std_logic_arith.vhdl
+	echo synopsys/std_logic_misc.vhdl
+	echo synopsys/std_logic_signed.vhdl
+	echo synopsys/std_logic_unsigned.vhdl
+	) >./ieee.cfg
+
+	ENTITY=`sed -n 's@entity \(.*\) is@\1@ p' $VHD | head -n 1`
+	echo "Using entity name $ENTITY" >&2
+
+	VIRFILE=`mktemp --suffix .vir`
+	java -cp `ospath $JAVABIN` \
+		$TRANSL \
+		--quiet \
+		--no-symbols \
+		standard.cfg \
+		ieee.cfg \
+		`ospath $VHD` \
+		work.$ENTITY \
+		`ospath $VIRFILE` >&2 ||
+			die runtr "translator failed"
+
+	echo `ospath $VIRFILE`
+) }
+

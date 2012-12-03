@@ -1,0 +1,4529 @@
+/**
+ *
+ * VHDL-93, VHDL-AMS grammar for JavaCC 
+ * (c) 1997 Christoph Grimm
+ * 
+ * EMail: grimm@ti.informatik.uni-frankfurt.de
+ * Address:
+ * Christoph Grimm
+ * J. W. Goethe-University Frankfurt
+ * Robert-Mayer-Strasse 11-15
+ * 60054 Frankfurt
+ * Germany
+ *
+ *
+ * By using this file, I agree with the following:
+ * -----------------------------------------------
+ *
+ * 1. This grammar is free for evaluation purposes.
+ *
+ * 2. You may use and modify it, but when distributing is, you must also
+ *    include the original files and copyright notes from me.
+ *
+ * 3. For commercial use of derived works contact me.
+ *   
+ * 4. The grammar is NOT optimized for speed. The aim is to keep the grammar 
+ *    similar to the original productions in the LRM.
+ *
+ * 5. Don't complain about errors - report them, maybe with fixes to me.
+ *
+ */
+
+
+options
+{
+  // DEBUG_PARSER = true;
+  // CHOICE_AMBIGUITY_CHECK=3;
+  IGNORE_CASE=true;
+//  NODE_SCOPE_HOOK=true;
+//  MULTI=true;
+  JAVA_UNICODE_ESCAPE = true;
+  STATIC = false;
+}
+
+
+
+
+/**
+ * The parser is instanciated in the file vhdl.java
+ */
+PARSER_BEGIN(VhdlParser)
+
+package com.prosoft.vhdl.parser;
+
+import com.prosoft.vhdl.ir.*;
+import com.prosoft.vhdl.sim.*;
+import com.prosoft.common.*;
+import java.util.*;
+
+public class VhdlParser extends ParserBase
+{
+ /*
+  static ErrorHandler errs = new ErrorHandler();
+  
+  public ConstantPool constantPool;
+  
+  public Enums enums;
+  public String[] sourceLines;
+  public IdentifiableList idents;
+
+  public Node rootNode() {
+  	return jjtree.rootNode();
+  }
+  */  
+}
+
+PARSER_END(VhdlParser)
+
+
+SKIP :
+{
+    " "
+  | "\n"
+  | "\r"
+  | "\t"
+}
+
+SPECIAL_TOKEN :
+{
+  <COMMENT: "--" (~["\n","\r"])* ("\n"|"\r"|"\r\n"|"\n\r")>
+}
+
+
+
+/** 
+ * Section 13: Lexical elements
+ * with extensions from IEEE 1076.1
+ */
+TOKEN [IGNORE_CASE] :
+{
+    <ABS:          "abs">
+  | <ACCESS:       "access">
+  | <ACROSS:       "across">
+  | <AFTER:        "after">
+  | <ALIAS:        "alias">
+  | <ALL:          "all">
+  | <AND:          "and">
+  | <ARCHITECTURE: "architecture">
+  | <ARRAY:        "array">
+  | <ASSERT:       "assert">
+  | <ATTRIBUTE:    "attribute">
+  | <BEGIN:        "begin">
+  | <BLOCK:        "block">
+  | <BODY:         "body">
+  | <BREAK:        "break">
+  | <BUFFER:       "buffer">
+  | <BUS:          "bus">
+  | <CASE:         "case">
+  | <COMPONENT:    "component">
+  | <CONFIGURATION: "configuration">
+  | <CONSTANT:      "constant">
+  | <DISCONNECT:    "disconnect">
+  | <DOWNTO:        "downto">
+  | <ELSE:          "else">
+  | <ELSIF:         "elsif">
+  | <END:           "end">
+  | <ENTITY:        "entity">
+  | <EXIT:          "exit">
+  | <FILE:          "file">
+  | <FOR:           "for">
+  | <FUNCTION:      "function">
+  | <GENERATE:      "generate">
+  | <GENERIC:       "generic">
+  | <GROUP:         "group">
+  | <GUARDED:       "guarded">
+  | <IF:            "if">
+  | <IMPURE:        "impure">
+  | <IN:            "in">
+  | <INERTIAL:      "inertial">
+  | <INOUT:         "inout">
+  | <IS:            "is">
+  | <LABEL:         "label">
+  | <LIBRARY:       "library">
+  | <LINKAGE:       "linkage">
+  | <LITERAL:       "literal">
+  | <LOOP:          "loop">
+  | <MAP:           "map">
+  | <MOD:           "mod">
+  | <NAND:          "nand">
+  | <NATURE:        "nature">
+  | <NEW:           "new">
+  | <NEXT:          "next">
+  | <NOISE:         "noise">
+  | <NOR:           "nor">
+  | <NOT:           "not">
+  | <NULL:          "null">
+  | <OF:            "of">
+  | <ON:            "on">
+  | <OPEN:          "open">
+  | <OR:            "or">
+  | <OTHERS:        "others">
+  | <OUT:           "out">
+  | <PACKAGE:       "package">
+  | <PORT:          "port">
+  | <POSTPONED:     "postponed">
+  | <PROCEDURAL:    "procedural">
+  | <PROCEDURE:     "procedure">
+  | <PROCESS:       "process">
+  | <PURE:          "pure">
+  | <QUANTITY:      "quantity">
+  | <RANGE:         "range">
+  | <RECORD:        "record">
+  | <REGISTER:      "register">
+  | <REJECT:        "reject">
+  | <REM:           "rem">
+  | <REPORT:        "report">
+  | <RETURN:        "return">
+  | <ROL:           "rol">
+  | <ROR:           "ror">
+  | <SELECT:        "select">
+  | <SEVERITY:      "severity">
+  | <SIGNAL:        "signal">
+  | <SHARED:        "shared">
+  | <SLA:           "sla">
+  | <SLL:           "sll">
+  | <SPECTRUM:      "spectrum">
+  | <SRA:           "sra">
+  | <SRL:           "srl">
+  | <SUBNATURE:     "subnature">
+  | <SUBTYPE:       "subtype">
+  | <TERMINAL:      "terminal">
+  | <THEN:          "then">
+  | <THROUGH:       "through">
+  | <TO:            "to">
+  | <TOLERANCE:     "tolerance">
+  | <TRANSPORT:     "transport">
+  | <TYPE:          "type">
+  | <UNAFFECTED:    "unaffected">
+  | <UNITS:         "units">
+  | <UNTIL:         "until">
+  | <USE:           "use">
+  | <VARIABLE:      "variable">
+  | <WAIT:          "wait">
+  | <WHEN:          "when">
+  | <WHILE:         "while">
+  | <WITH:          "with">
+  | <XNOR:          "xnor">
+  | <XOR:           "xor">
+  
+}
+
+
+
+TOKEN :
+{
+    <#upper_case_letter:               ["A"-"Z"/*,"А"-"Я"*/]>
+  | <#lower_case_letter:               ["a"-"z"/*,"а"-"я"*/]>
+  | <#digit:                           ["0"-"9"]>
+  | <#extended_digit:                  ["0"-"9","A"-"F"]>
+  | <#special_character:               ["\"", "#","&","'","(",")","*","+",",","-",
+                                        ".","/",":",";","<","=",">","[","]",
+                                        "_","|"]>
+  | <#str_special_character:               ["#","&","'","(",")","*","+",",","-",
+                                        ".","/",":",";","<","=",">","[","]",
+                                        "_","|"]>
+  | <#other_special_character:         ["!","$","%","@","?","^","`","{","}","~"
+  										,"\\"
+  										]>
+  | <#other_special_character_except_bslash: ["!","$","%","@","?","^","`","{","}","~"]>
+  | <#format_effector:                 ["\n","\t"]>
+  | <#base_specifier:                  ["B","O","X"]>
+  | <#underline:                       "_">
+  | <#letter:                          ["a"-"z","A"-"Z"/*,"А"-"Я","а"-"я"*/]>
+  | <#letter_or_digit:                 ["a"-"z","A"-"Z",/*"А"-"Я","а"-"я",*/"0"-"9"]>
+  | <#integer: <digit> (("_")? <digit>)*>
+  | <#base: <integer>>
+  | <#based_integer: (("_")? <extended_digit>)*>
+  | <based_literal: <base> ("#"|":") <based_integer> ("." <based_integer>)? ("#"|":") (<exponent>)?>
+  | <#basic_character: (<basic_graphic_character>|<format_effector>)>
+  | <#str_basic_character: (<str_basic_graphic_character>|<format_effector>)>
+  | <#basic_graphic_character: (["A"-"Z"/*,"А"-"Я"*/]|<digit>|<special_character>|" ")>
+  | <#str_basic_graphic_character: (["A"-"Z"/*,"А"-"Я"*/]|<digit>|<str_special_character>|" ")>
+  | <basic_identifier: <letter> ( ("_")? <letter_or_digit> )*>
+  | <bit_string_literal: <base_specifier> ("\""|"%") <bit_value> ("\""|"%")>
+  | <#bit_value: <extended_digit> ( ("_")? <extended_digit>)*>
+  | <character_literal:  "'" (<graphic_character> | " ") "'">
+  | <decimal_literal: <integer> ( "." <integer>)? ( <exponent> )?>
+  | <#exponent: ("E" ("+")? <integer>) | ("E" "-" <integer>)>
+  | <extended_identifier: 
+  		// так сделано для обхода косяка в стандарте: "\\" входит в <graphic_character> и идентификатор не завершается вовремя
+  		"\\" (<basic_graphic_character> | <other_special_character_except_bslash>) ( <basic_graphic_character> | <other_special_character_except_bslash> )* "\\">
+  		//"\\" <graphic_character> ( <graphic_character> )* "\\">
+  | <#graphic_character: (<basic_graphic_character>
+                          | <lower_case_letter>
+                          | <other_special_character>)>
+  | <#str_graphic_character: (<str_basic_graphic_character>
+                          | <lower_case_letter>
+                          | <other_special_character>)>
+  | <string_literal: ("\""|"%") ( <str_graphic_character> | "\"\"")* ("\""|"%")>
+
+  | <EXP: "**">
+  | <MUL: "*">
+  | <DIV: "/">
+  | <ADD: "+">
+  | <SUB: "-">
+  | <CONCAT: "&">
+  | <EQ:  "=">
+  | <NEQ: "/=">
+  | <GE:  ">=">
+  | <LE:  "<=">
+  | <GT:  ">">
+  | <LO:  "<">
+  | <SEMICOLON: ";">
+  | <OPENBRACE: "(">
+  | <CLOSEDBRACE: ")">
+  | <APOSTROPHE: "'">
+//  | <#russian_letter: ["А"-"Я","а"-"я"]>
+}
+
+
+
+
+IROper abstract_literal()  :
+{ IROper res; }
+{
+	(
+    <decimal_literal> 
+    {
+    	if( token.image.indexOf('.') >= 0 ) {
+    		res = IRTypeReal.createConstant(token.image);
+    	} else {
+    		res = IRTypeInteger.createConstant(begin(token), token.image, err);
+    	} 
+    }//res = new IRConst( new IntValue(Integer.parseInt(token.image)) ); }
+  | <based_literal> {res = createBasedConstant(token);}
+  )
+  {return res;}
+}
+
+
+
+IRType access_type_definition(String typeName)  :
+{IRType type;}
+{
+  <ACCESS> type = subtype_indication(true)
+  {IRTypeAccess res = new IRTypeAccess(currentPackage, typeName, type);
+   res.setParent(stack.peek());
+   return res;
+  }
+}
+
+
+
+IROper actual_designator()  :
+{ IROper res = null; TextCoord b = begin(); }
+{
+	(
+    LOOKAHEAD(expression()) 
+    res = expression(false)
+  | LOOKAHEAD(signal_name())
+    res = signal_name(false)
+  | LOOKAHEAD(variable_name())
+    res = variable_name() 
+  | LOOKAHEAD(name())
+    name(false, false) {throw new RuntimeException("Unsupported feature");}
+  | <OPEN> {res = new IROpen(); res.setBegin(b);}
+
+  // 1076.1 extensions:
+//  | LOOKAHEAD(terminal_name())
+//    terminal_name()
+//  | quantity_name()
+  )
+  {return res;}
+}
+
+
+
+IROper[] actual_parameter_part()  :
+{IROper[] res;}
+{
+  res = parameter_association_list()
+  {return res;}
+}
+
+
+IROper actual_part() :
+{IROper res; IRType type; IROper fname; IRFunction func; IROper op; IRFunctionCall call; }
+{
+	
+	(
+	/*
+  LOOKAHEAD( type_mark() ("(" actual_designator() ")"), {isType()} )
+    type = type_mark() "(" op = actual_designator() ")" {res = new IRTypeCast(type, op);}
+  |  LOOKAHEAD( function_name() "(" actual_designator() ")", {isFunction(getToken(1).image)})
+    fname = function_name() "(" op = actual_designator()  ")" 
+    {
+    	func = (IRFunction) resolve( getIdentifierFromOper(fname), true);
+    	res = call = new IRFunctionCall(func.getName());
+    	res.setBegin(fname.getBegin());
+    	res.setEnd(end(token));
+    	call.setParameters( new IROper[] {op} );
+    	
+    }
+  | 
+  */
+  res = actual_designator()
+  )
+  {return res;}
+}
+
+
+IROperKind adding_operator()  :
+{}
+{
+    <ADD>               { return IROperKind.ADD; }
+  | <SUB>               { return IROperKind.SUB; }
+  | <CONCAT>            { return IROperKind.CONCAT; }
+}
+
+
+IROper aggregate(boolean isDeclaration) :
+{ IROper cur; ArrayList<IROper> elems = new ArrayList<IROper>(); TextCoord b = begin(); IRAggreg res; }
+{
+  "(" cur = element_association(isDeclaration) {elems.add(cur);} 
+  ( "," cur = element_association(isDeclaration) {elems.add(cur);} )* ")"
+  { res = new IRAggreg( elems );
+  	res.setBegin(b);
+  	markEnd(res);
+  	return res; 
+  }
+}    
+
+void alias_declaration() :
+{String name; IRType type = null; IROper expr; TextCoord b = begin(); IRAlias res;}
+{
+    <ALIAS> name = alias_designator()
+   [ ":" type = subtype_indication(true) ] <IS> expr = name(true, true) signature() ";"
+   {res = new IRAlias(stack.peek(), name, type, expr);
+    res.setBegin(b);
+    markEnd(res);
+    add( res );}
+}
+
+
+String alias_designator() :
+{ String res; }
+{
+  (
+    res = identifier()
+  | <character_literal> {res = token.image;}
+  | res = operator_symbol()
+  )
+  {return res;}
+}
+/*
+IROper allocator() :
+{}
+{
+  <NEW>
+  (
+      LOOKAHEAD( type_mark() "'")
+      qualified_expression()
+    | subtype_indication()
+  )
+  { throw new RuntimeException(); }
+}
+*/
+
+
+void architecture_body() :
+{ IREntity entity; IRArchitecture arc; String arcName; String enName; TextCoord b;}
+{
+  <ARCHITECTURE> arcName = identifier() <OF> /*entity_name()*/ {b=begin();}enName = identifier() <IS>
+  {
+        if( filename.endsWith("aggregates.vhd") ) {
+                int a = 0;
+                a++;
+        }
+  }
+  
+  { entity = getEntity(enName);
+  	if( entity == null ) err.undefinedNoEx(b, enName);
+  	arc = new IRArchitecture(stack.peek(), arcName, entity); push(entity.getContext()); push(entity); push(arc); add(arc); }
+    architecture_declarative_part()
+  <BEGIN>
+    architecture_statement_part()
+    {try { arc.semanticCheck(err); } catch(Exception e) {
+      e.printStackTrace();
+      throw new ParseException(e.getMessage());};
+    }
+    {pop();pop();pop();}
+  <END> [ <ARCHITECTURE> ] [ /*architecture_simple_name()*/ identifier() {ensureLastName(arc);} ] ";"
+
+}
+
+
+
+void architecture_declarative_part() :
+{}
+{
+  ( block_declarative_item() )*
+}
+
+void architecture_statement_part() :
+{}
+{
+  ( architecture_statement() )*
+}
+
+/**
+ *  This rule also contains the concurrent statements.
+ */
+void architecture_statement()  :
+{ IRStatement stat = null; TextCoord b = begin(); }
+{
+  // 
+  // lookahead would really be annoying here. Therefore I have
+  // moved the concurrent statement into this rule.
+  // concurrent_statements:
+  //
+
+//  try {
+  {
+    if( b.toString().endsWith("ct00612.vhd:1564:4: ") )    {		int a = 0;
+		a++;
+    }  }
+
+	(
+
+
+    LOOKAHEAD([block_label() ":"] <BLOCK>)
+    block_statement()
+  | LOOKAHEAD([process_label() ":"] [<POSTPONED>] <PROCESS>)
+    process_statement()
+  | LOOKAHEAD(/*[label() ":"] [<POSTPONED>]*/ {isProcedureCall()})
+    concurrent_procedure_call_statement()
+  | LOOKAHEAD([label() ":"] [<POSTPONED>] <ASSERT>)
+    concurrent_assertion_statement()
+  | LOOKAHEAD([label() ":"] [<POSTPONED>] /*conditional_signal_assignment()*/conditional_signal_assignment_la() |
+              [label() ":"] [<POSTPONED>] selected_signal_assignment())
+    stat = concurrent_signal_assignment_statement() {((IConcurrentHolder)peek()).addConcurrent(stat);}
+  | LOOKAHEAD(instantiation_label() ":" instantiated_unit() )
+    component_instantiation_statement()
+  | LOOKAHEAD(generate_statement())
+    generate_statement()
+
+  /** 1076.1 extensions: */
+  /*
+  | LOOKAHEAD(concurrent_break_statement())
+    concurrent_break_statement()
+  | simultaneous_statement()
+  */
+  )
+
+//  }
+
+  /** Error handling: Skip until next semicolon */
+//  catch(ParseException e)
+//  {
+//    error_skipto(SEMICOLON, "syntax error in statement");
+//  }
+  {if ( stat != null )
+   {
+       stat.setBegin(b);
+       markEnd(stat);
+   }
+  }
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void array_nature_definition()   :
+{}
+{
+    LOOKAHEAD(<ARRAY> "(" index_subtype_definition() )
+    unconstrained_nature_definition()
+  | constrained_nature_definition()
+}
+*/
+
+/**
+  * 1076.1 extension:
+  */
+  /*
+void unconstrained_nature_definition() :
+{}
+{
+  <ARRAY> "(" index_subtype_definition() ("," index_subtype_definition())* ")" 
+  <OF> subnature_indication()
+}
+*/
+
+/**
+  * 1076.1 extension:
+  */
+  /*
+void constrained_nature_definition() :
+{}
+{
+  <ARRAY> index_constraint() <OF> subnature_indication()
+}
+*/
+
+
+IRType array_type_definition(String typeName) :
+{ IRType res; }
+{
+	(
+    LOOKAHEAD(unconstrained_array_definition())
+    res = unconstrained_array_definition(typeName)
+  | res = constrained_array_definition(typeName)
+  )
+  {return res;}
+}
+
+IRStatement assertion(boolean isDeclaration) :
+{IROper cond, rep = null, sev = null;}
+{
+  <ASSERT> cond = condition(isDeclaration)
+  [ <REPORT> rep = expression(isDeclaration) ]
+  [ <SEVERITY> sev = expression(isDeclaration) ]
+  {return new IRAssertStatement(cond, rep, sev);}
+}
+
+
+IRStatement assertion_statement() :
+{IRStatement res;}
+{
+  [ label() ":" ] res = assertion(false) ";"
+  //{throw new RuntimeException();}
+  {return res;}
+}
+
+
+
+IROper association_element() :
+{IROper formal = null, actual; TextCoord b = begin();}
+{
+  [ LOOKAHEAD( formal_part() "=>" ) formal = formal_part() "=>" ]
+  actual = actual_part()
+  {if( formal != null )
+  	actual = new IROperAssoc( formal, actual);
+  	actual.setBegin(b);
+  	actual.setEnd(end()); 
+  	return actual;}
+}
+
+IROper[] association_list() :
+{ ArrayList<IROper> params = new ArrayList<IROper>(); IROper p; }
+{
+  p = association_element() {params.add(p);} ( "," p = association_element() {params.add(p);} )*
+  {return params.toArray(new IROper[params.size()]);}
+}
+
+
+void attribute_declaration() :
+{}
+{
+  <ATTRIBUTE> identifier() ":" type_mark() ";"
+}
+
+
+IROper attribute_designator()  :
+{IROper res;}
+{
+  res = attribute_simple_name()
+  {return res;}
+}
+
+
+IROper attribute_name(boolean topLevel, boolean isDeclaration) :
+{ IROper prefix, name, res; TextCoord b = begin();}
+{
+  (
+  	prefix = selected_name(topLevel) {res = prefix;}
+  	| <RANGE> { res = prefix = new IRName("RANGE"); }
+  )
+  ( 
+  	LOOKAHEAD(2) signature() "'" name = attribute_designator() 
+  		{ res = new IRAttrib(prefix, ((IRName)name).getName(), new ArrayList<IROper>() );
+  		  res.setBegin(b); markEnd(res);
+  		}
+   	[  LOOKAHEAD("(" expression() ("," expression())* ")") 
+   	"(" expression(isDeclaration) ("," expression(isDeclaration))* ")" {throw new RuntimeException();} ]
+  )*
+   { return res; }
+}
+
+
+void attribute_specification() :
+{}
+{
+  <ATTRIBUTE> attribute_designator() <OF>
+  entity_specification() <IS> expression(true) ";"
+}
+
+String base_unit_declaration()  :
+{String res;}
+{
+  res = identifier() ";"
+  { return res; }
+}
+
+
+
+void binding_indication(ImplementationRule rule) :
+{}
+{
+  [ <USE> entity_aspect(rule) ]
+  [ generic_map_aspect() ]
+  [ port_map_aspect() ]
+}
+
+void block_configuration() :
+{IRBlock res;}
+{
+  <FOR> block_specification()
+                ( use_clause() )*
+                ( configuration_item() )*
+  <END> <FOR> ";"
+}
+
+void block_declarative_item()  :
+{}
+{
+//  try {
+
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | signal_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | component_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | configuration_specification()
+  | disconnection_specification()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+
+  /** 1076.1 - Extensions: */
+  /*
+  | nature_declaration()
+  | subnature_declaration()
+  | quantity_declaration()
+  | terminal_declaration()
+  */
+
+//  }
+
+  // Error handling: skip until next semicolon
+//  catch (ParseException e)
+  {
+//    error_skipto(SEMICOLON, "syntax error in declarative item");
+  }
+}
+
+
+void block_declarative_part() :
+{}
+{
+  ( block_declarative_item() )*
+}
+
+void block_header() :
+{}
+{
+  [ generic_clause()  [ generic_map_aspect() ";" ] ]
+  [ port_clause()     [ port_map_aspect() ";"    ] ]
+}
+
+void block_specification() :
+{}
+{
+    LOOKAHEAD(name())
+    name(false, false)
+  | LOOKAHEAD(block_statement_label())
+    block_statement_label()
+  | LOOKAHEAD(generate_statement_label())
+    generate_statement_label() [ "(" index_specification() ")" ]
+}
+
+
+void block_statement() :
+{IRBlock res; String name; }
+{
+  name = identifier()/*block_label()*/ ":"
+  {res = new IRBlock(peek(), name); add(res);  push(res);}
+                <BLOCK> [ "(" guard_expression() ")" ] [ <IS> ]
+                        block_header()
+                        block_declarative_part()
+                <BEGIN>
+                        block_statement_part()
+                <END> <BLOCK> [ block_label() ] {pop();}";"
+//   { add(res); }
+}
+
+
+void block_statement_part() :
+{}
+{
+  ( architecture_statement() )*
+}
+
+/**
+ * Section 8.14: Break statement
+ * 1076.1 extension:
+ */
+ /*
+void break_statement() :
+{}
+{
+  [label()  ":"] <BREAK> [break_list()] [<WHEN> condition(false) ] ";"
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void break_list() :
+{}
+{
+  break_element() ("," break_element() )*
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void break_element() :
+{}
+{
+  [selector_clause() ] quantity_name() "=>" expression(false)
+}
+/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void selector_clause()  :
+{}
+{
+  <FOR> quantity_name() <USE>
+}
+*/
+
+IRStatement case_statement() :
+{ IRCaseStatement res = new IRCaseStatement(); res.setParent(stack.peek()); markBegin(res); IROper op; }
+{
+	{push(res);}
+  [ case_label() ":" ]
+                <CASE> op = expression(false) {res.setExpression(op);} <IS>
+                        case_statement_alternative(res)
+                        ( case_statement_alternative(res) )*
+                <END> <CASE> [ case_label() ] ";"
+  { pop(); markEnd(res); return res;}
+}
+
+
+void case_statement_alternative(IRCaseStatement res) :
+{ IROper op; IRStatement stat; }
+{
+  <WHEN> op = choices(false) "=>"
+                stat = sequence_of_statements()
+                { res.addCase(op, stat); }
+}
+
+
+IROper choice(boolean isDeclaration) :
+{ IROper res; Object obj; }
+{
+	(
+	LOOKAHEAD({isContextFieldName()})
+	(res = simple_name(false))
+	|
+     LOOKAHEAD(discrete_range())
+    {res = new IROperRange(null);} obj = discrete_range((IROperRange)res, true, false, isDeclaration) {res = (IROper)obj;}
+  |  LOOKAHEAD(simple_expression())
+    res = simple_expression(true, isDeclaration)
+  | res = element_simple_name()
+  | <OTHERS> {res = new IROperOthers();}
+  )
+  {return res;}
+}
+
+
+IROper choices(boolean isDeclaration) :
+{ ArrayList<IROper> ch = new ArrayList<IROper>(); IROper c; }
+{
+  c = choice(isDeclaration) {ch.add(c);} ( ("|" | "!") c = choice(isDeclaration) {ch.add(c);} )*
+  { return new IRChoices(ch.toArray(new IROper[ch.size()])); }
+}
+
+
+void component_configuration() :
+{ImplementationRule rule;}
+{
+  <FOR> rule = component_specification()
+                [ binding_indication(rule) ";" ]
+                [ block_configuration() ]
+  <END> <FOR> ";"
+}
+
+void component_declaration() :
+{ String id; IRComponent comp; }
+{
+  <COMPONENT> id = identifier() {comp = new IRComponent(peek(), id); addComponent(comp); push(comp);} [ <IS> ]
+      [ local_generic_clause() ]
+      [ local_port_clause() ]
+  <END> <COMPONENT> [ simple_name(false) ] ";" {pop();}
+}
+
+void component_instantiation_statement() :
+{IRNamedElement el; String name; IRComponentInstance inst; IROper[] generics; IROper[] ports;}
+{
+	name = label()
+	{
+		if( name.equalsIgnoreCase("clock_implementation") ) {
+			int a = 0;
+			a++;
+		}
+	}
+  /*instantiation_label()*/ ":"
+         el = instantiated_unit() //{ if( el == null ) throw new RuntimeException(); }
+         {inst = new IRComponentInstance(peek(), df.getLibrary(), name, el, null); add(inst); setImplementation(inst); push(inst); }
+//  {push(el);}
+         [ generics = generic_map_aspect() {inst.setGenerics(generics);} ]
+         [ ports = port_map_aspect() {inst.setPorts(ports);} ] ";"
+//  {pop();}
+
+	{pop();}
+}
+
+
+// 1076.1 - extension:
+/*
+void composite_nature_definition()  :
+{}
+{
+    array_nature_definition()
+  | record_nature_definition()
+}
+*/
+
+ImplementationRule component_specification() :
+{ ArrayList<IROper> src; Token expected; }
+{
+  src = instantiation_list() ":" identifier() {expected=token;}//name(false, false)
+  { return createRule(src, expected); }
+}
+
+
+IRType composite_type_definition(String typeName) :
+{IRType res;}
+{
+	(
+    res = array_type_definition(typeName)
+  | res = record_type_definition(typeName)
+    )
+    {return res;}
+}
+
+
+void concurrent_assertion_statement() :
+{}
+{
+  [ label() ":" ] [ <POSTPONED> ] assertion(false) ";"
+}
+
+
+void concurrent_procedure_call_statement() :
+{}
+{
+  [ LOOKAHEAD( label() ":") label() ":" ]
+  [ <POSTPONED> ] procedure_call() ";"
+}
+
+IRStatement concurrent_signal_assignment_statement() :
+{IRStatement res = null;}
+{
+	(
+    [ LOOKAHEAD( label() ":") label() ":" ]
+    [ <POSTPONED> ]
+    ( LOOKAHEAD(  target() "<=" /*options_() conditional_waveforms() ";"*/) 
+        res = conditional_signal_assignment() 
+      | res = selected_signal_assignment() )
+      )
+      {res.setParent(stack.peek()); return res;}
+}
+
+
+IROper condition(boolean isDeclaration)  :
+{IROper res;}
+{
+  res = boolean_expression(isDeclaration)
+  {return res;}
+}
+
+
+IROper condition_clause()  :
+{IROper res;}
+{
+  <UNTIL> res = condition(false)
+  {return res;}
+}
+
+void conditional_signal_assignment_la() :
+{}
+{
+	target(false, false) "<="
+}
+
+IRStatement conditional_signal_assignment() :
+{ IROper target, wave; IRSignalAssignment res; TextCoord b = begin();}
+{
+  target = target(true, false) "<=" options_() wave = conditional_waveforms(false) ";"
+  { res = new IRSignalAssignment(target, wave);
+    res.setBegin(b); markEnd(res);
+    return res;
+  }
+}
+
+
+IROper conditional_waveforms(boolean isDeclaration) :
+{ IROper wave, cond; IRCondition res = new IRCondition(); }
+{
+	{markBegin(res);}
+  //( waveform() <WHEN> condition() <ELSE> )*
+  //waveform() [ <WHEN> condition() ]
+  wave = waveform(isDeclaration)
+    ( LOOKAHEAD( <WHEN> condition() <ELSE>)
+        <WHEN> cond = condition(isDeclaration) {res.add( wave, cond);}  <ELSE> wave = waveform(isDeclaration) )*
+        {cond=null;} // чтобы не повторить предыдущее значение
+    [ <WHEN> cond = condition(isDeclaration) ]
+    { res.add( wave, cond ); return res; }
+}
+
+
+void configuration_declaration() :
+{}
+{
+  <CONFIGURATION> identifier() <OF> /*simple_name(false)*/ dotted_name(false) <IS>
+    configuration_declarative_part()
+    block_configuration()
+  <END> [ <CONFIGURATION> ] [ simple_name(false) ] ";"
+}
+
+
+void configuration_declarative_item()  :
+{}
+{
+  try {
+    use_clause()
+  | attribute_specification()
+  | group_declaration()
+  }
+
+  catch(ParseException e)
+  {
+    error_skipto(SEMICOLON, "syntax error in declarative item");
+  }
+}
+
+
+void configuration_declarative_part() :
+{}
+{
+  ( configuration_declarative_item() )*
+}
+
+
+
+void configuration_item()  :
+{}
+{
+    LOOKAHEAD(block_configuration())
+    block_configuration()
+  | component_configuration()
+}
+
+void configuration_specification() :
+{ImplementationRule rule;}
+{
+  <FOR> rule = component_specification() binding_indication(rule) ";"
+}
+
+void constant_declaration() :
+{ IdentifierList list; IRType type; IROper expr = null; IROper asgn; }
+{
+  <CONSTANT> list = identifier_list() ":" type = subtype_indication(true)
+    [ ":=" expr = expression(true) ] ";"
+    { asgn = new IRConstAssignment( expr ); asgn.setType(type);
+    	addConstants(list, type, expr); }
+}
+
+
+
+IRType constrained_array_definition(String typeName) :
+{ IRTypeArray res = new IRTypeArray(currentPackage, typeName, null); IRType elType; }
+{
+  <ARRAY> index_constraint(res, false, true) <OF> elType = subtype_indication(true)//element_subtype_indication()
+  { res.setElementType(elType); return res; }
+}
+
+
+void constraint(Object res, boolean isDeclaration)  :
+{}
+{
+    range_constraint(res, true, isDeclaration)
+  | index_constraint(res, true, isDeclaration)
+}
+
+void context_clause() :
+{}
+{
+  ( {df.startOfContextClosure();} context_item() )*
+}
+
+void context_item()  :
+{}
+{
+    library_clause()
+  | use_clause()
+}
+
+
+/** 
+ * Section 4:
+ * Declarations
+ */
+
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void terminal_declaration() :
+{}
+{
+  <TERMINAL> identifier_list() ":" subnature_indication() ";"
+}
+*/
+
+/*
+void terminal_aspect() :
+{}
+{
+  plus_terminal_name() [ <TO> minus_terminal_name() ]
+}
+*/
+
+void delay_mechanism() :
+{}
+{
+    <TRANSPORT>
+  | [ <REJECT> time_expression() ] <INERTIAL>
+}
+
+void design_file() :
+{}
+{
+	{
+		disable_tracing();
+	}
+//	{ push(new IRDesignFile()); }
+  ( design_unit() )* <EOF>
+//  {pop();}
+}
+
+
+void design_unit() :
+{}
+{
+  context_clause() library_unit()
+}
+
+String designator()  :
+{ String res; }
+{
+	(
+    res = identifier()
+  | res = operator_symbol()
+  	)
+  	{return res;}
+}
+
+int direction() :
+{ int res; }
+{
+  ( <TO> {res = TO;} | <DOWNTO> {res = DOWNTO;} )
+  {return res;}
+}
+
+
+void disconnection_specification() :
+{}
+{
+  <DISCONNECT> guarded_signal_specification() <AFTER>
+    time_expression() ";"
+}
+
+Object discrete_range(Object element, boolean resolve, boolean isConstraint, boolean isDeclaration)   :
+{IRType type;}
+{
+  (
+    LOOKAHEAD( range() )//simple_expression() direction() )
+    element = range(element, resolve, isConstraint, isDeclaration)
+  | 
+  LOOKAHEAD( subtype_indication() )
+    type = /*discrete_subtype_indication()*/ subtype_indication(isDeclaration)
+     	{element = addRange(element, type, isConstraint, isDeclaration);}
+  | element = range(element, resolve, isConstraint, isDeclaration)
+  )
+  {return element;} 
+}
+
+IROper field_choices() :
+{ ArrayList<IROper> ops = new ArrayList<IROper>(); IROper id; }
+{
+	id = simple_name(false) {ops.add(id);}
+	
+	(
+		"|" id = simple_name(false) {ops.add(id);}
+	)*
+	
+	"=>"
+	{ return new IRChoices(ops.toArray(new IROper[ops.size()])); }
+}
+
+IROper element_association(boolean isDeclaration)  :
+{ IROper target = null, expr; }
+{
+	{
+//		if( token.beginLine >= 187 && filename.endsWith("ioports.vhd") ) {
+//			enable_tracing();
+//			trace_indent = 0;
+//		}
+	
+		/*
+		if( token.beginLine == 427 && filename.endsWith("DS18B20.vhd") ) {
+			int a = 0;
+			a++;
+			enable_tracing();
+			trace_indent = 0;
+		}
+		*/
+	}
+	
+//  [ LOOKAHEAD(choices() "=>") target = choices(isDeclaration) "=>" ]
+
+  [ LOOKAHEAD(choices() "=>") 
+  	(
+  		LOOKAHEAD(field_choices()) target = field_choices()
+  		| target = choices(isDeclaration) "=>"
+  	)
+  ]
+  
+  expr = expression(isDeclaration)
+  { if( target == null ) return expr; return new IROperAssoc(target, expr); }
+}
+
+
+void element_declaration(IRTypeRecord type) :
+{ IdentifierList list; IRType ftype; }
+{
+  list = identifier_list() ":" ftype = element_subtype_definition() ";"
+  { generateFields(list, ftype, type); }
+}
+
+
+IRType element_subtype_definition()  :
+{IRType res;}
+{
+  res = subtype_indication(true)
+  {return res;}
+}
+
+
+void entity_aspect(ImplementationRule rule) :
+{ IREntity entity; IROper name; Token arch = null; }
+{
+    <ENTITY> name = hierarhical_name()
+    {entity = getEntity(name, true);}
+    [ LOOKAHEAD("(" architecture_identifier() ")")
+    "(" architecture_identifier() {arch=token;} ")" ]
+    {rule.setEntity(entity); rule.setArch(arch);}
+  | <CONFIGURATION> simple_name(false)
+  | <OPEN>
+}
+
+/**
+ * Section 5: Specifications
+ */
+int entity_class()  :
+{}
+{
+    <ENTITY>                    { return ENTITY; }
+  | <ARCHITECTURE>              { return ARCHITECTURE; }
+  | <CONFIGURATION>             { return CONFIGURATION; }
+  | <PROCEDURE>                 { return PROCEDURE; }
+  | <FUNCTION>                  { return FUNCTION; }
+  | <PACKAGE>                   { return PACKAGE; }
+  | <TYPE>                      { return TYPE; }
+  | <SUBTYPE>                   { return SUBTYPE; }
+  | <CONSTANT>                  { return CONSTANT; }
+  | <SIGNAL>                    { return SIGNAL; }
+  | <VARIABLE>                  { return VARIABLE; }
+  | <COMPONENT>                 { return COMPONENT; }
+  | <LABEL>                     { return LABEL; }
+  | <LITERAL>                   { return LITERAL; }
+  | <UNITS>                     { return UNITS; }
+  | <GROUP>                     { return GROUP; }
+  | <FILE>                      { return FILE; }
+
+  /** 1076.1 extensions: */
+  | <SUBNATURE>                 { return SUBNATURE; }
+  | <NATURE>                    { return NATURE; }
+  | <TERMINAL>                  { return TERMINAL; }
+}
+
+
+void entity_class_entry()  :
+{}
+{
+  entity_class() [ "<>" ]
+}
+
+
+void entity_class_entry_list() :
+{}
+{
+  entity_class_entry() ( "," entity_class_entry() )*
+}
+
+
+void entity_declaration() :
+{ String name; IREntity res; }
+{
+  <ENTITY> name = identifier() <IS>
+  { res = new IREntity(df.getContext(), name); 
+  	
+          {
+          	if( filename.endsWith("Synchronizer.vhd") ) {
+          		int a = 0;
+          		a++;
+          	}
+          }
+          
+  	addEntity(res); push(res); }                      
+          entity_header()
+          entity_declarative_part()
+          
+  [ <BEGIN>
+    entity_statement_part() ]
+  <END> [ <ENTITY> ] [ /*entity_simple_name()*/ identifier() {ensureLastName(res);} ] ";"
+    {pop();}
+
+}
+
+
+void entity_declarative_item()  :
+{}
+{
+//  try {
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | signal_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | disconnection_specification()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+
+  // 1076.1 - Extensions:
+  /*
+  | nature_declaration()
+  | subnature_declaration()
+  | terminal_declaration()
+  */
+//  }
+//  catch( ParseException e )
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declarative item");
+//  }
+}
+
+/**
+ * 4.8: Nature Declaration
+ * 1076.1 extension
+ */
+ /*
+void nature_declaration() :
+{}
+{
+  <NATURE> identifier() <IS> nature_definition() ";"
+}
+*/
+
+/**
+ * 1076.1 extension
+ */
+ /*
+void nature_definition()  :
+{}
+{
+    scalar_nature_definition()
+  | composite_nature_definition()
+}
+*/
+
+/*
+void subnature_declaration() :
+{}
+{
+  <SUBNATURE> identifier() <IS> subnature_indication() ";"
+}
+
+
+void subnature_indication() :
+{}
+{
+  nature_mark() [index_constraint() ] 
+  [ <TOLERANCE> string_expression() <ACROSS> string_expression() <THROUGH>]
+}
+
+void nature_mark()  :
+{}
+{
+    LOOKAHEAD(nature_name())
+    nature_name() 
+  | LOOKAHEAD(subnature_name())
+    subnature_name()
+}
+*/
+
+void entity_declarative_part() :
+{}
+{
+  ( entity_declarative_item() )*
+}
+
+void entity_designator() :
+{}
+{
+  entity_tag() signature()
+}
+
+
+
+void entity_header() :
+{}
+{
+  [ formal_generic_clause() ]
+  [ formal_port_clause() ]
+}
+
+
+void entity_name_list() :
+{}
+{
+  entity_designator() ( "," entity_designator() )*
+  | <OTHERS>
+  | <ALL>
+}
+
+
+void entity_specification() :
+{}
+{
+        entity_name_list() ":" entity_class()
+}
+
+
+void entity_statement()  :
+{}
+{   LOOKAHEAD( concurrent_assertion_statement() )
+    concurrent_assertion_statement()
+  | LOOKAHEAD([process_label() ":"] [<POSTPONED>] <PROCESS>)
+    passive_process_statement()
+  | passive_concurrent_procedure_call_statement()
+}
+
+
+void entity_statement_part() :
+{}
+{
+  ( entity_statement() )*
+}
+
+void entity_tag() :
+{}
+{
+//	{throw new RuntimeException("deside is it's declaration or not");}
+    simple_name(true)
+  | <character_literal>
+  | operator_symbol()
+}
+
+
+IROper enumeration_literal() :
+{ String str;}
+{
+  <character_literal> {str = token.image;}
+//  | str = identifier()
+  { /*return resolveAndCreate(str);*/ 
+//  	IROper op = resolveAndCreate(str);
+  	StringValue v = new StringValue(str);
+  	IRConst res = new IRConst( v );
+  	mark(res);
+//  	res.setType( op.getType() );
+  	return res; 
+  }
+}
+
+String enumeration_literal_decl() :
+{ String str;}
+{
+	(
+  <character_literal> {str = token.image;}
+  | str = identifier() {str = token.image;}
+  )
+  { return str; }
+}
+
+
+
+IRTypeEnum enumeration_type_definition(String name) :
+{ IRTypeEnum res = createEnum(name); int i = 0; String image; }
+{
+  "(" image = enumeration_literal_decl() {add(new IREnumValue(image, i++, res));} 
+  ( "," image = enumeration_literal_decl(){add(new IREnumValue(image, i++, res));})* ")"
+  {return res;}
+}
+
+
+IRStatement exit_statement() :
+{ String label = null; IROper cond = null; IRExitOrNextStatement res; TextCoord begin; }
+{
+  [ label() ":" ] <EXIT> {begin = begin();} 
+  [ label = loop_label() ]
+  {res = new IRExitOrNextStatement(label, false); push(res);}
+    [ <WHEN> cond = condition(false) {res.setCondition(cond);} ] ";"
+    {
+    	pop();
+    	res.setBegin(begin);
+    	markEnd(res);
+    	return res;
+    }
+}
+
+IROper expression(boolean isDeclaration)  :
+{ IROper op1, op2; IROperKind op; String image; }
+{
+/**  relation() (
+ *   ( <AND> relation() )* |
+ *    ( <OR> relation() )*  |
+ *    ( <XOR> relation() )* |
+ *    [ <NAND> relation() ] |
+ *    [ <NOR> relation() ]  |
+ *    ( <XNOR> relation() )*
+ *  )
+ */
+  op1 = relation(true, isDeclaration) 
+  ( LOOKAHEAD(1) op=logical_operator() {image = token.image;} op2 = relation(true, isDeclaration)
+  	{ op1 = new IRLogicalOper(op1, op, op2, image); } 
+  )*
+
+  { return mark( op1 ); }
+}
+
+
+
+IROper not(boolean resolve, boolean isDeclaration) :
+{ IROper op; TextCoord b = begin(); }
+{
+	<NOT> op = primary(resolve, isDeclaration)
+	{
+		op = new IRUnaryOper(IROperKind.NOT, op); 
+		op.setBegin(b); op.setEnd(end());
+		return op;
+	}
+}
+
+IROper abs(boolean resolve, boolean isDeclaration) :
+{ IROper op; TextCoord b = begin(); }
+{
+	<ABS> op = primary(resolve, isDeclaration)
+	{ 
+		op = new IRUnaryOper( IROperKind.ABS, op);
+		op.setBegin(b); op.setEnd(end());
+		return op;
+	}
+}
+
+
+IROper factor(boolean resolve, boolean isDeclaration)  :
+{ IROper op1, op2; IROperKind op; }
+{
+	(
+    op1 = abs(resolve, isDeclaration)//<ABS> primary()
+  | /*<NOT> primary()*/ op1 = not(resolve, isDeclaration) 
+  | op1 = primary(resolve, isDeclaration) [ LOOKAHEAD("**" primary() ) <EXP> op2 = primary(resolve, isDeclaration) 
+       {op1 = mark( new IRBinaryOper(op1, IROperKind.POW, op2, "**" ) ); } ]
+  )
+  {return op1;}
+}
+
+
+void file_declaration() :
+{}
+{
+  <FILE> identifier_list() ":" subtype_indication(true)
+     [ file_open_information() ] ";"
+}
+
+
+void file_logical_name()  :
+{}
+{
+  string_expression()
+}
+
+
+void file_open_information() :
+{}
+{
+  [ <OPEN> file_open_kind_expression() ] <IS> file_logical_name()
+}
+
+IRType file_type_definition(String typeName)  :
+{IRType type;}
+{
+  <FILE> <OF> type = type_mark()
+  { return new IRTypeFile(currentPackage, typeName, type); }
+}
+
+/*
+void floating_type_definition()  :
+{}
+{
+  range_constraint()
+}
+*/
+
+IROper formal_designator()  :
+{IROper res = null;}
+{
+	/*
+	(
+    LOOKAHEAD( generic_name() )
+    res = generic_name()
+  | LOOKAHEAD( port_name() )
+    res = port_name()
+  | res = parameter_name()
+  )
+  */
+  res = name(false, true)
+  {
+  	if( res == null )
+  		throw new RuntimeException();
+  	return res;
+  }
+}
+
+void formal_parameter_list(int type) :
+{}
+{
+  parameter_interface_list(type)
+}
+
+
+IROper formal_part()  :
+{ IROper res = null, arg, func; IRType type; IRFunctionCall call; }
+{
+	(
+    LOOKAHEAD( function_name() "(" formal_designator() ")")
+    func = function_name() "(" arg = formal_designator() ")" { call = new IRFunctionCall(null, func.toString()); call.setParameters(new IROper[]{arg}); res=call; }
+  | LOOKAHEAD( type_mark() "(" formal_designator() ")")
+    type = type_mark() "(" arg = formal_designator() ")" { res = new IRTypeCast(type, arg); }
+  | res = formal_designator()
+  )
+  { if( res == null ) throw new RuntimeException(); return res; }
+}
+
+void full_type_declaration() :
+{ String typeName; IRType res; TextCoord b = begin(); }
+{
+  <TYPE> typeName = identifier() <IS> res = type_definition(typeName) ";"
+  { res.setBegin(b); markEnd(res); addType(res);}
+}
+
+
+IROper function_call() :
+{ IRFunctionCall res; IROper op; IROper[] params; }
+{
+  op = function_name() {res = (IRFunctionCall) op;}
+  [ LOOKAHEAD( "(" actual_parameter_part() ")" ) "(" params = actual_parameter_part() ")" {res.setParameters(params);} ]
+  {return res;}
+}
+
+
+/**
+ * Section 9.7
+ */
+void generate_statement() :
+{String label; IRGenerateStatement stat = null;}
+{
+  label = /*generate_label()*/ label() ":"
+  stat = generation_scheme() <GENERATE> {stat.setLabel(label); stack.push(stat);}
+    [ LOOKAHEAD(2) ( block_declarative_item() {throw new RuntimeException();} )* <BEGIN> ]
+    ( architecture_statement() )*
+  <END> <GENERATE> [ generate_label() ] ";"
+  {markEnd(stat); stack.pop(); ((IConcurrentHolder)peek()).addConcurrent(stat); }
+}
+
+/** 1076.1 extension: */
+/*
+void concurrent_break_statement() :
+{}
+{
+  [label() ":"] <BREAK> [break_list()] [sensitivity_clause() ] [ <WHEN> condition(false)] ";"
+}
+
+*/
+
+IRGenerateStatement generation_scheme() :
+{IRGenerateStatement stat = null; IRIfGenerateStatement is; IROper cond; IRForGenerateStatement fs; TextCoord begin = begin(); }
+{
+	(
+    <FOR> {stat = fs = new IRForGenerateStatement(); stat.setParent(stack.peek());} 
+    	generate_parameter_specification(fs.getLoopVariable())
+  | <IF>  cond = condition(true)  //{is.setCondition(cond);}
+  		{stat = is = new IRIfGenerateStatement(cond); stat.setParent(stack.peek());}
+  )
+  {stat.setBegin(begin); return stat;}
+}
+
+
+void generic_clause() :
+{}
+{
+  <GENERIC> "(" generic_list() ")" ";"
+}
+
+
+void generic_list()  :
+{}
+{
+  generic_interface_list()
+}
+
+
+IROper[] generic_map_aspect()  :
+{IROper[] res;}
+{
+  <GENERIC> <MAP> "(" res = generic_association_list() ")"
+  {return res;}
+}
+
+
+void group_constituent() :
+{}
+{
+    name(false, true)
+  | <character_literal>
+}
+
+
+void group_constituent_list() :
+{}
+{
+  group_constituent() ( "," group_constituent() )*
+}
+
+
+void group_template_declaration() :
+{}
+{
+  <GROUP> identifier() <IS> "(" entity_class_entry_list() ")" ";"
+}
+
+void group_declaration() :
+{}
+{
+  <GROUP> identifier() ":" name(true, false)
+  "(" group_constituent_list() ")" ";"
+}
+
+
+
+void guarded_signal_specification() :
+{}
+{
+  guarded_signal_list() ":" type_mark()
+}
+
+
+String identifier() :
+{ Token t; }
+{  (
+     t=<basic_identifier>    
+  |  t=<extended_identifier>
+  )
+  { return t.image; }  
+}
+
+
+IdentifierList identifier_list() :
+{ IdentifierList res = new IdentifierList(); String id; }
+{
+  id = identifier() {res.add(token);} 
+  {
+  	if( id.equalsIgnoreCase("sboolean1") ) {
+  		int a = 0;
+  		a++;
+  	}
+  }
+  ( "," id = identifier() {res.add(token);} )*
+  {return res;}
+}
+
+
+IRStatement if_statement() :
+{ IROper cond; IRStatement stat; IRIfStatement res = new IRIfStatement(); res.setParent(peek()); markBegin(res); }
+{
+	{push(res);}
+  [ if_label() ":" ]
+  <IF> cond = condition(false) <THEN>
+  stat = sequence_of_statements()
+  { res.setIfTree(cond); res.setIfStatement(stat); }
+  ( <ELSIF> cond = condition(false) <THEN>
+    stat = sequence_of_statements() {res.addElseIf(cond, stat);} )*
+  [ <ELSE>
+    stat = sequence_of_statements() {res.setElseStatement(stat);} ]
+  <END> <IF> [ if_label() ] ";"
+  {pop(); markEnd(res); return res;}
+}
+
+void incomplete_type_declaration() :
+{}
+{
+  <TYPE> identifier() ";"
+}
+
+
+void index_constraint(Object res, boolean isConstaint, boolean isDeclaration) :
+{}
+{
+	{
+		/*
+		if( token.beginLine == 124 && filename.endsWith("DS18B20.vhd") ) {
+			int a = 0;
+			a++;
+			trace_indent = 0;
+			enable_tracing();
+		}
+		*/
+	}
+  {
+  	resetArrayIndexCond(res);
+  }
+  "(" discrete_range(res, true, isConstaint, isDeclaration) ( {advanceArrayIndexCond(res);} "," discrete_range(res, true, isConstaint, isDeclaration) )* ")"
+}
+
+
+
+void index_specification() :
+{}
+{
+    LOOKAHEAD( discrete_range() )
+    {throw new RuntimeException("Check discrete_range() params");}
+    discrete_range(null, true, false, false)
+  | static_expression()
+}
+
+
+IRType index_subtype_definition() :
+{ IRType res; }
+{
+  res = type_mark() <RANGE> "<>"
+  { return res; }
+}
+
+IROper indexed_name(boolean topLevel, boolean isDeclaration) :
+{IROper res, ind; ArrayList<IROper> ops = new ArrayList<IROper>(); boolean isFunction;}
+{
+  res = /*prefix()*/ attribute_name(topLevel, isDeclaration) {isFunction = (res instanceof IRFunctionCall);}
+  ( LOOKAHEAD( "(" expression() ("," expression())* ")" ) 
+  								// createIndex используется для того, чтобы различать случаи когда у нас
+  								// когда подвыражение возвращает диапазон или индекс, например
+  								// a(A'RANGE) и a(A'LOW)
+	  "(" ind = expression(isDeclaration) {if(!isFunction) res = createIndex(res, ind); else ops.add(ind);}//new IROperIndex(res, ind);} 
+	      ( "," ind = expression(isDeclaration) {if(!isFunction) res = createIndex(res, ind); else ops.add(ind);}//new IROperIndex(res, ind);} 
+	      )* 
+	  ")"
+  )*
+  {
+  	if( isFunction ) {
+  		((IRFunctionCall)res).setParameters(ops.toArray(new IROper[ops.size()]));
+  	}
+  	return res;
+  	}
+}
+
+IRNamedElement instantiated_unit() :
+{ IRNamedElement res; Token id; IROper name; }
+{
+	(
+      ( [ <COMPONENT> ] identifier() {id=token;} //component_name()
+      { res = getComponent(id, true); } )
+  | ( <ENTITY> name = /*entity_name()*/ dotted_name(false) {res = getEntity(name, true);} 
+  		[ "(" architecture_identifier() ")" ] )
+  | ( <CONFIGURATION> simple_name(false) {throw new RuntimeException();} )
+  )
+  {return res;}
+}
+
+
+ArrayList<IROper> instantiation_list() :
+{ ArrayList<IROper> res = new ArrayList<IROper>(); IROper cur; }
+{
+	(
+    cur = simple_name(false) {res.add(cur);} ( "," cur = simple_name(false) {res.add(cur);} )*
+  | <OTHERS> {res.add(new IROperOthers());}
+  | <ALL> {res.add(new IRAll());}
+  )
+  {return res;}
+}
+/*
+void integer_type_definition()  :
+{}
+{
+  range_constraint()
+}
+*/
+
+
+
+void interface_constant_declaration() :
+{ IdentifierList list; IRType type; IROper init = null; }
+{
+  [ <CONSTANT> ] list = identifier_list() ":" [ <IN> ]
+    type = subtype_indication(true) [ ":=" init = static_expression() ]
+    {generateConstants(list, type, init);}
+}
+
+/**
+ * Section 4.3.2:
+ */
+void interface_declaration(int type)  :
+{}
+{
+	// это хак, для того, чтобы обойти невозвожность javacc использовать локальные параметры при lookahead
+	{temp_type = type;}
+	(
+	LOOKAHEAD( <SIGNAL> )
+    interface_signal_declaration()
+  | LOOKAHEAD( <VARIABLE> )
+  	interface_variable_declaration(type)
+  | LOOKAHEAD( <CONSTANT> )
+    interface_constant_declaration()
+  | LOOKAHEAD( <FILE> )
+    interface_file_declaration()
+  | LOOKAHEAD( {temp_type == IFACE_GENERIC || temp_type == IFACE_PARAMETER_PROC } )
+    interface_variable_declaration(type)
+  | LOOKAHEAD({(temp_type == IFACE_PARAMETER_FUNC) } ) 
+    interface_constant_declaration()
+  | LOOKAHEAD(interface_signal_declaration() )
+    interface_signal_declaration()
+  | LOOKAHEAD(interface_constant_declaration() ) 
+    interface_constant_declaration()
+  | 
+    interface_variable_declaration(type)
+  )
+
+  /** 1076.1 extensions: */
+//  | interface_terminal_declaration() 
+//  | interface_quantity_declaration()
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void interface_terminal_declaration()  :
+{}
+{
+  <TERMINAL> identifier_list() ":" subnature_indication()
+}
+*/
+
+
+/**
+ * 1076.1 extension:
+ */
+void interface_quantity_declaration() :
+{}
+{
+  <QUANTITY> identifier_list() ":" 
+  [ <IN> | <OUT> ] subtype_indication(true) [ ":=" static_expression() ]
+}
+
+
+void interface_element(int type)  :
+{}
+{
+  interface_declaration(type)
+}
+
+
+void interface_file_declaration() :
+{}
+{
+  <FILE> identifier_list() ":" subtype_indication(true)
+}
+
+
+void interface_list( int type ) :
+{}
+{
+  interface_element(type) ( ";" interface_element(type) )*
+}
+
+void interface_signal_declaration() :
+{ IRDirection dir = IRDirection.INPUT; IdentifierList list; IRType type; IROper init = null; }
+{
+  [<SIGNAL>] list = identifier_list() ":"
+  [ dir = mode() ] type = subtype_indication(true) [ <BUS> ] [ ":=" init = static_expression() ]
+  { generatePorts(list, dir, type, init); }
+}
+
+
+void interface_variable_declaration( int kind ) :
+{ IRDirection dir = IRDirection.INPUT; IdentifierList list; IRType type; IROper init = null;}
+{
+  [<VARIABLE>] list = identifier_list() ":"
+  [ dir = mode() ] type = subtype_indication(true) [ ":=" init = static_expression() ]
+  { generateVars(list, dir, type, init, kind); }
+}
+
+
+
+IRLoopStatement iteration_scheme(String label) :
+{IRLoopStatement res; IROper cond; IRLoopVariable var;}
+{
+	(
+    <WHILE> cond = condition(false) {res = new IRWhileStatement(label); markBegin(res); ((IRWhileStatement)res).setCondition(cond);}
+  | <FOR> {res = new IRForStatement(label); var = new IRLoopVariable((IRForStatement)res, null); markBegin(res); markBegin(var); markEnd(var);
+  	((IRForStatement)res).setLoopVariable(var); } loop_parameter_specification(var)
+  )
+  {markEnd(res); return res;}
+}
+
+
+String label()  :
+{ String id; }
+{
+  id = identifier()
+  { return id; }
+}
+
+
+
+void library_clause()  :
+{}
+{
+  <LIBRARY> logical_name_list() ";"
+}
+
+
+void library_unit()  :
+{}
+{   LOOKAHEAD(<ENTITY> | <CONFIGURATION> | <PACKAGE> identifier() )
+    primary_unit()
+  | secondary_unit()
+}
+
+
+
+IROper literal() :
+{ IROper res = null; TextCoord b = begin(); }
+{
+	{
+		if( token.beginLine == 38 )
+		{
+			int a = 0;
+			a++;
+		}
+	}
+	(
+    LOOKAHEAD( numeric_literal() )
+    res = numeric_literal()
+  | res = enumeration_literal()
+  | <string_literal> { res = new IRConst( new StringValue(token.image) ); }
+  | <bit_string_literal> { res = new IRConst( new StringValue(token.image) ); }
+  | <NULL> {res = new IROperNull();}
+  )
+  { if( res == null ) throw new RuntimeException(begin(token) + " " + token.image); res.setBegin(b); markEnd(res); return res; }
+}
+
+
+void logical_name()  :
+{}
+{
+  identifier()
+}
+
+
+
+void logical_name_list() :
+{}
+{
+  logical_name() ( "," logical_name() )*
+}
+
+
+IROperKind logical_operator()  :
+{}
+{
+    <AND>             { return IROperKind.AND; }
+  | <OR>              { return IROperKind.OR; }
+  | <NAND>            { return IROperKind.NAND; }
+  | <NOR>             { return IROperKind.NOR; }
+  | <XOR>             { return IROperKind.XOR; }
+  | <XNOR>            { return IROperKind.XNOR; }
+}
+
+
+IRStatement loop_statement() :
+{IRLoopStatement stat; IRStatement body; String label = null; }
+{
+  [ /*loop_label()*/ label = identifier() ":" ]
+  {stat = eternalWhile(label); markBegin(stat);}
+  [ stat = iteration_scheme(label) ] <LOOP> { stat.setParent(peek()); push(stat);}
+                        body = sequence_of_statements() {stat.setBody(body);}
+  <END> <LOOP> [ loop_label() ] ";" {pop();}
+  //{throw new RuntimeException();}
+  {markEnd(stat); return stat;}
+}
+
+
+int miscellaneous_operator()  :
+{}
+{
+    <EXP>               { return EXP; }
+  | <ABS>               { return ABS; }
+  | <NOT>               { return NOT; }
+}
+
+
+IRDirection mode() :
+{}
+{
+    <IN> { return IRDirection.INPUT; }
+  | <OUT> { return IRDirection.OUTPUT; }
+  | <INOUT> { return IRDirection.INOUT; }
+  | <BUFFER> { return IRDirection.BUFFER; }
+  | <LINKAGE> { return IRDirection.LINKAGE; }
+}
+
+IROperKind multiplying_operator()  :
+{}
+{
+    "*"                 { return IROperKind.MUL; }
+  | "/"                 { return IROperKind.DIV; }
+  | <MOD>               { return IROperKind.MOD; }
+  | <REM>               { return IROperKind.REM; }
+}
+
+
+IROper my_primary(boolean resolve) :
+{IROper res;}
+{
+	(
+	LOOKAHEAD(qualified_expression()) res = qualified_expression(false)
+	| LOOKAHEAD( {isFunctionCall()} ) res = function_call()
+	| LOOKAHEAD( simple_name() ) res = simple_name(resolve)
+//	| literal()
+	)
+	{ return res; }
+}
+
+IROper my_name(boolean resolve, boolean isDeclaration) :
+{ IROper res; IROper cur; Object obj; String name; /*boolean isFunction;*/ ArrayList<IROper> ops; TextCoord b = begin(); }
+{
+	{
+		if( token.beginLine == 76 && filename.endsWith("spi.vhd") ) {
+			int a = 0;
+			a++;
+		}
+	}
+	
+	{
+//		isFunction = isFunctionCall();
+	}
+	
+	res = my_primary(resolve)
+	
+	{
+		/*
+		if( token.beginLine == 40 && filename.endsWith("OneWireSlave.vhd") ) {
+			int a = 0;
+			a++;
+			trace_indent = 0;
+			enable_tracing();
+		}
+		*/
+	}
+//	res = simple_name(true)
+	( 
+	
+//		( LOOKAHEAD({isFunction(token.image)}) "(" parameter_association_list() ")" )
+	 
+		// indexed_name
+//		| 
+		LOOKAHEAD( "(" expression() ("," expression() )* ")" ) 
+			"(" {/*isFunction = false;res instanceof IRFunctionCall; ops = new ArrayList<IROper>();*/ }
+				cur = expression(isDeclaration) {/*if(!isFunction)*/ res = createIndex(res, cur); /*else ops.add(cur)*/;}
+				("," cur = expression(isDeclaration) {/*if(!isFunction)*/ res = createIndex(res, cur); /*else ops.add(cur);*/} 
+				)* 
+//				{if( isFunction ) {//  				((IRFunctionCall)res).setParameters(ops.toArray(new IROper[ops.size()]));//  				}}
+			")" 
+		
+		| 
+		
+		LOOKAHEAD(2) "(" obj = discrete_range( res, resolve, false, isDeclaration ) {res = (IROper) obj;} ")"
+		
+		| "." 
+			( cur = simple_name(false)
+			| <character_literal> { cur = new IRName(token.image); }
+			| <ALL> {cur = new IRAll();}
+			) 
+			{ res = new IRDotOper( res, cur ); }
+		
+		| "'" {ops = new ArrayList<IROper>();}
+			  ( 
+				name = identifier() 
+				| <RANGE> {name = "RANGE";} 
+			  )  //[ LOOKAHEAD(2) "(" identifier() ")" ]
+			  [
+				"("
+					cur = expression(isDeclaration) {ops.add(cur);}
+					("," cur = expression(isDeclaration) {ops.add(cur);})*
+				")"
+			  ]
+			  {res = new IRAttrib(res, name, ops);
+			   res.setBegin(b); markEnd(res);
+			  }
+	)*
+	
+	{
+//		if( token.beginLine == 1496 && filename.endsWith("numeric_std.vhd") ) {
+//			int a = 0;
+//			a++;
+//			trace_indent = 0;
+//			disable_tracing();
+//		}
+	}
+	
+	{
+		if( res instanceof IObjectElement ) ((IObjectElement)res).setPrimary();
+		return res;
+	}
+}
+
+IROper name (boolean resolve, boolean isDeclaration) :
+{ IROper res, op; String lit; TextCoord b = begin(); }
+{
+	res = my_name(resolve, isDeclaration)
+	/*
+	(
+//	res = slice_name(resolve, isDeclaration)
+	| lit = operator_symbol() {res = new IRName(lit);}
+//	| res = simple_name()
+	)
+	*/
+   {res.setBegin(b);
+    markEnd(res);
+    return res;}
+}
+
+IROper hierarhical_name() :
+{IROper res, op;}
+{
+	res = simple_name(false)
+	(
+		"." op = simple_name(false) {res = new IRDotOper(res, op);}
+	)*
+	{return res;}
+}
+
+IROper selected_name(boolean resolve) :
+{IROper res, op;}
+{
+	res = simple_name(resolve)
+	 
+	(
+		LOOKAHEAD(2)
+		"." op = simple_name(false) {res = new IRDotOper(res, op);}
+	)*
+	["." <ALL> {res = new IRDotOper(res, new IRAll());}]
+	{return res;}
+}
+
+/*
+IROper prefix() :
+{IROper res;}
+{ 
+	(
+	res = name()
+	| function_call()
+	)
+	{return res;}
+}
+
+IROper suffix() :
+{IROper res; String name;}
+{
+	(
+	res = simple_name()
+	| name = <character_literal> {res = new Name(name);}
+	| res = operator_symbol()
+//	| "all" {res = new IROperAll();}
+	)
+	{return res;}
+}
+*/
+
+
+//IROper name() :
+//{ IROper name, op; String str; }
+//{
+/**  simple_name()
+ * | operator_symbol()
+ *  | selected_name()
+ *  | indexed_name()
+ *  | slice_name()
+ *  | attribute_name()
+ *
+ * Kann ohne Linksrekursion wie folgt geschrieben werden:
+ */
+//  ( name=simple_name() | str=operator_symbol() {name = new IRName(str);} )
+//  [LOOKAHEAD(name_extension()) name=name_extension(name)]
+//  { return name; }
+//}
+
+//IROper name_extension( IROper name )  :
+//{ IROper op; }
+//{
+//  (
+//        ( //LOOKAHEAD( signature() "'"  )
+//        signature() "'" attribute_designator()
+//        [ LOOKAHEAD( "(" expression() ")") "(" expression() ")" ]
+//        )
+//      | "." op = suffix() { name = new IRDotOper(name, op); }
+//      | LOOKAHEAD( "(" discrete_range() ")" ) 
+//        "(" {name = new IROperRange(name);} discrete_range((IROperRange)name) ")"  
+//      | LOOKAHEAD( "(" expression() ("," expression() )* ")" )
+//        "(" expression() ("," expression() )* ")"
+      /**
+       * The following production is already in sign. "'" ... ,
+       * since signature can be empty!
+       * | "'" attribute_designator() [ "(" expression() ")"]
+       */
+//  )
+//  [  LOOKAHEAD(name_extension() ) name=name_extension(name) /*{name = new IRDotOper(name, op);}*/ ]
+//  { return name; }
+//}
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void nature_element_declaration() :
+{}
+{
+  identifier_list() ":" element_subnature_definition()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void element_subnature_definition()  :
+{}
+{
+  subnature_indication()
+}
+*/
+
+IRStatement next_statement() :
+{ String target = null; IROper cond = null; IRExitOrNextStatement res; TextCoord begin; }
+{                                                               
+  [ label() ":" ] <NEXT> {begin = begin();} 
+  [ target = loop_label() ]
+  {res = new IRExitOrNextStatement(target, true); push(res);}
+   [ <WHEN> cond = condition(false) ] ";"
+   {
+    	pop();
+    	res.setBegin(begin);
+    	markEnd(res);
+    	return res;
+   }
+}
+
+IRStatement null_statement() :
+{TextCoord b = begin();}
+{
+  [ label() ":" ] <NULL> ";"
+  {
+  	IRStatement res = new IREmptyStatement();
+  	res.setBegin(b);
+  	return res;
+  }
+}
+
+
+
+IROper numeric_literal()  :
+{IROper res;}
+{ 
+	(
+    LOOKAHEAD(physical_literal())
+    res = physical_literal()
+  | 
+    res = abstract_literal()
+  )
+  {return res;}
+}
+
+
+void object_declaration()  :
+{}
+{
+//  try {
+    constant_declaration()
+  | signal_declaration()
+  | variable_declaration()
+  | file_declaration()
+  /** 1076.1 extensions: */
+//  | terminal_declaration()
+//  | quantity_declaration()
+
+ // }
+//  catch( ParseException e )
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declaration");
+//  }
+}
+
+
+String operator_symbol() :
+{ String res; }
+{
+  <string_literal> {res = token.image;}
+  {return res;}
+}
+
+
+void options_() :
+{}
+{
+  [ <GUARDED> ] [ delay_mechanism() ]
+}
+
+
+void package_body() :
+{ IROper name; IRPackage pack; }
+{
+  <PACKAGE> <BODY> name = simple_name(false) <IS>
+  {
+  	pack = df.getOrCreatePackage(((IRName)name).getName());
+  	{currentPackage = pack;}
+//  	push(pack.getContext());
+  	push(pack.getDeclarations());
+  	push(pack.getBody());
+  }
+       package_body_declarative_part()
+  <END> [ <PACKAGE> <BODY> ] [ simple_name(false) ] {pop();pop();/*pop();*/} ";"
+  {currentPackage = null;}
+}
+
+void package_body_declarative_item()  :
+{}
+{
+//  try {
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+//  }
+//  catch( ParseException e )
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declarative item");
+//  }
+}
+
+
+void package_body_declarative_part() :
+{}
+{
+  ( package_body_declarative_item() )*
+}
+
+
+
+void package_declaration() :
+{String name;}
+{
+  <PACKAGE> name = identifier() <IS> 
+  {
+  	IRPackage pack = new IRPackage(name, df.getContext());
+  	{currentPackage = pack;}
+  	add(pack);
+  	push(pack.getDeclarations());
+  }
+     package_declarative_part()
+  <END> [ <PACKAGE> ] [ /*package_simple_name()*/ identifier() ] {pop();}";"
+  {currentPackage = null;}
+}
+
+
+void package_declarative_item()  :
+{}
+{
+//  try {
+    subprogram_declaration()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | signal_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | component_declaration()
+  | LOOKAHEAD( attribute_declaration() )
+    attribute_declaration()
+  | attribute_specification()
+  | disconnection_specification()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+
+  // 1076.1 extensions:
+  /*
+  | nature_declaration()
+  | subnature_declaration()
+  | terminal_declaration()
+  */
+  
+//  }
+//  catch(ParseException e)
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declaration");
+//  }
+}
+
+void package_declarative_part() :
+{}
+{
+  ( package_declarative_item() )*
+}
+
+
+void parameter_specification(IRNamedElement el, boolean isDeclaration) :
+{String id;}
+{
+  id = identifier() {el.setName(id);}
+  <IN> discrete_range(el, true, false, isDeclaration) 
+}
+
+IROper physical_literal() :
+{ IROper value = IRTypeInteger.createConstant(1); String units; IRType type = null; TextCoord coord = null; 
+	Token t = getToken(1); TextCoord b = begin(); }
+{
+  //[ LOOKAHEAD(abstract_literal() unit_name() )
+    [ value = abstract_literal() ] //]
+    (
+    LOOKAHEAD( {stack.peek() instanceof IRTypePhysical} )
+	  units = identifier()
+	  |
+	  {coord = begin();}
+	  units = unit_name()
+	 )
+
+  {if( stack.peek() instanceof IRTypePhysical ) 
+  		type = (IRType) stack.peek();
+   else 
+   		type = getPhysicalTypeByUnits(coord, units);
+  }
+  {
+  	SimValue cnst = IRTypePhysical.createConstant(type, value, units, err);
+  	if( cnst == null ) {
+  		err.undefinedNoEx(b, t.image);
+  		return IRTypeInteger.createConstant(1);
+  	}
+  	return new IRConst( cnst );
+  }
+}
+
+
+IRType physical_type_definition(String typeName) :
+{ IRTypePhysical res = new IRTypePhysical(currentPackage, typeName); String base; IRPhysicalUnits secondary; }
+{
+  range_constraint(res, true, true)
+  <UNITS>
+  {push(res);}
+  base = base_unit_declaration() {res.setUnits(base);}
+  ( secondary = secondary_unit_declaration() {res.add(secondary, err);} )*
+  {pop();}
+  <END> <UNITS> [ physical_type_simple_name() ]
+  {
+  	res.registerUnits(df.getLibrary().getEnvironment(), stack.peek());
+  	return res;
+  }
+}
+
+
+void port_clause() :
+{}
+{
+//  <PORT> "(" port_list() ")" ";"
+  <PORT> "(" interface_signal_declaration() ( ";" interface_signal_declaration() )* ")" ";"
+}
+
+void port_list()  :
+{}
+{
+  port_interface_list()
+}
+
+
+IROper[] port_map_aspect() :
+{IROper[] res;}
+{
+  <PORT> <MAP> "(" res = port_association_list() ")"
+  {return res;}
+}
+
+
+//IROper prefix() :
+//{IROper res; String name; Token t;}
+//{
+//	(
+//    LOOKAHEAD( /*function_call()*/ {isFunctionCall()} )
+//    res = function_call()
+//  | name = identifier(){res = resolveAndCreate(name);}
+//  )
+//  {return res;}
+//}
+
+
+
+IROper primary(boolean resolve, boolean isDeclaration)  :
+{ IROper res; }
+{
+	
+	{
+		if( filename.endsWith("ct00346.vhd") && token.beginLine >= 76 ) {
+			int a = 0;
+			a++;
+//			trace_enabled = true;
+//			trace_indent = 0;
+		}
+	}
+	
+	(
+    LOOKAHEAD( qualified_expression() )
+    res = qualified_expression(isDeclaration)
+
+  | LOOKAHEAD( type_conversion() )
+    res = type_conversion()
+    
+  | LOOKAHEAD( my_name() )
+    res = my_name(resolve, isDeclaration)
+    
+//  | LOOKAHEAD( {isFunctionCall()} )//    res = function_call()
+
+  | LOOKAHEAD(literal())
+    res = literal()
+    
+	/*
+   | LOOKAHEAD( identifier() "(" ) (
+   		LOOKAHEAD( {resolve(getToken(1).image, false) instanceof IRSubProgram} )
+   		  res = function_call()
+   		  | res = my_name(resolve, isDeclaration)
+   		  */
+   		  
+   		  
+ /*  
+    	{ if( resolve(getToken(1)) instanceof IRSubProgram ) {
+    		res = function_call();
+    	} else {
+    		res = name();
+    	};
+    	*/
+//    )
+
+/*
+
+  | LOOKAHEAD( function_call() )
+    res = function_call()
+*/
+
+//  | LOOKAHEAD( aggregate() )
+
+  | LOOKAHEAD( "(" )
+    res = aggregate(isDeclaration)
+
+  | //LOOKAHEAD( "(" expression() ")")
+    "(" res = expression(isDeclaration) ")"
+
+//  | LOOKAHEAD( allocator() ) res = allocator()
+  
+  )
+  
+  { return res; }
+}
+
+
+void primary_unit()  :
+{}
+{
+	{startOfPrimaryUnit();}
+	(
+    entity_declaration()
+  | configuration_declaration()
+  | LOOKAHEAD(<PACKAGE> identifier())
+    package_declaration()
+    )
+    {endOfPrimaryUnit();}
+}
+
+
+IRFunctionCall procedure_call() :
+{String name; IRFunctionCall call; IROper[] params; IROper op;}
+{
+//  name = procedure_name() {call = new IRFunctionCall(name); call.setBegin(begin(token));}
+   op = dotted_name(false) {call = resolveAndCreateCall(op); call.setBegin(begin(token));}
+  [ "(" params = actual_parameter_part() ")" {call.setParameters(params);}]
+  {
+  	call.setEnd(end(token));
+  	return call;
+  }
+}
+
+IRStatement procedure_call_statement() :
+{IRFunctionCall call; TextCoord begin; IRProcedureCall res;}
+{
+   [ LOOKAHEAD( label() ":") label() ":" ]
+   {begin = begin();}
+   call = procedure_call() ";"
+   
+   {res = new IRProcedureCall(call); markEnd(res); return res;}
+}
+
+
+void process_declarative_item()  :
+{}
+{
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | LOOKAHEAD( attribute_declaration() )
+    attribute_declaration()
+  | attribute_specification()
+  | use_clause()
+  | LOOKAHEAD( <GROUP> identifier() <IS> )
+    group_template_declaration()
+  | group_declaration()
+}
+
+void process_declarative_part() :
+{}
+{
+  ( process_declarative_item() )*
+}
+
+
+void process_statement() :
+{ String name = null; IRProcess res; IRStatements stat; }
+{
+   [ name = process_label() ":" ]
+   { res = new IRProcess(name, stack.peek() ); push(res); }
+   [ <POSTPONED> ] <PROCESS>                    
+   [ "(" sensitivity_list(res) ")" ] [ <IS> ]
+     process_declarative_part()
+   <BEGIN>
+     stat = process_statement_part() {res.setStatements(stat);}
+   <END> [ <POSTPONED> ] <PROCESS> [ process_label() ] ";"
+   
+   { pop(); add(res); }
+
+}
+
+
+IRStatements process_statement_part() :
+{ IRStatements res = new IRStatements(); markBegin(res); IRStatement cur; TextCoord c; }
+{
+  ( {c=begin();} cur = sequential_statement() { cur.setBegin(c); markEnd(cur); res.add(cur);} )*
+  { markEnd(res); return res;}
+}
+
+IROper qualified_expression(boolean isDeclaration) :
+{ IRType type; IROper expr, res; TextCoord begin;}
+{
+  LOOKAHEAD({isType()}) {begin = begin();} type = type_mark() <APOSTROPHE>//"'"
+  (   
+  	LOOKAHEAD( aggregate() )
+      expr = aggregate(isDeclaration)
+    | "(" expr = expression(isDeclaration) ")"
+  )
+  {
+  	res = new IROperQualify(type, expr);
+  	res.setBegin(begin);
+  	res.setEnd(end());
+  	return res;
+  }
+}
+/*
+void reverse_range_la() :
+{}
+{
+	LOOKAHEAD( {isTokenReverseRange()}) 
+	identifier()
+}
+*/
+
+void range_attribute_name_la() :
+{}
+{
+	/*LOOKAHEAD({!isType()})*/ dotted_name(false) "'" (LOOKAHEAD( {isTokenReverseRange()}) <basic_identifier> | <RANGE> )
+}
+
+Object range(Object element, boolean resolve, boolean isConstraint, boolean isDeclaration) :
+{ IROper op1, op2; int dir; /*IRangedElement itype = type.dup();*/ IRangedElement ranged; IRType type;}
+{
+	{
+		if( filename.endsWith("test.vhd") ) {
+			int a = 0;
+			a++;
+		}
+	}
+	(
+    LOOKAHEAD( simple_expression() direction() )
+    op1 = simple_expression(resolve, isDeclaration) dir = direction() op2 = simple_expression(resolve, isDeclaration)
+  	{element = addRange( element, op1, getBooleanConst(dir==DOWNTO), op2, isConstraint, isDeclaration );}
+  | 
+  
+  
+  
+  	LOOKAHEAD(range_attribute_name_la())
+  	op1 = range_attribute_name(resolve, isDeclaration) 
+  	{
+  		element = addRangeAttribute(element, op1, isConstraint, isDeclaration);
+  	}
+  	
+  	| LOOKAHEAD({isTypeAndNoApostrophe()})//isType()}) 
+  		type = subtype_indication(isDeclaration) {addRange( element, type, isConstraint, isDeclaration);}
+  		//op1 = dotted_name() {type=getType(op1);addRange( element, type, isConstraint, isDeclaration ); }
+
+  	| op1 = /*simple_name(false)//*/simple_expression(true, isDeclaration)/*name(false, isDeclaration)*/
+  	{return op1;}
+  )
+  {return element;}
+  	/*
+  	SimValue v1 = getConstantValue(op1).getConstant();
+  	SimValue v2 = getConstantValue(op2).getConstant();
+  	if(dir==DOWNTO) {
+  		itype.setRangeHigh( v1 );
+  		itype.setRangeLow( v2 );
+  	} else {
+  		itype.setRangeHigh( v2 );
+  		itype.setRangeLow( v1 );
+  	}
+  	itype.setDownTo(dir==DOWNTO);
+  	*/
+}
+
+
+Object range_constraint(Object res, boolean resolve, boolean isDeclaration)  :
+{}
+{
+  <RANGE> res = range(res, resolve, true, isDeclaration)
+  {return res;}
+}
+
+/*
+void record_nature_definition() :
+{}
+{
+  <RECORD>
+  ( nature_element_declaration() )+
+  <END> <RECORD> [ record_nature_simple_name() ]
+}
+*/
+
+IRType record_type_definition(String name) :
+{ IRTypeRecord res = new IRTypeRecord(currentPackage, name); }
+{
+	(
+  <RECORD>
+  ( element_declaration(res) )+
+  <END> <RECORD> [ identifier() ]
+  )
+  { return res; }
+}
+
+
+
+IROper relation(boolean resolve, boolean isDeclaration)  :
+{ IROper op1, op2; IROperKind op; String image;}
+{
+  op1 = shift_expression(resolve, isDeclaration) 
+  [ LOOKAHEAD(1)
+  op=relational_operator() 
+  {image = token.image;}
+  op2 = shift_expression(resolve, isDeclaration)
+  { op1 = mark( new IRBinaryOper(op1, op, op2, image) ); } 
+   ]
+   { return op1; }
+}
+
+
+IROperKind relational_operator()  :
+{}
+{
+    <EQ>                { return IROperKind.EQ; }
+  | <NEQ>               { return IROperKind.NEQ; } 
+  | <LO>                { return IROperKind.LO; }
+  | <LE>                { return IROperKind.LE; }
+  | <GT>                { return IROperKind.GT; }
+  | <GE>                { return IROperKind.GE; }
+}
+
+
+IRStatement report_statement() :
+{String label = null; IROper expr, sev = null;}
+{
+  [ label = label() ":" ]  <REPORT> expr = expression(false)
+  [ <SEVERITY> sev = expression(false) ] ";"
+  {return new IRReportStatement(label, expr, sev);}
+}
+
+
+IRStatement return_statement() :
+{ IROper expr = null; TextCoord c; IRStatement res; }
+{
+  [ label() ":" ] {c = begin();} <RETURN> [ expr = expression(false) ] ";"
+  {
+  	IRSubProgram sub = getEnclosingSubprogram();
+  	if( !sub.isFunction() ) {
+  		res = new IRReturnStatement( sub );
+  		res.setBegin(c);
+  		return res;
+  	}
+  	res = new IRReturnStatement( (IRFunction) sub, expr);
+  	res.setBegin(c);
+  	markEnd(res);
+  	return res;
+  }
+}
+
+
+// 1076.1 - extension:
+void scalar_nature_definition() :
+{}
+{
+  type_mark() <ACROSS> type_mark() <THROUGH>
+}
+
+
+IRType scalar_type_definition(String typeName)  :
+{ IRType res = null; Object obj; }
+{
+	(
+    LOOKAHEAD(range_constraint() <UNITS> )
+    res = physical_type_definition(typeName)
+  |
+    LOOKAHEAD(enumeration_type_definition())
+    res = enumeration_type_definition(typeName)
+/**  | integer_type_definition()
+ *  | floating_type_definition()
+ * integer- and floating_type_definition are both range_constraint,
+ * thus:
+ */
+  |
+    obj = range_constraint(null, true, true) {res = (IRType)obj; /*res = res.dup();*/ res.setName(typeName);}
+    )
+  {	if( res== null) {throw new RuntimeException();} return res; }
+}
+
+void secondary_unit()  :
+{}
+{
+	{startOfSecondaryUnit();}
+	(
+    LOOKAHEAD( <ARCHITECTURE> )
+    architecture_body()
+  | LOOKAHEAD( <PACKAGE> <BODY> )
+    package_body()
+    )
+	{endOfSecondaryUnit();}
+}
+
+
+IRPhysicalUnits secondary_unit_declaration() :
+{ String name; IROper value;}
+{
+  name = identifier() "=" value = physical_literal() ";"
+  {return new IRPhysicalUnits((IRTypePhysical) stack.peek(), name, value);}
+}
+
+
+//IROper selected_name() :
+//{ IROper name; }
+//{
+  /**
+   * prefix() "." suffix()
+   * results in left-recursion...
+   * the follwoing does the same (i hope ...)
+   */
+
+//  ( name = simple_name() | name = operator_symbol() )
+//  [ LOOKAHEAD( name_extension() )  name=name_extension(name) ]
+
+  /**
+   * semantic analysis has to ensure that last production
+   * was "." suffix()
+   */
+//   {return name;}
+//}
+
+
+IRStatement selected_signal_assignment() :
+{IROper expr, target; IRSelectedAssign res; TextCoord b = begin();}
+{
+  <WITH> expr = expression(false) <SELECT>
+  target = target(true, false)  "<="  {res = new IRSelectedAssign(expr, target);}
+  options_() selected_waveforms(res) ";"
+  {
+  	res.setBegin(b);
+  	markEnd(res);
+  	return res;
+  	}
+}
+
+void selected_waveforms(IRSelectedAssign res) :
+{ IROper wave, choice; }
+{
+  wave = waveform(false) <WHEN> choice = choices(false) {res.add(wave, choice);}
+  ("," wave = waveform(false) <WHEN> choice = choices(false) {res.add(wave, choice);} )*
+}
+
+void sensitivity_clause(ISensivityList list)  :
+{}
+{
+  <ON> sensitivity_list(list)
+}
+
+
+void sensitivity_list(ISensivityList proc) :
+{IROper sig;}
+{
+  sig = signal_name(true) {addSens(proc, sig);} 
+  ( "," sig = signal_name(true) {addSens(proc, sig);})*
+}
+
+
+IRStatements sequence_of_statements() :
+{ IRStatements res = new IRStatements(); res.setParent(stack.peek()); markBegin(res); IRStatement cur; TextCoord c; }
+{
+	{push(res);}
+  (
+  	cur = sequential_statement() {res.add(cur);} 
+  )*
+  {pop();}
+  {markEnd(res); return res;}
+}
+
+IRStatement sequential_statement()  :
+{IRStatement res = null; TextCoord c = begin();}
+{
+//  try {
+    (
+      LOOKAHEAD(3)
+      res = wait_statement()
+    | LOOKAHEAD(3)
+      res = assertion_statement()
+    | LOOKAHEAD(3)
+      res = report_statement()
+    | LOOKAHEAD(  [ label() ":" ] target() "<=" )
+      res = signal_assignment_statement()
+    | LOOKAHEAD(  [ label() ":" ] target() ":=" )
+      res = variable_assignment_statement()
+    | LOOKAHEAD(3)
+      res = procedure_call_statement()
+    | LOOKAHEAD(3)
+      res = if_statement()
+    | LOOKAHEAD(3)
+      res = case_statement()
+    | LOOKAHEAD(3)
+      res = loop_statement()
+    | LOOKAHEAD(3)
+      res = next_statement()
+    | LOOKAHEAD(3)
+      res = exit_statement()
+    | LOOKAHEAD(3)
+      res = return_statement()
+    | LOOKAHEAD(3)
+      res = null_statement()
+
+    /** 1076.1 extensions: */
+//    | res = break_statement()
+    )
+    
+//  }
+  // Error handling: skip till next semicolon.
+//  catch (ParseException e)
+//  {
+   // error_skipto(SEMICOLON, "syntax error in sequential statement");
+//  } 
+  {res.setBegin(c); markEnd(res);
+   return res;}
+}
+
+
+IROper shift_expression(boolean resolve, boolean isDeclaration)  :
+{ IROper op1, op2; IROperKind op; String image; }
+{
+  op1 = simple_expression(resolve, isDeclaration) 
+  [ LOOKAHEAD(2) op=shift_operator() {image = token.image;}
+  op2 = simple_expression(resolve, isDeclaration)
+  { op1 = mark( new IRBinaryOper(op1, op, op2, image) ); }   
+  ]
+  { return op1; }
+}
+
+IROperKind shift_operator()  :
+{}
+{
+    <SLL>               { return IROperKind.SLL; }
+  | <SRL>               { return IROperKind.SRL; }
+  | <SLA>               { return IROperKind.SLA; }
+  | <SRA>               { return IROperKind.SRA; }
+  | <ROL>               { return IROperKind.ROL; }
+  | <ROR>               { return IROperKind.ROR; }
+}
+
+boolean sign() :
+{ boolean sign = true; }
+{
+	(
+    "+"
+  | ("-" {sign=false;})
+  )
+  {return sign;}
+}
+
+
+IRStatement signal_assignment_statement() :
+{ IROper sig; IROper wave; }
+{
+  [ LOOKAHEAD( label() ":") label() ":" ]
+  sig = target(true, false)
+  /*
+  {
+  	if( ((IRSignalOper)sig).getSignal().getName().equalsIgnoreCase("prdata") ) {
+  		int a = 0;
+  		a++;
+  	}
+  } 
+  */
+  "<=" [ delay_mechanism() ] wave = waveform(false) ";"
+ 
+  { return new IRSignalAssignment(sig, wave); }
+}
+
+
+void signal_declaration() :
+{ IdentifierList ids; IRType type; IRSignalKind kind = IRSignalKind.NONE; IROper init = null; }
+{
+    <SIGNAL> ids = identifier_list() ":"
+    type = subtype_indication(true) [ kind = signal_kind() ] [ ":=" init = expression(true) ] ";"
+    { addSignals(ids, type, kind, init); }
+}
+
+
+IRSignalKind signal_kind() :
+{ IRSignalKind kind = IRSignalKind.NONE; }
+{
+    ( <REGISTER> {kind=IRSignalKind.REGISTER;})
+  | (<BUS> {kind=IRSignalKind.BUS;})
+  { return kind; }
+}
+
+void signal_list() :
+{}
+{
+    signal_name(true) ( "," signal_name(true) )*
+  | <OTHERS>
+  | <ALL>
+}
+
+
+void signature() :
+{}
+{
+  [ type_mark() ( LOOKAHEAD( "," type_mark() ) "," type_mark() )* ]
+  [ <RETURN> type_mark() ]
+}
+
+
+IROper simple_expression(boolean resolve, boolean isDeclaration)  :
+{ boolean sign = true; IROper op1, op2; IROperKind op; String image; }
+{
+   [ sign = sign() ] op1 = term(resolve, isDeclaration)
+   { if( !sign) op1 = new IRUnaryOper(IROperKind.NEG, op1);}
+   ( LOOKAHEAD(2) op=adding_operator() {image = token.image;} op2 = term(resolve, isDeclaration)
+   { op1 = mark( new IRBinaryOper(op1, op, op2, image) ); }
+     )*
+     { return op1; }
+}
+
+
+IROper simple_name(boolean requiredToBeResolved)  :
+{ String name; IROper res; IRNamedElement el; }
+{
+  name = identifier()
+  {
+  	if( name.equalsIgnoreCase("vzk") ) {
+  		int a = 0;
+  		a++;
+  	}
+  	if( requiredToBeResolved ) {
+	  	el = resolve(name, requiredToBeResolved);
+	  	if( el != null ) return mark(IROper.create(el));
+  	}
+  	return mark(new IRName(name), token)/*IROper.create(resolve(name))*/;}
+}
+
+IROper slice_name(boolean topLevel, boolean isDeclaration) :
+{ IROper res; Object obj; }
+{
+  res = indexed_name(topLevel, isDeclaration) 
+  ( 
+  	  LOOKAHEAD(2)
+  	  "(" obj = discrete_range(res, true, false, isDeclaration) {res = (IROper)obj;} ")"
+  )*
+  {return res;}
+}
+
+
+
+void subprogram_body() :
+{ IRSubProgram res, cur; IRStatement body; }
+{
+  cur = subprogram_specification() <IS> {res = processSubProgram(cur);}
+  {add(res);}
+  {push(res);}
+     subprogram_declarative_part()
+  <BEGIN>
+         body = subprogram_statement_part() {res.setBody(body);}
+  {pop();}
+  <END> [ subprogram_kind() ] [ designator() {ensureLastName(res);} ] ";"
+  {res.setEnd(end()); add(res);}
+}
+
+
+void subprogram_declaration()  :
+{IRSubProgram res;}
+{
+  res = subprogram_specification() ";"
+  {add(res); markEnd(res);}
+}
+
+
+void subprogram_declarative_item()  :
+{}
+{
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | use_clause()
+  | LOOKAHEAD( <GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+}
+
+void subprogram_declarative_part() :
+{}
+{
+  ( subprogram_declarative_item() )*
+}
+
+
+int subprogram_kind()  :
+{}
+{
+    <PROCEDURE>                 { return PROCEDURE; }
+  | <FUNCTION>                  { return FUNCTION; }
+}
+
+IRSubProgram subprogram_specification() :
+{ IRSubProgram res; String name; IRType rtype; TextCoord begin = begin(); }
+{
+  (
+  <PROCEDURE> name = designator() {res = new IRSubProgram((IRSubProgramHolder)stack.peek(), name);}
+  
+  {push(res.getParameterHolder());} 
+  	[ "(" formal_parameter_list(IFACE_PARAMETER_PROC) ")" ]
+  {pop();}
+  
+  | [ <PURE> | <IMPURE> ]  <FUNCTION> name = designator() {res = new IRFunction((IRSubProgramHolder)stack.peek(), name);}
+  
+  {
+  	if( name.equalsIgnoreCase( "CONV_INTEGER" ) ) {
+  		int a = 0;
+  		a++;
+  	}
+  }
+  
+  {push(res.getParameterHolder());} 
+     [ "(" formal_parameter_list(IFACE_PARAMETER_FUNC) ")" ]
+  {pop();}
+                <RETURN> rtype = type_mark() {((IRFunction)res).setReturnType(rtype);}
+   )
+   
+   {res.setBegin(begin);
+   	return res;}
+}
+
+
+
+IRStatement subprogram_statement_part() :
+{ IRStatements res = new IRStatements(); markBegin(res); IRStatement cur; }
+{
+  ( cur = sequential_statement() {res.add(cur);} )*
+  { markEnd(res); return res; }
+}
+
+
+void subtype_declaration() :
+{ String name; IRType res; TextCoord b = begin(); }
+{
+  <SUBTYPE> name = identifier() 
+  {if( name.equalsIgnoreCase("st_arr2") ) {
+  	int a = 0;
+  	a++;
+  }
+  }
+  <IS> res = subtype_indication(true) ";"
+  { if (res.getName() != null) res = res.subtypeThunk(); }
+  // subtype-им, если был просто тип, чтобы заменить имя
+  { res.setBegin(b); markEnd(res); res.setName(name); addType(res); }
+}
+
+
+/**
+ * Section 4.1:
+ 
+ *
+ *  isDeclaration = true внутри декларационной части, там возможно использовать начальные значения переменных как константы
+ */
+IRType subtype_indication(boolean isDeclaration) :
+{ IRType res = null; String resolve; TextCoord b = begin(); }
+{
+  /*
+   * enumeration resolves conflict ! After implementation of symbol tables
+   * this can be replaced by semantic lookahead.
+   */
+    
+    /*
+   (
+//    LOOKAHEAD(resolution_function_name() type_mark() constraint())
+    resolution_function_name() res = type_mark() constraint((IRangedElement)res) 
+      [ LOOKAHEAD(tolerance_aspect())tolerance_aspect() ]
+
+  | LOOKAHEAD( type_mark() constraint() )
+    res = type_mark() constraint((IRangedElement)res) 
+      [ LOOKAHEAD(tolerance_aspect()) tolerance_aspect() ]
+
+  | LOOKAHEAD( resolution_function_name() type_mark() )
+    resolution_function_name() res = type_mark() 
+      [ LOOKAHEAD(tolerance_aspect())tolerance_aspect() ]
+
+  | LOOKAHEAD( type_mark() ) // {isType(getToken(1).image)} 
+    res = type_mark()  
+      [ LOOKAHEAD(tolerance_aspect()) tolerance_aspect() ]
+      )
+      { if( res == null ) { throw new RuntimeException("at line " + token.beginLine); }
+      	 return res; }
+      	 
+    */  	 
+      	 
+      	 {
+      	 	if( filename.endsWith("ct00348.vhd") && token.beginLine == 43 ) {
+      	 		int a = 0;
+      	 		a++;
+      	 	}
+      	 }
+      	 
+      	 /*
+      	 [ resolution_function_name() ]
+      	 res = type_mark() 
+      	 [ constraint( ((IRangedElement)res) ) ]
+      	 */
+      	 
+    try { 
+      	 
+      	 (
+      	 
+      	 (
+      	 	LOOKAHEAD( {isIdAndType( getToken(1), getToken(2) ) } ) resolve = resolution_function_name(isDeclaration) 
+            res = type_mark() { res = res.subtypeThunk(); res.setResolutionFunctionName(resolve); }
+      	 	| LOOKAHEAD( { isType() } ) res = type_mark()
+              // { res = res.subtypeThunk(); }
+              // ^ здесь subtype не делаем, возвращаем тип как есть
+      	 )
+      	 [LOOKAHEAD(2)
+          { if (res.getName() != null) res = res.subtypeThunk(); }
+          // ^ делаем subtype только если был тип с именем
+          // двойной subtype при наличии resolution function не делаем
+          constraint(res, false) { res.constrainedSubtype = true; } ]
+      	 
+      	 )
+         {if( res.getName() == null ) {
+              // назначаем координаты, если был subtype, а не синоним типа
+              res.setBegin(b);
+              markEnd(res);
+          }
+          return res;}
+    }
+    catch( ParseException e )
+    {
+		Token t = getToken(1);
+		if( t.kind == basic_identifier || t.kind == extended_identifier ) {
+			err.typeExpected(end(), t.image);
+			jj_consume_token(t.kind);
+		} else {
+			err.typeExpected(end(), t.image);
+		}
+    	return getTypeAny();
+    }
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void tolerance_aspect()  :
+{}
+{
+  <TOLERANCE> string_expression()
+}
+*/
+
+/**
+ * Section 4.3.1.6: Quantity declaration
+ * 1076.1 extension:
+ */
+ /*
+void quantity_declaration()  :
+{}
+{
+    LOOKAHEAD(free_quantity_declaration() )
+    free_quantity_declaration()
+  | LOOKAHEAD(branch_quantity_declaration() )
+    branch_quantity_declaration()
+  | source_quantity_declaration()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void free_quantity_declaration() :
+{}
+{
+  <QUANTITY> identifier_list() ":" subtype_indication() [":=" expression()] ";"
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void branch_quantity_declaration() :
+{}
+{
+  <QUANTITY> [LOOKAHEAD(across_aspect()) across_aspect()] 
+	     [LOOKAHEAD(through_aspect()) through_aspect()] 
+	     terminal_aspect() ";"
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void source_quantity_declaration() :
+{}
+{ 
+  <QUANTITY> identifier_list() ":" subtype_indication() source_aspect() ";"
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void across_aspect() :
+{}
+{
+  identifier_list() [ tolerance_aspect() ] [ ":=" expression() ] <ACROSS>
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void through_aspect() :
+{}
+{
+  identifier_list() [ tolerance_aspect() ] [ ":=" expression() ] <THROUGH>
+}
+*/ 
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void source_aspect() :
+{}
+{
+    <SPECTRUM> magnitude_simple_expression() "," phase_simple_expression() 
+  | <NOISE>    magnitude_simple_expression() 
+}
+*/
+
+IROper suffix()  :
+{ IROper res = null; String str; }
+{
+	(
+    str = identifier() {res = new IRName(str);} //simple_name()
+  | <character_literal>
+  | str = operator_symbol() {res = new IROperatorSymbol(str);}
+  | <ALL> {res = new IRAll();}
+//  | res = name()
+  )
+  { if( res == null ) throw new RuntimeException(); return res; }
+}
+
+IROper target(boolean resolve, boolean isDeclaration)  :
+{ IROper res; }
+{
+	(
+    res = name(resolve, isDeclaration)
+  | res = aggregate(isDeclaration)
+  )
+  { return res; }
+}
+
+
+IROper term(boolean resolve, boolean isDeclaration)  :
+{ IROper op1, op2; IROperKind op; String image; }
+{
+  op1 = factor(resolve, isDeclaration) 
+  ( LOOKAHEAD(2) op = multiplying_operator() {image=token.image;} op2 = factor(resolve, isDeclaration)
+  { op1 = mark( new IRBinaryOper(op1, op, op2, image) ); } 
+  )*
+  { return op1; }
+}
+
+IROper timeout_clause(boolean isDeclaration)  :
+{IROper res;}
+{
+  <FOR> res = time_or_real_expression(isDeclaration)
+  {return res;}
+}
+
+
+IROper type_conversion() :
+{IRType type; IROper expr, res; TextCoord b = begin();}
+{
+  type = type_mark() "(" expr = expression(false) ")"
+  {res = new IRTypeCast(type, expr); res.setBegin(b); res.setEnd(end());
+  return res;}
+}
+
+
+void type_declaration()  :
+{}
+{
+    LOOKAHEAD( <TYPE> identifier() <IS> )
+    full_type_declaration()
+  | incomplete_type_declaration()
+}
+
+
+IRType type_definition(String typeName)  :
+{ IRType res; }
+{
+	(
+    res = scalar_type_definition(typeName)
+  | res = composite_type_definition(typeName)
+  | res = access_type_definition(typeName)
+  | res = file_type_definition(typeName)
+	)
+	{return res;}
+}
+
+
+IRType type_mark()  :
+{ IROper name; }
+{
+	try {
+	(
+    LOOKAHEAD(type_name())
+    name = type_name()
+  | LOOKAHEAD(subtype_name())
+    name = subtype_name()
+    )
+    { return getType(name); }
+	}
+	catch( ParseException e )
+	{
+		Token t = getToken(1);
+		if( t.kind == basic_identifier || t.kind == extended_identifier ) {
+			err.typeExpected(end(), t.image);
+			jj_consume_token(t.kind);
+		} else {
+			err.typeExpected(end());
+		}
+	}
+	{return getTypeAny();}
+}
+
+
+IRType unconstrained_array_definition(String typeName) :
+{ IRTypeArray res; IRType elType, indType; }
+{
+	{res = new IRTypeArray( currentPackage, typeName, null );}
+  <ARRAY> "(" indType = index_subtype_definition() {addUnconstrainedRange(res, indType);}//{addRange(res, indType, false, true);}
+    ( "," indType = index_subtype_definition() {addUnconstrainedRange(res, indType);}//{addRange(res, indType, false, true);} 
+    )* ")"
+      <OF> elType = subtype_indication(true)//element_subtype_indication()
+   
+   { res.setElementType(elType); return res; }
+}
+
+IROper use_name() :
+{ String lib, pack, name; IROper opName, res; }
+{
+	lib = identifier() { res = new IRName(lib); }//"." pack = identifier() 
+//	{res = new IRDotOper( new IRName(lib), new IRName(pack) );}
+	(
+		"."
+		(
+			name = operator_symbol() {opName = new IRName(name);}
+			| name = identifier() {opName = new IRName(name);}
+			| <ALL> {opName = new IRAll();}
+			
+		)
+		{res = new IRDotOper( res, opName );}
+	)*
+	{ return res; }
+}
+
+void use_clause() :
+{ IROper op; }
+{
+   <USE> op = /*selected_name()*/ use_name() {use(op);} ( "," op = /*selected_name()*/ use_name() {use(op);} )* ";"
+}
+
+
+IRStatement variable_assignment_statement() :
+{ IROper target, value; TextCoord b = begin(); }
+{
+  [ LOOKAHEAD( label() ":") label() ":" ]
+  target = target(true, false)
+  ":=" value = expression(false) ";"
+  { IRVariableAssignment res = new IRVariableAssignment(target, value); res.setBegin(b); markEnd(res); return res; }
+}
+
+
+void variable_declaration() :
+{ boolean shared = false; IdentifierList list; IRType type; IROper init = null; }
+{
+  [ <SHARED> {shared=true;} ] <VARIABLE> list = identifier_list() ":"
+  {
+  	if( list.contains("vzk") ) {
+  		int a = 0;
+  		a++;
+  	}
+  	if( filename.endsWith("aggregates.vhd") ) {
+  		int a = 0;
+  		a++;
+  	}
+  }
+  type = subtype_indication(true)
+  {pushContextType(type);} 
+  [ ":=" init = expression(true) ] ";"
+  {popContextType();}
+  { addVariables(shared, list, type, init); }
+}
+
+
+IRStatement wait_statement() :
+{String label = null; IRWaitStatement res; IROper cond = null, timeout = null;}
+{
+   [ LOOKAHEAD( label() ) ":" label = label() ":"] {res = new IRWaitStatement(stack.peek(), label);}
+   <WAIT> [ sensitivity_clause(res) ]
+   [ cond = condition_clause() {res.setCondition(cond);} ] [ timeout = timeout_clause(false) {res.setTimeout(timeout);}] ";"
+   {return res;}
+}
+
+
+IROper waveform(boolean isDeclaration) :
+{ IROper wave, res = null; TextCoord b = begin(); }
+{
+	(
+  res = waveform_element(isDeclaration) ( "," wave = waveform_element(isDeclaration) {res = new IROperComma(res, wave); res.setBegin(b);} )*
+  | <UNAFFECTED> {res = new IROperNull();}
+  )
+  {return res;} 
+}
+
+IROper waveform_element(boolean isDeclaration) :
+{ IROper time, res = null; }
+{
+	(
+     LOOKAHEAD(<NULL>)
+     <NULL>   {res = new IROperNull();}          [<AFTER> time = time_expression() {res = new IRAfter(res, time);} ]
+  |  res = /*value_expression()*/ expression(isDeclaration) [ <AFTER> time = time_expression() {res = new IRAfter(res, time);} ]
+  )
+  { return res; }
+}
+
+
+/** 
+ *Section 15: Simultaneous statements
+ * 1076.1 extension
+ */
+ /*
+void simultaneous_statement_part()   :
+{}
+{
+  ( simultaneous_statement() )*
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void simultaneous_statement()  :
+{}
+{
+    LOOKAHEAD(simple_simultaneous_statement())
+    simple_simultaneous_statement()
+  | LOOKAHEAD( [if_label()] ":" <IF> condition() <USE> )
+    simultaneous_if_statement()
+  | LOOKAHEAD(simultaneous_case_statement())
+    simultaneous_case_statement()
+  | LOOKAHEAD(4) // procedural is at least as 4th position...
+    simultaneous_procedural_statement()
+  | simultaneous_null_statement()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void simple_simultaneous_statement() :
+{}
+{
+  [ LOOKAHEAD( label() ":") label() ":"] 
+  [<PURE>|<IMPURE>] simple_expression() 
+  "==" simple_expression() [ tolerance_aspect() ] ";"
+}
+*/
+
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void simultaneous_if_statement() :
+{}
+{
+  [ if_label() ":"] <IF> condition() <USE>
+     simultaneous_statement_part()
+  ( <ELSIF> condition() <USE> simultaneous_statement_part() )*
+  [ <ELSE> simultaneous_statement_part() ]
+  <END> <USE> [ if_label()] ";"
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void simultaneous_case_statement() :
+{}
+{
+  [ case_label() ":"] <CASE> expression() <USE>
+    (simultaneous_alternative())*
+  <END> <CASE> [ case_label() ] ";"
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void simultaneous_alternative() :
+{}
+{
+  <WHEN> choices() <USE> simultaneous_statement_part()
+}
+*/
+
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void simultaneous_procedural_statement() :
+{}
+{
+  [procedural_label() ":"] [<PURE>|<IMPURE>] <PROCEDURAL> [<IS>]
+    procedural_declarative_part()
+   <BEGIN>
+     procedural_statement_part()
+   <END> <PROCEDURAL> [ procedural_label()] ";"
+}
+*/
+
+
+// 1076.1 extension:
+/*
+void procedural_label()  :
+{}
+{
+  label()
+}
+
+// 1076.1 extension:
+void procedural_declarative_part() :
+{}
+{
+  ( procedural_declarative_item() )*
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void procedural_declarative_item()  :
+{}
+{
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | alias_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | use_clause()
+  | LOOKAHEAD(group_template_declaration())
+    group_template_declaration()
+  | group_declaration()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void procedural_statement_part() :
+{}
+{
+  ( sequential_statement() )*
+}
+*/
+
+
+// 1076.1 extension:
+/*
+void simultaneous_null_statement() :
+{}
+{
+  [ label() ":"] <NULL> ";"
+}
+*/
+
+
+
+//
+// parts of grammar, which have to be checked during semantic analysis
+// by semantic lookahead:
+//
+void block_label()  :
+{}
+{
+  label()
+}
+
+void block_statement_label()  :
+{}
+{
+  label()
+}
+
+void case_label()  :
+{}
+{
+  label()
+}
+
+void generate_label()  :
+{}
+{
+  label()
+}
+
+void generate_statement_label()  :
+{}
+{
+  label()
+}
+
+void if_label()  :
+{}
+{
+  label()
+}
+
+void instantiation_label()  :
+{}
+{
+  label()
+}
+
+String loop_label()  :
+{ String res; }
+{
+  res = label()
+  {return res;}
+}
+
+String process_label()  :
+{ String label; }
+{
+  label = label()
+  { return label; }
+}
+
+/*
+void architecture_simple_name()  :
+{}
+{
+  simple_name()
+}
+*/
+
+IROper attribute_simple_name()  :
+{IROper res;String name;}
+{
+	(
+	name = identifier() {res = new IRName(name);}
+  //res = simple_name()
+  | <RANGE>{res = new IRName("RANGE");}
+  )
+  {return res;}
+}
+/*
+void component_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+void configuration_simple_name()  :
+{}
+{
+  simple_name()
+}
+*/
+
+IROper element_simple_name()  :
+{ IROper res; }
+{
+  res = simple_name(true)
+  {return res;}
+}
+
+/*
+void entity_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+IROper package_simple_name()  :
+{IROper res; String id;}
+{
+  id = identifier() {res = new IRName(id);}//simple_name()
+  {return res;}
+}
+
+
+
+void architecture_name()  :
+{}
+{
+  name()
+}
+
+void entity_name()  :
+{}
+{
+  name()           
+}
+
+void file_name()  :
+{}
+{
+  name()
+}
+*/
+
+IROper function_name()  :
+{IROper res; IROper name;}
+{
+	//LOOKAHEAD({isFunction(getToken(1).image)})
+  name = dotted_name(false) {res = resolveAndCreate(name);}//name()
+  {return res;}
+}
+
+
+/*
+void configuration_name()  :
+{}
+{
+  name()
+}
+*/
+
+/*
+IRComponent component_name()  :
+{String name;}
+{
+  name = identifier()//name()
+  {return getComponent(name);}
+}
+*/
+/*
+void component_name()  :
+{}
+{
+  name()
+}
+*/
+
+IROper generic_name()  :
+{IROper res;}
+{
+  res = name(true, false)
+  {return res;}
+}
+
+/*
+void group_template_name()  :
+{}
+{
+  name()
+}
+*/
+
+/*
+IROper parameter_name()  :
+{IROper res;}
+{
+  res = name()
+  {return res;}
+}
+*/
+
+void physical_type_simple_name()  :
+{}
+{
+  identifier() 
+}
+
+void port_name()  :
+{}
+{
+  identifier()
+}
+
+String procedure_name()  :
+{String res;}
+{
+  res = identifier()
+  {return res;}
+}
+
+// dotted_name() "'" (<RANGE> | identifier())
+
+IROper range_attribute_name(boolean resolve, boolean isDeclaration)  :
+{IROper res, name, index; String attName; ArrayList<IROper> args = new ArrayList<IROper>(); }
+{
+	name = dotted_name(resolve) "'" (LOOKAHEAD({isTokenReverseRange()}) attName = identifier() | <RANGE> {attName="RANGE";})
+
+	[ "(" index = expression(isDeclaration) ")" {args.add(index);} ]	
+
+	{res = new IRAttrib( name, attName, args );}
+  //res = name(resolve, isDeclaration)
+  {return res;}
+}
+
+/*
+IROper range_attribute_name(boolean resolve, boolean isDeclaration)  :
+{IROper res;}
+{
+  res = name(resolve, isDeclaration)
+  {return res;}
+}
+*/
+
+IROper signal_name(boolean isDeclaration) :
+{ IROper res; }
+{
+  res = name(true, isDeclaration)
+  {return res;}
+}
+
+//
+// Name, der einen Typen bezeichnet...
+//
+IROper type_name() :
+{IROper res;}
+{
+	LOOKAHEAD({isType()})
+  res = dotted_name(false)//identifier()
+  { return res; }
+}
+
+IROper dotted_name(boolean resolve) :
+{ IROper res, op; String str; }
+{
+	(
+		res = simple_name(resolve)
+		| str = operator_symbol() { res = new IRName(str); }
+	)
+	(
+		"." 
+		(
+		op = simple_name(false)
+		| str = operator_symbol() { op = new IRName(str); }
+		) 
+		{res = new IRDotOper(res, op);}
+	)*
+	{return res;}
+}
+
+
+// 1076.1 extension:
+/*
+void record_nature_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+void record_type_simple_name()  :
+{}
+{
+  simple_name()
+}
+*/
+
+String resolution_function_name(boolean isDeclaration)  :
+{String res;}
+{
+  //name(false, isDeclaration)
+  res = identifier()
+  {return res;}
+}
+
+IROper subtype_name()  :
+{ IROper res; }
+{
+  //name()
+  LOOKAHEAD({isType()})
+  res = dotted_name(false)//identifier()
+  {return res;}
+}
+
+String unit_name()  :
+{String res;}
+{
+	LOOKAHEAD( {isPhysicalUnits(getToken(1).image)} )
+  //simple_name(false)
+  res = identifier()
+  {return res;}
+}
+
+IROper variable_name()  :
+{ IROper res; }
+{
+  res = name(false, false)
+  {return res;}
+}
+
+void architecture_identifier()  :
+{}
+{
+  identifier()
+}
+
+IROper static_expression()  :
+{ IROper res; }
+{
+  res = expression(true)
+  {return res;}
+}
+
+
+IROper boolean_expression(boolean isDeclaration)  :
+{IROper res;}
+{
+  res = expression(isDeclaration)
+  {return res;}
+}
+
+void file_open_kind_expression()  :
+{}
+{
+  expression(false)
+}
+
+void guard_expression()  :
+{}
+{
+  expression(false)
+}
+
+IROper time_expression()  :
+{IROper res;}
+{
+  res = expression(false) // unit_name()
+  {return res;}
+  // unit_name can be derived by expression!!! 
+}
+
+// 1076.1 extension:
+
+IROper time_or_real_expression(boolean isDeclaration)  :
+{IROper res;}
+{
+  res = expression(isDeclaration) // unit_name()
+  // unit_name can be derived by expression!!!
+  {return res;}
+}
+
+
+
+IROper value_expression()  :
+{ IROper res; }
+{
+  res = expression(false)
+  {return res;}
+}
+
+IROper string_expression()  :
+{ IROper res; }
+{
+  res = expression(false)
+  {return res;}
+}
+
+
+void guarded_signal_list()  :
+{}
+{
+  signal_list()
+}
+
+IROper[] parameter_association_list()  :
+{IROper[] res;}
+{
+  res = association_list()
+  {return res;}
+}
+
+IROper[] port_association_list()  :
+{IROper[] res;}
+{
+  res = association_list()
+  {return res;}
+}
+
+IROper[] generic_association_list()  :
+{IROper[] res;}
+{
+  res = association_list()
+  {return res;}
+}
+
+void generic_interface_list()  :
+{}
+{
+  interface_list(IFACE_GENERIC)
+}
+
+void parameter_interface_list(int type)  :
+{}
+{
+  interface_list(type)
+}
+
+void port_interface_list()  :
+{}
+{
+  interface_list(IFACE_PORT)
+}
+
+//
+// fraglich:
+//
+void formal_port_clause()  :
+{}
+{
+  port_clause()
+}
+
+void local_port_clause()  :
+{}
+{
+  port_clause()
+}
+
+void formal_generic_clause()  :
+{}
+{
+  generic_clause()
+}
+
+void local_generic_clause()  :
+{}
+{
+  generic_clause()
+}
+
+/*
+IRType element_subtype_indication()  :
+{ IRType res; }
+{
+  res = subtype_indication()
+  {return res;}
+}
+*/
+
+/*
+IRType discrete_subtype_indication()  :
+{IRType res;}
+{
+  res = subtype_indication()
+  {return res;}
+}
+*/
+
+void loop_parameter_specification(IRLoopVariable var)  :
+{}
+{
+	{
+	  if( token.beginLine == 712 ) {
+//	  	trace_enabled = true;
+//	  	trace_indent = 0;
+	  }
+	}
+  parameter_specification(var, false)
+}
+
+void generate_parameter_specification(IRLoopVariable var)  :
+{}
+{
+//	{throw new RuntimeException("Check parameter_specification() params");}
+  parameter_specification(var, false)
+}
+
+void passive_concurrent_procedure_call_statement()  :
+{}
+{
+  concurrent_procedure_call_statement()
+}
+
+void passive_process_statement()  :
+{}
+{
+  process_statement()
+}
+
+
+/*
+void magnitude_simple_expression()  :
+{}
+{ 
+  simple_expression() 
+}
+
+void phase_simple_expression()  :
+{}
+{
+  simple_expression()
+}
+
+
+void nature_name()  :
+{}
+{
+  name() 
+}
+
+void subnature_name()  :
+{}
+{
+  name()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void terminal_name()  :
+{}
+{
+  name()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void quantity_name()  :
+{}
+{
+  name()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void plus_terminal_name()  :
+{}
+{
+  name()
+}
+*/
+
+/**
+ * 1076.1 extension:
+ */
+ /*
+void minus_terminal_name()  :
+{}
+{
+  name()
+}
+*/
+
+
+/**
+ * still missing:
+ */
+ /*
+void shared_variable_declaration() :
+{}
+{
+  [ <SHARED> ] <VARIABLE> identifier_list() ":"
+  subtype_indication(true) [ ":=" expression(true) ] ";"
+}
+*/
+
+
+
+/**
+ *
+ * for error recovery:
+ *
+ */
+JAVACODE void error_skipto(int kind, String message) 
+{
+	System.err.println(filename + "(" + token.beginLine + "," + token.beginColumn + "): " + message);
+//  errs.Error(message);
+  Token t;
+  do 
+  {
+    t = getNextToken();
+  } while ((t.kind != kind));
+}
+
+

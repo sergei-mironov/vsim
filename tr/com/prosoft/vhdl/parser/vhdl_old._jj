@@ -1,0 +1,3725 @@
+
+/**
+ *
+ * VHDL-93, VHDL-AMS grammar for JavaCC 
+ * (c) 1997 Christoph Grimm
+ * 
+ * EMail: grimm@ti.informatik.uni-frankfurt.de
+ * Address:
+ * Christoph Grimm
+ * J. W. Goethe-University Frankfurt
+ * Robert-Mayer-Strasse 11-15
+ * 60054 Frankfurt
+ * Germany
+ *
+ *
+ * By using this file, I agree with the following:
+ * -----------------------------------------------
+ *
+ * 1. This grammar is free for evaluation purposes.
+ *
+ * 2. You may use and modify it, but when distributing is, you must also
+ *    include the original files and copyright notes from me.
+ *
+ * 3. For commercial use of derived works contact me.
+ *   
+ * 4. The grammar is NOT optimized for speed. The aim is to keep the grammar 
+ *    similar to the original productions in the LRM.
+ *
+ * 5. Don't complain about errors - report them, maybe with fixes to me.
+ *
+ */
+
+
+options
+{
+  // DEBUG_PARSER = true;
+  // CHOICE_AMBIGUITY_CHECK=3;
+  IGNORE_CASE=true;
+//  NODE_SCOPE_HOOK=true;
+//  MULTI=true;
+  JAVA_UNICODE_ESCAPE = true;
+  STATIC = false;
+}
+
+
+
+
+/**
+ * The parser is instanciated in the file vhdl.java
+ */
+PARSER_BEGIN(VhdlParser)
+
+package com.prosoft.vhdl.parser;
+
+import com.prosoft.vhdl.ir.*;
+import com.prosoft.vhdl.sim.*;
+import java.util.*;
+
+public class VhdlParser extends ParserBase
+{
+	protected boolean isFunctionCall() {
+		Token t;
+		return (t=getToken(1)).kind == basic_identifier && getToken(2).kind == OPENBRACE
+    	&& resolve(t.image, false) instanceof IRSubProgram;
+	}
+ /*
+  static ErrorHandler errs = new ErrorHandler();
+  
+  public ConstantPool constantPool;
+  
+  public Enums enums;
+  public String[] sourceLines;
+  public IdentifiableList idents;
+
+  public Node rootNode() {
+  	return jjtree.rootNode();
+  }
+  */  
+}
+
+PARSER_END(VhdlParser)
+
+
+SKIP :
+{
+    " "
+  | "\n"
+  | "\r"
+  | "\t"
+}
+
+SPECIAL_TOKEN :
+{
+  <COMMENT: "--" (~["\n","\r"])* ("\n"|"\r"|"\r\n"|"\n\r")>
+}
+
+
+
+/** 
+ * Section 13: Lexical elements
+ * with extensions from IEEE 1076.1
+ */
+TOKEN [IGNORE_CASE] :
+{
+    <ABS:          "abs">
+  | <ACCESS:       "access">
+  | <ACROSS:       "across">
+  | <AFTER:        "after">
+  | <ALIAS:        "alias">
+  | <ALL:          "all">
+  | <AND:          "and">
+  | <ARCHITECTURE: "architecture">
+  | <ARRAY:        "array">
+  | <ASSERT:       "assert">
+  | <ATTRIBUTE:    "attribute">
+  | <BEGIN:        "begin">
+  | <BLOCK:        "block">
+  | <BODY:         "body">
+  | <BREAK:        "break">
+  | <BUFFER:       "buffer">
+  | <BUS:          "bus">
+  | <CASE:         "case">
+  | <COMPONENT:    "component">
+  | <CONFIGURATION: "configuration">
+  | <CONSTANT:      "constant">
+  | <DISCONNECT:    "disconnect">
+  | <DOWNTO:        "downto">
+  | <ELSE:          "else">
+  | <ELSIF:         "elsif">
+  | <END:           "end">
+  | <ENTITY:        "entity">
+  | <EXIT:          "exit">
+  | <FILE:          "file">
+  | <FOR:           "for">
+  | <FUNCTION:      "function">
+  | <GENERATE:      "generate">
+  | <GENERIC:       "generic">
+  | <GROUP:         "group">
+  | <GUARDED:       "guarded">
+  | <IF:            "if">
+  | <IMPURE:        "impure">
+  | <IN:            "in">
+  | <INERTIAL:      "inertial">
+  | <INOUT:         "inout">
+  | <IS:            "is">
+  | <LABEL:         "label">
+  | <LIBRARY:       "library">
+  | <LINKAGE:       "linkage">
+  | <LITERAL:       "literal">
+  | <LOOP:          "loop">
+  | <MAP:           "map">
+  | <MOD:           "mod">
+  | <NAND:          "nand">
+  | <NATURE:        "nature">
+  | <NEW:           "new">
+  | <NEXT:          "next">
+  | <NOISE:         "noise">
+  | <NOR:           "nor">
+  | <NOT:           "not">
+  | <NULL:          "null">
+  | <OF:            "of">
+  | <ON:            "on">
+  | <OPEN:          "open">
+  | <OR:            "or">
+  | <OTHERS:        "others">
+  | <OUT:           "out">
+  | <PACKAGE:       "package">
+  | <PORT:          "port">
+  | <POSTPONED:     "postponed">
+  | <PROCEDURAL:    "procedural">
+  | <PROCEDURE:     "procedure">
+  | <PROCESS:       "process">
+  | <PURE:          "pure">
+  | <QUANTITY:      "quantity">
+  | <RANGE:         "range">
+  | <RECORD:        "record">
+  | <REGISTER:      "register">
+  | <REJECT:        "reject">
+  | <REM:           "rem">
+  | <REPORT:        "report">
+  | <RETURN:        "return">
+  | <ROL:           "rol">
+  | <ROR:           "ror">
+  | <SELECT:        "select">
+  | <SEVERITY:      "severity">
+  | <SIGNAL:        "signal">
+  | <SHARED:        "shared">
+  | <SLA:           "sla">
+  | <SLL:           "sll">
+  | <SPECTRUM:      "spectrum">
+  | <SRA:           "sra">
+  | <SRL:           "srl">
+  | <SUBNATURE:     "subnature">
+  | <SUBTYPE:       "subtype">
+  | <TERMINAL:      "terminal">
+  | <THEN:          "then">
+  | <THROUGH:       "through">
+  | <TO:            "to">
+  | <TOLERANCE:     "tolerance">
+  | <TRANSPORT:     "transport">
+  | <TYPE:          "type">
+  | <UNAFFECTED:    "unaffected">
+  | <UNITS:         "units">
+  | <UNTIL:         "until">
+  | <USE:           "use">
+  | <VARIABLE:      "variable">
+  | <WAIT:          "wait">
+  | <WHEN:          "when">
+  | <WHILE:         "while">
+  | <WITH:          "with">
+  | <XNOR:          "xnor">
+  | <XOR:           "xor">
+}
+
+
+
+TOKEN :
+{
+    <#upper_case_letter:               ["A"-"Z"/*,"А"-"Я"*/]>
+  | <#lower_case_letter:               ["a"-"z"/*,"а"-"я"*/]>
+  | <#digit:                           ["0"-"9"]>
+  | <#extended_digit:                  ["0"-"9","A"-"F"]>
+  | <#special_character:               ["\"", "#","&","'","(",")","*","+",",","-",
+                                        ".","/",":",";","<","=",">","[","]",
+                                        "_","|"]>
+  | <#str_special_character:               ["#","&","'","(",")","*","+",",","-",
+                                        ".","/",":",";","<","=",">","[","]",
+                                        "_","|"]>
+  | <#other_special_character:         ["!","$","%","@","?","^","`","{","}","~",
+                                        "\\"]>
+  | <#format_effector:                 ["\n","\t"]>
+  | <#base_specifier:                  ["B","O","X"]>
+  | <#underline:                       "_">
+  | <#letter:                          ["a"-"z","A"-"Z"/*,"А"-"Я","а"-"я"*/]>
+  | <#letter_or_digit:                 ["a"-"z","A"-"Z"/*,"А"-"Я","а"-"я"*/,"0"-"9"]>
+  | <#integer: <digit> (("_")? <digit>)*>
+  | <#base: <integer>>
+  | <#based_integer: (("_")? <extended_digit>)*>
+  | <based_literal: <base> "#" <based_integer> ("." <based_integer>)? "#" (<exponent>)?>
+  | <#basic_character: (<basic_graphic_character>|<format_effector>)>
+  | <#str_basic_character: (<str_basic_graphic_character>|<format_effector>)>
+  | <#basic_graphic_character: (["A"-"Z"/*,"А"-"Я"*/]|<digit>|<special_character>|" ")>
+  | <#str_basic_graphic_character: (["A"-"Z"/*,"А"-"Я"*/]|<digit>|<str_special_character>|" ")>
+  | <basic_identifier: <letter> ( ("_")? <letter_or_digit> )*>
+  | <bit_string_literal: <base_specifier> "\"" <bit_value> "\"">
+  | <#bit_value: <extended_digit> ( ("_")? <extended_digit>)*>
+  | <character_literal:  "'" (<graphic_character> | " ") "'">
+  | <decimal_literal: <integer> ( "." <integer>)? ( <exponent> )?>
+  | <#exponent: ("E" ("+")? <integer>) | ("E" "-" <integer>)>
+  | <extended_identifier: "\\" <graphic_character> ( <graphic_character> )* "\\">
+  | <#graphic_character: (<basic_graphic_character>
+                          | <lower_case_letter>
+                          | <other_special_character>)>
+  | <#str_graphic_character: (<str_basic_graphic_character>
+                          | <lower_case_letter>
+                          | <other_special_character>)>
+  | <string_literal: "\"" ( <str_graphic_character> | "\"\"")* "\"">
+
+  | <EXP: "**">
+  | <MUL: "*">
+  | <DIV: "/">
+  | <ADD: "+">
+  | <SUB: "-">
+  | <CONCAT: "&">
+  | <EQ:  "=">
+  | <NEQ: "/=">
+  | <GE:  ">=">
+  | <LE:  "<=">
+  | <GT:  ">">
+  | <LO:  "<">
+  | <SEMICOLON: ";">
+  | <OPENBRACE: "(">
+  | <CLOSEDBRACE: ")">
+//  | <#russian_letter: ["А"-"Я","а"-"я"]>
+}
+
+
+
+
+IROper abstract_literal()  :
+{ IROper res; }
+{
+	(
+    <decimal_literal> 
+    {
+    	if( token.image.indexOf('.') >= 0 ) {
+    		res = IRTypeReal.createConstant(token.image);
+    	} else {
+    		res = IRTypeInteger.createConstant(token.image);
+    	} 
+    }//res = new IRConst( new IntValue(Integer.parseInt(token.image)) ); }
+  | <based_literal> {throw new RuntimeException();}
+  )
+  {return res;}
+}
+
+
+
+void access_type_definition()  :
+{}
+{
+  <ACCESS> subtype_indication()
+}
+
+
+
+IROper actual_designator()  :
+{ IROper res = null; }
+{
+	(
+    LOOKAHEAD(expression()) 
+    res = expression()
+  | LOOKAHEAD(signal_name())
+    res = signal_name()
+  | LOOKAHEAD(variable_name())
+    res = variable_name() 
+  | LOOKAHEAD(file_name())
+    file_name() {throw new RuntimeException("Unsupported feature");}
+  | <OPEN> {throw new RuntimeException("Unsupported feature");}
+
+  // 1076.1 extensions:
+  | LOOKAHEAD(terminal_name())
+    terminal_name()
+  | quantity_name()
+  )
+  {return res;}
+}
+
+
+
+IROper[] actual_parameter_part()  :
+{IROper[] res;}
+{
+  res = parameter_association_list()
+  {return res;}
+}
+
+
+IROper actual_part() :
+{IROper res; IRType type; IROper fname; IRFunction func; IROper op; IRFunctionCall call; }
+{
+	(
+  LOOKAHEAD( type_mark() ("(" actual_designator() ")"), {isType(getToken(1).image)} )
+    type = type_mark() "(" op = actual_designator() ")" {res = new IRTypeCast(type, op);}
+  |  LOOKAHEAD( function_name() "(" actual_designator() ")", {isFunction(getToken(1).image)})
+    fname = function_name() "(" op = actual_designator()  ")" 
+    {
+    	func = (IRFunction) resolve( ((IRName)fname).getName());
+    	res = call = new IRFunctionCall(func);
+    	call.setParameters( new IROper[] {op} );
+    	
+    }
+  | res = actual_designator()
+  )
+  {return res;}
+}
+
+
+IROperKind adding_operator()  :
+{}
+{
+    <ADD>               { return IROperKind.ADD; }
+  | <SUB>               { return IROperKind.SUB; }
+  | <CONCAT>            { return IROperKind.CONCAT; }
+}
+
+
+IROper aggregate() :
+{ IROper cur; ArrayList<IROper> elems = new ArrayList<IROper>(); }
+{
+  "(" cur = element_association() {elems.add(cur);} ( "," cur = element_association() {elems.add(cur);} )* ")"
+  { return new IRAggreg( elems ); }
+}    
+
+void alias_declaration() :
+{String name; IRType type = null; IROper expr;}
+{
+  <ALIAS> name = alias_designator()
+   [ ":" type = subtype_indication() ] <IS> expr = name() signature() ";"
+   {add( new IRAlias(name, type, expr) );}
+}
+
+
+String alias_designator() :
+{ String res; }
+{
+  (
+    res = identifier()
+  | <character_literal> {res = token.image;}
+  | res = operator_symbol()
+  )
+  {return res;}
+}
+
+IROper allocator() :
+{}
+{
+  <NEW>
+  (
+      LOOKAHEAD( type_mark() "'")
+      qualified_expression()
+    | subtype_indication()
+  )
+  { throw new RuntimeException(); }
+}
+
+
+
+void architecture_body() :
+{ IREntity entity; IRArchitecture arc; String arcName; String enName;}
+{
+  <ARCHITECTURE> arcName = identifier() <OF> /*entity_name()*/ enName = identifier() <IS>
+  { entity = getEntity(enName); arc = new IRArchitecture(arcName, entity); push(arc); add(arc); }
+    architecture_declarative_part()
+  <BEGIN>
+    architecture_statement_part()
+    {pop();}
+  <END> [ <ARCHITECTURE> ] [ /*architecture_simple_name()*/ identifier() ] ";"
+
+}
+
+
+
+void architecture_declarative_part() :
+{}
+{
+  ( block_declarative_item() )*
+}
+
+void architecture_statement_part() :
+{}
+{
+  ( architecture_statement() )*
+}
+
+/**
+ *  This rule also contains the concurrent statements.
+ */
+void architecture_statement()  :
+{ IRStatement stat; }
+{
+  // 
+  // lookahead would really be annoying here. Therefore I have
+  // moved the concurrent statement into this rule.
+  // concurrent_statements:
+  //
+
+//  try {
+
+	(
+    LOOKAHEAD([block_label() ":"] <BLOCK>)
+    block_statement()
+  | LOOKAHEAD([process_label() ":"] [<POSTPONED>] <PROCESS>)
+    process_statement()
+  | LOOKAHEAD([label() ":"] [<POSTPONED>] procedure_call() ";")
+    concurrent_procedure_call_statement()
+  | LOOKAHEAD([label() ":"] [<POSTPONED>] <ASSERT>)
+    concurrent_assertion_statement()
+  | LOOKAHEAD([label() ":"] [<POSTPONED>] conditional_signal_assignment()|
+              [label() ":"] [<POSTPONED>] selected_signal_assignment())
+    stat = concurrent_signal_assignment_statement() {((IRArchitecture)peek()).addConcurrent(stat);}
+  | LOOKAHEAD(instantiation_label() ":" instantiated_unit() )
+    component_instantiation_statement()
+  | LOOKAHEAD(generate_statement())
+    generate_statement()
+
+  /** 1076.1 extensions: */
+  | LOOKAHEAD(concurrent_break_statement())
+    concurrent_break_statement()
+  | simultaneous_statement()
+  )
+
+//  }
+
+  /** Error handling: Skip until next semicolon */
+//  catch(ParseException e)
+//  {
+//    error_skipto(SEMICOLON, "syntax error in statement");
+//  }
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void array_nature_definition()   :
+{}
+{
+    LOOKAHEAD(<ARRAY> "(" index_subtype_definition() )
+    unconstrained_nature_definition()
+  | constrained_nature_definition()
+}
+
+/**
+  * 1076.1 extension:
+  */
+void unconstrained_nature_definition() :
+{}
+{
+  <ARRAY> "(" index_subtype_definition() ("," index_subtype_definition())* ")" 
+  <OF> subnature_indication()
+}
+
+/**
+  * 1076.1 extension:
+  */
+void constrained_nature_definition() :
+{}
+{
+  <ARRAY> index_constraint() <OF> subnature_indication()
+}
+
+
+IRType array_type_definition(String typeName) :
+{ IRType res; }
+{
+	(
+    LOOKAHEAD(unconstrained_array_definition())
+    res = unconstrained_array_definition(typeName)
+  | res = constrained_array_definition(typeName)
+  )
+  {return res;}
+}
+
+void assertion() :
+{}
+{
+  <ASSERT> condition()
+  [ <REPORT> expression() ]
+  [ <SEVERITY> expression() ]
+}
+
+
+IRStatement assertion_statement() :
+{}
+{
+  [ label() ":" ] assertion() ";"
+  //{throw new RuntimeException();}
+  {return new IRStatements();}
+}
+
+
+
+IROper association_element() :
+{IROper res;}
+{
+  [ LOOKAHEAD( formal_part() "=>" ) formal_part() "=>" {throw new RuntimeException("Unsupported feature");} ]
+  res = actual_part()
+  {return res;}
+}
+
+IROper[] association_list() :
+{ ArrayList<IROper> params = new ArrayList<IROper>(); IROper p; }
+{
+  p = association_element() {params.add(p);} ( "," p = association_element() {params.add(p);} )*
+  {return params.toArray(new IROper[params.size()]);}
+}
+
+
+void attribute_declaration() :
+{}
+{
+  <ATTRIBUTE> identifier() ":" type_mark() ";"
+}
+
+
+IROper attribute_designator()  :
+{IROper res;}
+{
+  res = attribute_simple_name()
+  {return res;}
+}
+
+
+IROper attribute_name() :
+{ IROper prefix, name; }
+{
+  prefix = /*prefix()*/ simple_name() signature() "'" name = attribute_designator()
+   [  LOOKAHEAD("(" expression() ("," expression())* ")") "(" expression() ("," expression())* ")" {throw new RuntimeException();} ]
+   { return new IRAttrib(prefix, ((IRName)name).getName() ); }
+}
+
+
+void attribute_specification() :
+{}
+{
+  <ATTRIBUTE> attribute_designator() <OF>
+  entity_specification() <IS> expression() ";"
+}
+
+void base_unit_declaration()  :
+{}
+{
+  identifier() ";"
+}
+
+
+
+void binding_indication() :
+{}
+{
+  [ <USE> entity_aspect() ]
+  [ generic_map_aspect() ]
+  [ port_map_aspect() ]
+}
+
+void block_configuration() :
+{}
+{
+  <FOR> block_specification()
+                ( use_clause() )*
+                ( configuration_item() )*
+  <END> <FOR> ";"
+}
+
+void block_declarative_item()  :
+{}
+{
+  try {
+
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | signal_declaration()
+  | shared_variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | component_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | configuration_specification()
+  | disconnection_specification()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+
+  /** 1076.1 - Extensions: */
+  | nature_declaration()
+  | subnature_declaration()
+  | quantity_declaration()
+  | terminal_declaration()
+
+  }
+
+  // Error handling: skip until next semicolon
+  catch (ParseException e)
+  {
+    error_skipto(SEMICOLON, "syntax error in declarative item");
+  }
+}
+
+
+void block_declarative_part() :
+{}
+{
+  ( block_declarative_item() )*
+}
+
+void block_header() :
+{}
+{
+  [ generic_clause()  [ generic_map_aspect() ";" ] ]
+  [ port_clause()     [ port_map_aspect() ";"    ] ]
+}
+
+void block_specification() :
+{}
+{
+    LOOKAHEAD(architecture_name())
+    architecture_name()
+  | LOOKAHEAD(block_statement_label())
+    block_statement_label()
+  | LOOKAHEAD(generate_statement_label())
+    generate_statement_label() [ "(" index_specification() ")" ]
+}
+
+
+void block_statement() :
+{}
+{
+  block_label() ":"
+                <BLOCK> [ "(" guard_expression() ")" ] [ <IS> ]
+                        block_header()
+                        block_declarative_part()
+                <BEGIN>
+                        block_statement_part()
+                <END> <BLOCK> [ block_label() ] ";"
+}
+
+
+void block_statement_part() :
+{}
+{
+  (architecture_statement() )*
+}
+
+/**
+ * Section 8.14: Break statement
+ * 1076.1 extension:
+ */
+void break_statement() :
+{}
+{
+  [label()  ":"] <BREAK> [break_list()] [<WHEN> condition() ] ";"
+}
+
+/**
+ * 1076.1 extension:
+ */
+void break_list() :
+{}
+{
+  break_element() ("," break_element() )*
+}
+
+/**
+ * 1076.1 extension:
+ */
+void break_element() :
+{}
+{
+  [selector_clause() ] quantity_name() "=>" expression()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void selector_clause()  :
+{}
+{
+  <FOR> quantity_name() <USE>
+}
+
+IRStatement case_statement() :
+{ IRCaseStatement res = new IRCaseStatement(); IROper op; }
+{
+  [ case_label() ":" ]
+                <CASE> op = expression() {res.setExpression(op);} <IS>
+                        case_statement_alternative(res)
+                        ( case_statement_alternative(res) )*
+                <END> <CASE> [ case_label() ] ";"
+  {return res;}
+}
+
+
+void case_statement_alternative(IRCaseStatement res) :
+{ IROper op; IRStatement stat; }
+{
+  <WHEN> op = choices() "=>"
+                stat = sequence_of_statements()
+                { res.addCase(op, stat); }
+}
+
+
+IROper choice() :
+{ IROper res; }
+{
+	(
+    LOOKAHEAD(simple_expression())
+    res = simple_expression()
+  | LOOKAHEAD(discrete_range())
+    {res = new IROperRange(null);} discrete_range((IROperRange)res, false)
+  | res = element_simple_name()
+  | <OTHERS> {res = new IROperOthers();}
+  )
+  {return res;}
+}
+
+
+IROper choices() :
+{ ArrayList<IROper> ch = new ArrayList<IROper>(); IROper c; }
+{
+  c = choice() {ch.add(c);} ( "|" c = choice() {ch.add(c);} )*
+  { return new IRChoices(ch.toArray(new IROper[ch.size()])); }
+}
+
+
+void component_configuration() :
+{}
+{
+  <FOR> component_specification()
+                [ binding_indication() ";" ]
+                [ block_configuration() ]
+  <END> <FOR> ";"
+}
+
+void component_declaration() :
+{}
+{
+  <COMPONENT> identifier() [ <IS> ]
+      [ local_generic_clause() ]
+      [ local_port_clause() ]
+  <END> <COMPONENT> [ component_simple_name() ] ";"
+}
+
+void component_instantiation_statement() :
+{}
+{
+  instantiation_label() ":"
+         instantiated_unit()
+         [ generic_map_aspect() ]
+         [ port_map_aspect() ] ";"
+}
+
+
+// 1076.1 - extension:
+void composite_nature_definition()  :
+{}
+{
+    array_nature_definition()
+  | record_nature_definition()
+}
+
+void component_specification() :
+{}
+{
+  instantiation_list() ":" component_name()
+}
+
+
+IRType composite_type_definition(String typeName) :
+{IRType res;}
+{
+	(
+    res = array_type_definition(typeName)
+  | res = record_type_definition(typeName)
+    )
+    {return res;}
+}
+
+
+void concurrent_assertion_statement() :
+{}
+{
+  [ label() ":" ] [ <POSTPONED> ] assertion() ";"
+}
+
+
+void concurrent_procedure_call_statement() :
+{}
+{
+  [ LOOKAHEAD( label() ":") label() ":" ]
+  [ <POSTPONED> ] procedure_call() ";"
+}
+
+IRStatement concurrent_signal_assignment_statement() :
+{IRStatement res = null;}
+{
+	(
+    [ LOOKAHEAD( label() ":") label() ":" ]
+    [ <POSTPONED> ]
+    ( LOOKAHEAD(  target() "<=" options_() conditional_waveforms() ";") 
+        res = conditional_signal_assignment() 
+      | selected_signal_assignment() )
+      )
+      {return res;}
+}
+
+
+IROper condition()  :
+{IROper res;}
+{
+  res = boolean_expression()
+  {return res;}
+}
+
+
+void condition_clause()  :
+{}
+{
+  <UNTIL> condition()
+}
+
+
+IRStatement conditional_signal_assignment() :
+{ IROper target, wave; }
+{
+  target = target() "<=" options_() wave = conditional_waveforms() ";"
+  { return new IRSignalAssignment(target, wave); }
+}
+
+
+IROper conditional_waveforms() :
+{ IROper wave, cond; IRCondition res = new IRCondition(); }
+{
+  //( waveform() <WHEN> condition() <ELSE> )*
+  //waveform() [ <WHEN> condition() ]
+  wave = waveform()
+    ( LOOKAHEAD( <WHEN> condition() <ELSE>)
+        <WHEN> cond = condition() {res.add( wave, cond);}  <ELSE> wave = waveform() )*
+        {cond=null;} // чтобы не повторить предыдущее значение
+    [ <WHEN> cond = condition() ]
+    { res.add( wave, cond ); return res; }
+}
+
+
+void configuration_declaration() :
+{}
+{
+  <CONFIGURATION> identifier() <OF> entity_name() <IS>
+    configuration_declarative_part()
+    block_configuration()
+  <END> [ <CONFIGURATION> ] [ configuration_simple_name() ] ";"
+}
+
+
+void configuration_declarative_item()  :
+{}
+{
+  try {
+    use_clause()
+  | attribute_specification()
+  | group_declaration()
+  }
+
+  catch(ParseException e)
+  {
+    error_skipto(SEMICOLON, "syntax error in declarative item");
+  }
+}
+
+
+void configuration_declarative_part() :
+{}
+{
+  ( configuration_declarative_item() )*
+}
+
+
+
+void configuration_item()  :
+{}
+{
+    LOOKAHEAD(block_configuration())
+    block_configuration()
+  | component_configuration()
+}
+
+void configuration_specification() :
+{}
+{
+  <FOR> component_specification() binding_indication() ";"
+}
+
+void constant_declaration() :
+{ IdentifierList list; IRType type; IROper expr = null; IROper asgn; }
+{
+  <CONSTANT> list = identifier_list() ":" type = subtype_indication()
+    [ ":=" expr = expression() ] ";"
+    { asgn = new IRConstAssignment( expr ); asgn.setType(type);
+    	addConstants(list, type, expr); }
+}
+
+
+
+IRType constrained_array_definition(String typeName) :
+{ IRTypeArray res = new IRTypeArray(typeName, null); IRType elType; }
+{
+  <ARRAY> index_constraint(res, false) <OF> elType = element_subtype_indication()
+  { res.setElementType(elType); return res; }
+}
+
+
+void constraint(Object res)  :
+{}
+{
+    range_constraint(res)
+  | index_constraint(res, true)
+}
+
+void context_clause() :
+{}
+{
+  ( context_item() )*
+}
+
+void context_item()  :
+{}
+{
+    library_clause()
+  | use_clause()
+}
+
+
+/** 
+ * Section 4:
+ * Declarations
+ */
+
+
+/**
+ * 1076.1 extension:
+ */
+void terminal_declaration() :
+{}
+{
+  <TERMINAL> identifier_list() ":" subnature_indication() ";"
+}
+
+void terminal_aspect() :
+{}
+{
+  plus_terminal_name() [ <TO> minus_terminal_name() ]
+}
+
+
+void delay_mechanism() :
+{}
+{
+    <TRANSPORT>
+  | [ <REJECT> time_expression() ] <INERTIAL>
+}
+
+void design_file() :
+{}
+{
+//	{ push(new IRDesignFile()); }
+  ( design_unit() )+ <EOF>
+//  {pop();}
+}
+
+
+void design_unit() :
+{}
+{
+  context_clause() library_unit()
+}
+
+String designator()  :
+{ String res; }
+{
+	(
+    res = identifier()
+  | res = operator_symbol()
+  	)
+  	{return res;}
+}
+
+int direction() :
+{ int res; }
+{
+  ( <TO> {res = TO;} | <DOWNTO> {res = DOWNTO;} )
+  {return res;}
+}
+
+
+void disconnection_specification() :
+{}
+{
+  <DISCONNECT> guarded_signal_specification() <AFTER>
+    time_expression() ";"
+}
+
+Object discrete_range(Object element, boolean isConstraint)   :
+{IRType type;}
+{
+  (
+    LOOKAHEAD(simple_expression() direction() )
+    element = range(element, isConstraint)
+  | LOOKAHEAD( discrete_subtype_indication() )
+    type = discrete_subtype_indication() {element = addRange(element, type, isConstraint);}
+  | element = range(element, isConstraint)
+  )
+  {return element;} 
+}
+
+
+IROper element_association()  :
+{ IROper target = null, expr; }
+{
+  [ LOOKAHEAD(choices() "=>") target = choices() "=>" ]
+  expr = expression()
+  { if( target == null ) return expr; return new IROperAssoc(target, expr); }
+}
+
+
+void element_declaration(IRTypeRecord type) :
+{ IdentifierList list; IRType ftype; }
+{
+  list = identifier_list() ":" ftype = element_subtype_definition() ";"
+  { generateFields(list, ftype, type); }
+}
+
+
+IRType element_subtype_definition()  :
+{IRType res;}
+{
+  res = subtype_indication()
+  {return res;}
+}
+
+
+void entity_aspect() :
+{}
+{
+    <ENTITY> entity_name()
+    [ LOOKAHEAD("(" architecture_identifier() ")")
+    "(" architecture_identifier() ")" ]
+  | <CONFIGURATION> configuration_name()
+  | <OPEN>
+}
+
+/**
+ * Section 5: Specifications
+ */
+int entity_class()  :
+{}
+{
+    <ENTITY>                    { return ENTITY; }
+  | <ARCHITECTURE>              { return ARCHITECTURE; }
+  | <CONFIGURATION>             { return CONFIGURATION; }
+  | <PROCEDURE>                 { return PROCEDURE; }
+  | <FUNCTION>                  { return FUNCTION; }
+  | <PACKAGE>                   { return PACKAGE; }
+  | <TYPE>                      { return TYPE; }
+  | <SUBTYPE>                   { return SUBTYPE; }
+  | <CONSTANT>                  { return CONSTANT; }
+  | <SIGNAL>                    { return SIGNAL; }
+  | <VARIABLE>                  { return VARIABLE; }
+  | <COMPONENT>                 { return COMPONENT; }
+  | <LABEL>                     { return LABEL; }
+  | <LITERAL>                   { return LITERAL; }
+  | <UNITS>                     { return UNITS; }
+  | <GROUP>                     { return GROUP; }
+  | <FILE>                      { return FILE; }
+
+  /** 1076.1 extensions: */
+  | <SUBNATURE>                 { return SUBNATURE; }
+  | <NATURE>                    { return NATURE; }
+  | <TERMINAL>                  { return TERMINAL; }
+}
+
+
+void entity_class_entry()  :
+{}
+{
+  entity_class() [ "<>" ]
+}
+
+
+void entity_class_entry_list() :
+{}
+{
+  entity_class_entry() ( "," entity_class_entry() )*
+}
+
+
+void entity_declaration() :
+{ String name; IREntity res; }
+{
+  <ENTITY> name = identifier() <IS>
+  { res = new IREntity(name); addEntity(res); push(res); }                      
+          entity_header()
+          entity_declarative_part()
+  [ <BEGIN>
+    entity_statement_part() ]
+    {pop();}
+  <END> [ <ENTITY> ] [ /*entity_simple_name()*/ identifier() ] ";"
+
+}
+
+
+void entity_declarative_item()  :
+{}
+{
+  try {
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | signal_declaration()
+  | shared_variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | disconnection_specification()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+
+  // 1076.1 - Extensions:
+  | nature_declaration()
+  | subnature_declaration()
+  | terminal_declaration()
+  }
+  catch( ParseException e )
+  {
+    error_skipto(SEMICOLON, "syntax error in declarative item");
+  }
+}
+
+/**
+ * 4.8: Nature Declaration
+ * 1076.1 extension
+ */
+void nature_declaration() :
+{}
+{
+  <NATURE> identifier() <IS> nature_definition() ";"
+}
+
+/**
+ * 1076.1 extension
+ */
+void nature_definition()  :
+{}
+{
+    scalar_nature_definition()
+  | composite_nature_definition()
+}
+
+void subnature_declaration() :
+{}
+{
+  <SUBNATURE> identifier() <IS> subnature_indication() ";"
+}
+
+
+void subnature_indication() :
+{}
+{
+  nature_mark() [index_constraint() ] 
+  [ <TOLERANCE> string_expression() <ACROSS> string_expression() <THROUGH>]
+}
+
+void nature_mark()  :
+{}
+{
+    LOOKAHEAD(nature_name())
+    nature_name() 
+  | LOOKAHEAD(subnature_name())
+    subnature_name()
+}
+
+void entity_declarative_part() :
+{}
+{
+  ( entity_declarative_item() )*
+}
+
+void entity_designator() :
+{}
+{
+  entity_tag() signature()
+}
+
+
+
+void entity_header() :
+{}
+{
+  [ formal_generic_clause() ]
+  [ formal_port_clause() ]
+}
+
+
+void entity_name_list() :
+{}
+{
+  entity_designator() ( "," entity_designator() )*
+  | <OTHERS>
+  | <ALL>
+}
+
+
+void entity_specification() :
+{}
+{
+        entity_name_list() ":" entity_class()
+}
+
+
+void entity_statement()  :
+{}
+{   LOOKAHEAD( concurrent_assertion_statement() )
+    concurrent_assertion_statement()
+  | LOOKAHEAD([process_label() ":"] [<POSTPONED>] <PROCESS>)
+    passive_process_statement()
+  | passive_concurrent_procedure_call_statement()
+}
+
+
+void entity_statement_part() :
+{}
+{
+  ( entity_statement() )*
+}
+
+void entity_tag() :
+{}
+{
+    simple_name()
+  | <character_literal>
+  | operator_symbol()
+}
+
+
+IROper enumeration_literal() :
+{ String str;}
+{
+  <character_literal> {str = token.image;}
+//  | str = identifier()
+  { return resolveAndCreate(str); }
+}
+
+String enumeration_literal_decl() :
+{ String str;}
+{
+	(
+  <character_literal> {str = token.image;}
+  | str = identifier() {str = token.image;}
+  )
+  { return str; }
+}
+
+
+
+IRTypeEnum enumeration_type_definition(String name) :
+{ IRTypeEnum res = createEnum(name); int i = 0; String image; }
+{
+  "(" image = enumeration_literal_decl() {add(new IREnumValue(image, i++, res));} 
+  ( "," image = enumeration_literal_decl(){add(new IREnumValue(image, i++, res));})* ")"
+  {return res;}
+}
+
+
+IRStatement exit_statement() :
+{ String label = null; IROper cond = null; }
+{
+  [ label() ":" ] <EXIT> [ label = loop_label() ]
+    [ <WHEN> cond = condition() ] ";"
+    {return new IRExitStatement(label, cond);}
+}
+
+IROper expression()  :
+{ IROper op1, op2; IROperKind op; }
+{
+/**  relation() (
+ *   ( <AND> relation() )* |
+ *    ( <OR> relation() )*  |
+ *    ( <XOR> relation() )* |
+ *    [ <NAND> relation() ] |
+ *    [ <NOR> relation() ]  |
+ *    ( <XNOR> relation() )*
+ *  )
+ */
+  op1 = relation() 
+  ( LOOKAHEAD(1) op=logical_operator() op2 = relation()
+  	{ op1 = new IRLogicalOper(op1, op, op2); } 
+  )*
+
+  { return op1; }
+}
+
+
+
+IROper not() :
+{ IROper op; }
+{
+	<NOT> op = primary()
+	{ return new IRUnaryOper(IROperKind.NOT, op); }
+}
+
+IROper abs() :
+{ IROper op; }
+{
+	<ABS> op = primary()
+	{ return new IRUnaryOper( IROperKind.ABS, op); }
+}
+
+
+IROper factor()  :
+{ IROper op1, op2; IROperKind op; }
+{
+	(
+    op1 = abs()//<ABS> primary()
+  | /*<NOT> primary()*/ op1 = not() 
+  | op1 = primary() [ LOOKAHEAD("**" primary() ) <EXP> op2 = primary() {op1 = new IRBinaryOper(op1, IROperKind.POW, op2); } ]
+  )
+  {return op1;}
+}
+
+
+void file_declaration() :
+{}
+{
+  <FILE> identifier_list() ":" subtype_indication()
+     [ file_open_information() ] ";"
+}
+
+
+void file_logical_name()  :
+{}
+{
+  string_expression()
+}
+
+
+void file_open_information() :
+{}
+{
+  [ <OPEN> file_open_kind_expression() ] <IS> file_logical_name()
+}
+
+void file_type_definition()  :
+{}
+{
+  <FILE> <OF> type_mark()
+}
+
+void floating_type_definition()  :
+{}
+{
+  range_constraint()
+}
+
+
+void formal_designator()  :
+{}
+{
+    LOOKAHEAD( generic_name() )
+    generic_name()
+  | LOOKAHEAD( port_name() )
+    port_name()
+  | parameter_name()
+}
+
+void formal_parameter_list() :
+{}
+{
+  parameter_interface_list()
+}
+
+
+void formal_part()  :
+{}
+{
+    LOOKAHEAD( function_name() "(" formal_designator() ")")
+    function_name() "(" formal_designator() ")"
+  | LOOKAHEAD( type_mark() "(" formal_designator() ")")
+    type_mark() "(" formal_designator() ")"
+  | formal_designator()
+}
+
+void full_type_declaration() :
+{ String typeName; IRType res; }
+{
+  <TYPE> typeName = identifier() <IS> res = type_definition(typeName) ";"
+  {addType(res);}
+}
+
+
+IROper function_call() :
+{ IRFunctionCall res; IROper op; IROper[] params; }
+{
+  op = function_name() {res = (IRFunctionCall) op;}
+  [ LOOKAHEAD( "(" actual_parameter_part() ")" ) "(" params = actual_parameter_part() ")" {res.setParameters(params);} ]
+  {return res;}
+}
+
+
+/**
+ * Section 9.7
+ */
+void generate_statement() :
+{}
+{
+  generate_label() ":"
+  generation_scheme() <GENERATE>
+    [ LOOKAHEAD(2) ( block_declarative_item() )* <BEGIN> ]
+    ( architecture_statement() )*
+  <END> <GENERATE> [ generate_label() ] ";"
+}
+
+/** 1076.1 extension: */
+void concurrent_break_statement() :
+{}
+{
+  [label() ":"] <BREAK> [break_list()] [sensitivity_clause() ] [ <WHEN> condition()] ";"
+}
+
+
+void generation_scheme() :
+{}
+{
+    <FOR> generate_parameter_specification()
+  | <IF> condition()
+}
+
+
+void generic_clause() :
+{}
+{
+  <GENERIC> "(" generic_list() ")" ";"
+}
+
+
+void generic_list()  :
+{}
+{
+  generic_interface_list()
+}
+
+
+void generic_map_aspect()  :
+{}
+{
+  <GENERIC> <MAP> "(" generic_association_list() ")"
+}
+
+
+void group_constituent() :
+{}
+{
+    name()
+  | <character_literal>
+}
+
+
+void group_constituent_list() :
+{}
+{
+  group_constituent() ( "," group_constituent() )*
+}
+
+
+void group_template_declaration() :
+{}
+{
+  <GROUP> identifier() <IS> "(" entity_class_entry_list() ")" ";"
+}
+
+void group_declaration() :
+{}
+{
+  <GROUP> identifier() ":" group_template_name()
+  "(" group_constituent_list() ")" ";"
+}
+
+
+
+void guarded_signal_specification() :
+{}
+{
+  guarded_signal_list() ":" type_mark()
+}
+
+
+String identifier() :
+{ Token t; }
+{  (
+     t=<basic_identifier>    
+  |  t=<extended_identifier>
+  )
+  { return t.image; }  
+}
+
+
+IdentifierList identifier_list() :
+{ IdentifierList res = new IdentifierList(); String id; }
+{
+  id = identifier() {res.add(id);} ( "," id = identifier() {res.add(id);} )*
+  {return res;}
+}
+
+
+IRStatement if_statement() :
+{ IROper cond; IRStatement stat; IRIfStatement res = new IRIfStatement(); }
+{
+  [ if_label() ":" ]
+  <IF> cond = condition() <THEN>
+  stat = sequence_of_statements()
+  { res.setIfTree(cond); res.setIfStatement(stat); }
+  ( <ELSIF> cond = condition() <THEN>
+    stat = sequence_of_statements() {res.addElseIf(cond, stat);} )*
+  [ <ELSE>
+    sequence_of_statements() ]
+  <END> <IF> [ if_label() ] ";"
+  {return res;}
+}
+
+void incomplete_type_declaration() :
+{}
+{
+  <TYPE> identifier() ";"
+}
+
+
+void index_constraint(Object res, boolean isConstaint) :
+{}
+{
+  "(" discrete_range(res, isConstaint) ( "," discrete_range(res, isConstaint) )* ")"
+}
+
+
+
+void index_specification() :
+{}
+{
+    LOOKAHEAD( discrete_range() )
+    discrete_range()
+  | static_expression()
+}
+
+
+IRType index_subtype_definition() :
+{ IRType res; }
+{
+  res = type_mark() <RANGE> "<>"
+  { return res; }
+}
+
+IROper indexed_name() :
+{IROper res, ind;}
+{
+  res = /*prefix()*/ simple_name() "(" ind = expression() {res = new IROperIndex(res, ind);} 
+  ( "," ind = expression() {res = new IROperIndex(res, ind);} )* ")"
+  {return res;}
+}
+
+void instantiated_unit() :
+{}
+{
+    [ <COMPONENT> ] component_name()
+  | <ENTITY> entity_name() [ "(" architecture_identifier() ")" ]
+  | <CONFIGURATION> configuration_name()
+}
+
+
+void instantiation_list() :
+{}
+{
+    instantiation_label() ( "," instantiation_label() )*
+  | <OTHERS>
+  | <ALL>
+}
+
+void integer_type_definition()  :
+{}
+{
+  range_constraint()
+}
+
+
+
+void interface_constant_declaration() :
+{ IdentifierList list; IRType type; IROper init = null; }
+{
+  [ <CONSTANT> ] list = identifier_list() ":" [ <IN> ]
+    type = subtype_indication() [ ":=" init = static_expression() ]
+    {generateConstants(list, type, init);}
+}
+
+/**
+ * Section 4.3.2:
+ */
+void interface_declaration()  :
+{}
+{
+    LOOKAHEAD(interface_variable_declaration() )
+    interface_variable_declaration()
+  | LOOKAHEAD(interface_signal_declaration() )
+    interface_signal_declaration()
+  | LOOKAHEAD(interface_constant_declaration() ) 
+    interface_constant_declaration()
+  | LOOKAHEAD(interface_file_declaration() )
+    interface_file_declaration()
+
+  /** 1076.1 extensions: */
+  | interface_terminal_declaration() 
+  | interface_quantity_declaration()
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void interface_terminal_declaration()  :
+{}
+{
+  <TERMINAL> identifier_list() ":" subnature_indication()
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void interface_quantity_declaration() :
+{}
+{
+  <QUANTITY> identifier_list() ":" 
+  [ <IN> | <OUT> ] subtype_indication() [ ":=" static_expression() ]
+}
+
+
+void interface_element()  :
+{}
+{
+  interface_declaration()
+}
+
+
+void interface_file_declaration() :
+{}
+{
+  <FILE> identifier_list() ":" subtype_indication()
+}
+
+
+void interface_list() :
+{}
+{
+  interface_element() ( ";" interface_element() )*
+}
+
+void interface_signal_declaration() :
+{ IRDirection dir = IRDirection.INPUT; IdentifierList list; IRType type; IROper init = null;}
+{
+  [<SIGNAL>] list = identifier_list() ":"
+  [ dir = mode() ] type = subtype_indication() [ <BUS> ] [ ":=" init = static_expression() ]
+  { generatePorts(list, dir, type, init); }
+}
+
+
+void interface_variable_declaration() :
+{ IRDirection dir = IRDirection.INPUT; IdentifierList list; IRType type; IROper init = null;}
+{
+  [<VARIABLE>] list = identifier_list() ":"
+  [ dir = mode() ] type = subtype_indication() [ ":=" init = static_expression() ]
+  { generateVars(list, dir, type, init); }
+}
+
+
+
+IRLoopStatement iteration_scheme() :
+{IRLoopStatement res; IROper cond; IRLoopVariable var = new IRLoopVariable(null);}
+{
+	(
+    <WHILE> cond = condition() {res = new IRWhileStatement();((IRWhileStatement)res).setCondition(cond);}
+  | <FOR> {res = new IRForStatement(); ((IRForStatement)res).setLoopVariable(var); } loop_parameter_specification(var)
+  )
+  {return res;}
+}
+
+
+String label()  :
+{ String id; }
+{
+  id = identifier()
+  { return id; }
+}
+
+
+
+void library_clause()  :
+{}
+{
+  <LIBRARY> logical_name_list() ";"
+}
+
+
+void library_unit()  :
+{}
+{   LOOKAHEAD(<ENTITY> | <CONFIGURATION> | <PACKAGE> identifier() )
+    primary_unit()
+  | secondary_unit()
+}
+
+
+
+IROper literal() :
+{ IROper res = null; }
+{
+	(
+    LOOKAHEAD( numeric_literal() )
+    res = numeric_literal()
+  | res = enumeration_literal()
+  | <string_literal> { res = new IRConst( new StringValue(token.image) ); }
+  | <bit_string_literal> { res = new IRConst( new StringValue(token.image) ); }
+  | <NULL>
+  )
+  { if( res == null ) throw new RuntimeException(); return res; }
+}
+
+
+void logical_name()  :
+{}
+{
+  identifier()
+}
+
+
+
+void logical_name_list() :
+{}
+{
+  logical_name() ( "," logical_name() )*
+}
+
+
+IROperKind logical_operator()  :
+{}
+{
+    <AND>             { return IROperKind.AND; }
+  | <OR>              { return IROperKind.OR; }
+  | <NAND>            { return IROperKind.NAND; }
+  | <NOR>             { return IROperKind.NOR; }
+  | <XOR>             { return IROperKind.XOR; }
+  | <XNOR>            { return IROperKind.XNOR; }
+}
+
+
+IRStatement loop_statement() :
+{IRLoopStatement stat = new IREternalLoop(); IRStatement body;}
+{
+  [ loop_label() ":" ]
+  [ stat = iteration_scheme() ] <LOOP> {push(stat);}
+                        body = sequence_of_statements() {stat.setBody(body);}
+  <END> <LOOP> [ loop_label() ] ";" {pop();}
+  //{throw new RuntimeException();}
+  {return stat;}
+}
+
+
+int miscellaneous_operator()  :
+{}
+{
+    <EXP>               { return EXP; }
+  | <ABS>               { return ABS; }
+  | <NOT>               { return NOT; }
+}
+
+
+IRDirection mode() :
+{}
+{
+    <IN> { return IRDirection.INPUT; }
+  | <OUT> { return IRDirection.OUTPUT; }
+  | <INOUT> { return IRDirection.INOUT; }
+  | <BUFFER> { return IRDirection.BUFFER; }
+  | <LINKAGE> { return IRDirection.LINKAGE; }
+}
+
+IROperKind multiplying_operator()  :
+{}
+{
+    "*"                 { return IROperKind.MUL; }
+  | "/"                 { return IROperKind.DIV; }
+  | <MOD>               { return IROperKind.MOD; }
+  | <REM>               { return IROperKind.REM; }
+}
+
+
+IROper name () :
+{ IROper res, op; String lit; }
+{
+	(
+	LOOKAHEAD(operator_symbol()) lit = operator_symbol() {res = new IRName(lit);}
+	| LOOKAHEAD(/*selected_name()*/ identifier() "." ) res = selected_name()
+	| LOOKAHEAD(indexed_name()) res = indexed_name()
+	| LOOKAHEAD(slice_name()) res = slice_name()
+	| LOOKAHEAD(attribute_name()) res = attribute_name()
+	| res = simple_name()
+	)
+	{return res;}
+}
+
+IROper selected_name() :
+{IROper res, op;}
+{
+	res = prefix() ("." op = suffix() {res = new IRDotOper(res, op);})+
+	{return res;}
+}
+
+/*
+IROper prefix() :
+{IROper res;}
+{ 
+	(
+	res = name()
+	| function_call()
+	)
+	{return res;}
+}
+
+IROper suffix() :
+{IROper res; String name;}
+{
+	(
+	res = simple_name()
+	| name = <character_literal> {res = new Name(name);}
+	| res = operator_symbol()
+//	| "all" {res = new IROperAll();}
+	)
+	{return res;}
+}
+*/
+
+
+//IROper name() :
+//{ IROper name, op; String str; }
+//{
+/**  simple_name()
+ * | operator_symbol()
+ *  | selected_name()
+ *  | indexed_name()
+ *  | slice_name()
+ *  | attribute_name()
+ *
+ * Kann ohne Linksrekursion wie folgt geschrieben werden:
+ */
+//  ( name=simple_name() | str=operator_symbol() {name = new IRName(str);} )
+//  [LOOKAHEAD(name_extension()) name=name_extension(name)]
+//  { return name; }
+//}
+
+//IROper name_extension( IROper name )  :
+//{ IROper op; }
+//{
+//  (
+//        ( //LOOKAHEAD( signature() "'"  )
+//        signature() "'" attribute_designator()
+//        [ LOOKAHEAD( "(" expression() ")") "(" expression() ")" ]
+//        )
+//      | "." op = suffix() { name = new IRDotOper(name, op); }
+//      | LOOKAHEAD( "(" discrete_range() ")" ) 
+//        "(" {name = new IROperRange(name);} discrete_range((IROperRange)name) ")"  
+//      | LOOKAHEAD( "(" expression() ("," expression() )* ")" )
+//        "(" expression() ("," expression() )* ")"
+      /**
+       * The following production is already in sign. "'" ... ,
+       * since signature can be empty!
+       * | "'" attribute_designator() [ "(" expression() ")"]
+       */
+//  )
+//  [  LOOKAHEAD(name_extension() ) name=name_extension(name) /*{name = new IRDotOper(name, op);}*/ ]
+//  { return name; }
+//}
+
+/**
+ * 1076.1 extension:
+ */
+void nature_element_declaration() :
+{}
+{
+  identifier_list() ":" element_subnature_definition()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void element_subnature_definition()  :
+{}
+{
+  subnature_indication()
+}
+
+
+IRStatement next_statement() :
+{}
+{                                                               
+  [ label() ":" ] <NEXT> [ loop_label() ] [ <WHEN> condition() ] ";"
+  {throw new RuntimeException();}
+}
+
+IRStatement null_statement() :
+{}
+{
+  [ label() ":" ] <NULL> ";"
+  {return new IRStatements();}
+}
+
+
+
+IROper numeric_literal()  :
+{IROper res;}
+{ 
+	(
+//    LOOKAHEAD(physical_literal())
+   // res = physical_literal()
+//  | 
+  res = abstract_literal()
+  )
+  {return res;}
+}
+
+
+void object_declaration()  :
+{}
+{
+//  try {
+    constant_declaration()
+  | signal_declaration()
+  | variable_declaration()
+  | file_declaration()
+  /** 1076.1 extensions: */
+  | terminal_declaration()
+  | quantity_declaration()
+
+ // }
+//  catch( ParseException e )
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declaration");
+//  }
+}
+
+
+String operator_symbol() :
+{ String res; }
+{
+  <string_literal> {res = token.image;}
+  {return res;}
+}
+
+
+void options_() :
+{}
+{
+  [ <GUARDED> ] [ delay_mechanism() ]
+}
+
+
+void package_body() :
+{ IROper name; IRPackage pack; }
+{
+  <PACKAGE> <BODY> name = package_simple_name() <IS>
+  {
+  	pack = df.getPackage(((IRName)name).getName());
+  	push(pack.getDeclarations());
+  	push(pack.getBody());
+  }
+       package_body_declarative_part()
+  <END> [ <PACKAGE> <BODY> ] [ package_simple_name() ] {pop();pop();} ";"
+}
+
+void package_body_declarative_item()  :
+{}
+{
+//  try {
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | shared_variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+//  }
+//  catch( ParseException e )
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declarative item");
+//  }
+}
+
+
+void package_body_declarative_part() :
+{}
+{
+  ( package_body_declarative_item() )*
+}
+
+
+
+void package_declaration() :
+{String name;}
+{
+  <PACKAGE> name = identifier() <IS> 
+  {
+  	IRPackage pack = new IRPackage(name, df);
+  	add(pack);
+  	push(pack.getDeclarations());
+  }
+     package_declarative_part()
+  <END> [ <PACKAGE> ] [ /*package_simple_name()*/ identifier() ] {pop();}";"
+}
+
+
+void package_declarative_item()  :
+{}
+{
+//  try {
+    subprogram_declaration()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | signal_declaration()
+  | shared_variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | component_declaration()
+  | LOOKAHEAD( attribute_declaration() )
+    attribute_declaration()
+  | attribute_specification()
+  | disconnection_specification()
+  | use_clause()
+  | LOOKAHEAD(<GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+
+  // 1076.1 extensions:
+  | nature_declaration()
+  | subnature_declaration()
+  | terminal_declaration()
+  
+//  }
+//  catch(ParseException e)
+//  {
+//    error_skipto(SEMICOLON, "syntax error in declaration");
+//  }
+}
+
+void package_declarative_part() :
+{}
+{
+  ( package_declarative_item() )*
+}
+
+
+void parameter_specification(IRNamedElement el) :
+{String id;}
+{
+  id = identifier() {el.setName(id);}
+  <IN> discrete_range(el, false) 
+}
+
+IROper physical_literal() :
+{ IROper res = null; }
+{
+  [ LOOKAHEAD(abstract_literal() unit_name() )
+    res = abstract_literal() ]
+  unit_name()
+  {return res;}
+}
+
+
+void physical_type_definition() :
+{}
+{
+  range_constraint()
+  <UNITS>
+  base_unit_declaration()
+  ( secondary_unit_declaration() )*
+  <END> <UNITS> [ physical_type_simple_name() ]
+}
+
+
+void port_clause() :
+{}
+{
+//  <PORT> "(" port_list() ")" ";"
+  <PORT> "(" interface_signal_declaration() ( ";" interface_signal_declaration() )* ")" ";"
+}
+
+void port_list()  :
+{}
+{
+  port_interface_list()
+}
+
+
+void port_map_aspect() :
+{}
+{
+  <PORT> <MAP> "(" port_association_list() ")"
+}
+
+
+IROper prefix() :
+{IROper res; String name; Token t;}
+{
+	(
+    LOOKAHEAD( /*function_call()*/ {isFunctionCall()} )
+    res = function_call()
+  | name = identifier(){res = resolveAndCreate(name);}
+  )
+  {return res;}
+}
+
+
+IROper primary()  :
+{ IROper res; }
+{
+	(
+    LOOKAHEAD( qualified_expression() )
+    res = qualified_expression()
+
+  | LOOKAHEAD(literal())
+    res = literal()
+    
+   | LOOKAHEAD( identifier() "(" ) (
+   		LOOKAHEAD( {resolve(getToken(1).image, false) instanceof IRSubProgram} )
+   		  res = function_call()
+   		  | res = name()
+ /*  
+    	{ if( resolve(getToken(1)) instanceof IRSubProgram ) {
+    		res = function_call();
+    	} else {
+    		res = name();
+    	};
+    	*/
+    )
+
+  | LOOKAHEAD(name())
+    res = name()
+/*
+
+  | LOOKAHEAD( function_call() )
+    res = function_call()
+*/
+  | LOOKAHEAD( aggregate() )
+    res = aggregate()
+
+  | LOOKAHEAD( "(" expression() ")")
+    "(" res = expression() ")"
+
+  | LOOKAHEAD( type_conversion() )
+    res = type_conversion()
+
+  | res = allocator()
+  )
+  
+  { return res; }
+}
+
+
+void primary_unit()  :
+{}
+{
+    entity_declaration()
+  | configuration_declaration()
+  | LOOKAHEAD(<PACKAGE> identifier())
+    package_declaration()
+}
+
+
+void procedure_call() :
+{}
+{
+  procedure_name() [ "(" actual_parameter_part() ")" ]
+}
+
+IRStatement procedure_call_statement() :
+{}
+{
+   [ LOOKAHEAD( label() ";") label() ":" ]
+   procedure_call() ";"
+   {throw new RuntimeException();}
+}
+
+
+void process_declarative_item()  :
+{}
+{
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | LOOKAHEAD( attribute_declaration() )
+    attribute_declaration()
+  | attribute_specification()
+  | use_clause()
+  | LOOKAHEAD( <GROUP> identifier() <IS> )
+    group_template_declaration()
+  | group_declaration()
+}
+
+void process_declarative_part() :
+{}
+{
+  ( process_declarative_item() )*
+}
+
+
+void process_statement() :
+{ String name = null; IRProcess res; IRStatements stat; }
+{
+   [ name = process_label() ":" ]
+   { res = new IRProcess(name, (IRArchitecture) peek() ); push(res); }
+   [ <POSTPONED> ] <PROCESS>                    
+   [ "(" sensitivity_list() ")" ] [ <IS> ]
+     process_declarative_part()
+   <BEGIN>
+     stat = process_statement_part() {res.setStatements(stat);}
+   <END> [ <POSTPONED> ] <PROCESS> [ process_label() ] ";"
+   
+   { pop(); ((IRArchitecture)peek()).add(res); }
+
+}
+
+
+IRStatements process_statement_part() :
+{ IRStatements res = new IRStatements(); IRStatement cur; }
+{
+  ( cur = sequential_statement() {res.add(cur);} )*
+  {return res;}
+}
+
+IROper qualified_expression() :
+{ IRType type; IROper expr; }
+{
+  type = type_mark() "'"
+  (   LOOKAHEAD( aggregate() )
+      expr = aggregate()
+    | "(" expr = expression() ")"
+  )
+  {return new IROperQualify(type, expr);}
+}
+
+Object range(Object element, boolean isConstraint) :
+{ IROper op1, op2; int dir; /*IRangedElement itype = type.dup();*/ IRangedElement ranged; }
+{
+	(
+    LOOKAHEAD( simple_expression() direction() )
+    op1 = simple_expression() dir = direction() op2 = simple_expression()
+  	{element = addRange( element, op1, dir==DOWNTO, op2, isConstraint );}
+  | 
+  
+  
+  
+  	op1 = range_attribute_name() 
+  	{
+  		element = addRangeAttribute(element, op1, isConstraint);
+  	}
+  )
+  {return element;}
+  	/*
+  	SimValue v1 = getConstantValue(op1).getConstant();
+  	SimValue v2 = getConstantValue(op2).getConstant();
+  	if(dir==DOWNTO) {
+  		itype.setRangeHigh( v1 );
+  		itype.setRangeLow( v2 );
+  	} else {
+  		itype.setRangeHigh( v2 );
+  		itype.setRangeLow( v1 );
+  	}
+  	itype.setDownTo(dir==DOWNTO);
+  	*/
+}
+
+
+void range_constraint(Object res)  :
+{}
+{
+  <RANGE> range(res, true)
+}
+
+void record_nature_definition() :
+{}
+{
+  <RECORD>
+  ( nature_element_declaration() )+
+  <END> <RECORD> [ record_nature_simple_name() ]
+}
+
+IRType record_type_definition(String name) :
+{ IRTypeRecord res = new IRTypeRecord(name); }
+{
+	(
+  <RECORD>
+  ( element_declaration(res) )+
+  <END> <RECORD> [ record_type_simple_name() ]
+  )
+  { return res; }
+}
+
+
+
+IROper relation()  :
+{ IROper op1, op2; IROperKind op; }
+{
+  op1 = shift_expression() 
+  [ LOOKAHEAD(1)
+  op=relational_operator() 
+  op2 = shift_expression()
+  { op1 = new IRBinaryOper(op1, op, op2); } 
+   ]
+   { return op1; }
+}
+
+
+IROperKind relational_operator()  :
+{}
+{
+    <EQ>                { return IROperKind.EQ; }
+  | <NEQ>               { return IROperKind.NEQ; } 
+  | <LO>                { return IROperKind.LO; }
+  | <LE>                { return IROperKind.LE; }
+  | <GT>                { return IROperKind.GT; }
+  | <GE>                { return IROperKind.GE; }
+}
+
+
+IRStatement report_statement() :
+{}
+{
+  [ label() ":" ]  <REPORT> expression()
+  [ <SEVERITY> expression() ] ";"
+  {throw new RuntimeException();}
+}
+
+
+IRStatement return_statement() :
+{ IROper expr = null; }
+{
+  [ label() ":" ] <RETURN> [ expr = expression() ] ";"
+  {return new IRReturnStatement(expr);}
+}
+
+
+// 1076.1 - extension:
+void scalar_nature_definition() :
+{}
+{
+  type_mark() <ACROSS> type_mark() <THROUGH>
+}
+
+
+IRType scalar_type_definition(String typeName)  :
+{ IRType res = null; }
+{
+	(
+    LOOKAHEAD(range_constraint() <UNITS> )
+    physical_type_definition()
+  |
+    LOOKAHEAD(enumeration_type_definition())
+    res = enumeration_type_definition(typeName)
+/**  | integer_type_definition()
+ *  | floating_type_definition()
+ * integer- and floating_type_definition are both range_constraint,
+ * thus:
+ */
+  |
+    range_constraint(null)
+    )
+  { if( res== null) {throw new RuntimeException();} return res; }
+}
+
+void secondary_unit()  :
+{}
+{
+    LOOKAHEAD( <ARCHITECTURE> )
+    architecture_body()
+  | LOOKAHEAD( <PACKAGE> <BODY> )
+    package_body()
+}
+
+
+void secondary_unit_declaration() :
+{}
+{
+  identifier() "=" physical_literal() ";"
+}
+
+
+//IROper selected_name() :
+//{ IROper name; }
+//{
+  /**
+   * prefix() "." suffix()
+   * results in left-recursion...
+   * the follwoing does the same (i hope ...)
+   */
+
+//  ( name = simple_name() | name = operator_symbol() )
+//  [ LOOKAHEAD( name_extension() )  name=name_extension(name) ]
+
+  /**
+   * semantic analysis has to ensure that last production
+   * was "." suffix()
+   */
+//   {return name;}
+//}
+
+
+void selected_signal_assignment() :
+{}
+{
+  <WITH> expression() <SELECT>
+  target()  "<=" options_() selected_waveforms() ";"
+}
+
+void selected_waveforms() :
+{}
+{
+  waveform() <WHEN> choices()
+  ("," waveform() <WHEN> choices() )*
+}
+
+void sensitivity_clause()  :
+{}
+{
+  <ON> sensitivity_list()
+}
+
+
+void sensitivity_list() :
+{}
+{
+  signal_name() ( "," signal_name() )*
+}
+
+
+IRStatements sequence_of_statements() :
+{ IRStatements res = new IRStatements(); IRStatement cur; }
+{
+  ( cur = sequential_statement() {res.add(cur);} )*
+  {return res;}
+}
+
+IRStatement sequential_statement()  :
+{IRStatement res = null;}
+{
+//  try {
+    (
+      LOOKAHEAD(3)
+      res = wait_statement()
+    | LOOKAHEAD(3)
+      res = assertion_statement()
+    | LOOKAHEAD(3)
+      res = report_statement()
+    | LOOKAHEAD(  [ label() ":" ] target() "<=" )
+      res = signal_assignment_statement()
+    | LOOKAHEAD(  [ label() ":" ] target() ":=" )
+      res = variable_assignment_statement()
+    | LOOKAHEAD(3)
+      res = procedure_call_statement()
+    | LOOKAHEAD(3)
+      res = if_statement()
+    | LOOKAHEAD(3)
+      res = case_statement()
+    | LOOKAHEAD(3)
+      res = loop_statement()
+    | LOOKAHEAD(3)
+      res = next_statement()
+    | LOOKAHEAD(3)
+      res = exit_statement()
+    | LOOKAHEAD(3)
+      res = return_statement()
+    | LOOKAHEAD(3)
+      res = null_statement()
+
+    /** 1076.1 extensions: */
+//    | res = break_statement()
+    )
+    
+//  }
+  // Error handling: skip till next semicolon.
+//  catch (ParseException e)
+//  {
+   // error_skipto(SEMICOLON, "syntax error in sequential statement");
+//  } 
+  {return res;}
+}
+
+
+IROper shift_expression()  :
+{ IROper op1, op2; IROperKind op; }
+{
+  op1 = simple_expression() 
+  [ LOOKAHEAD(2) op=shift_operator() 
+  op2 = simple_expression()
+  { op1 = new IRBinaryOper(op1, op, op2); }   
+  ]
+  { return op1; }
+}
+
+IROperKind shift_operator()  :
+{}
+{
+    <SLL>               { return IROperKind.SLL; }
+  | <SRL>               { return IROperKind.SRL; }
+  | <SLA>               { return IROperKind.SLA; }
+  | <SRA>               { return IROperKind.SRA; }
+  | <ROL>               { return IROperKind.ROL; }
+  | <ROR>               { return IROperKind.ROR; }
+}
+
+boolean sign() :
+{ boolean sign = true; }
+{
+	(
+    "+"
+  | ("-" {sign=false;})
+  )
+  {return sign;}
+}
+
+
+IRStatement signal_assignment_statement() :
+{ IROper sig; IROper wave; }
+{
+  [ LOOKAHEAD( label() ":") label() ":" ]
+  sig = target() "<=" [ delay_mechanism() ] wave = waveform() ";"
+ 
+  { return new IRSignalAssignment(sig, wave); }
+}
+
+
+void signal_declaration() :
+{ IdentifierList ids; IRType type; IRSignalKind kind = IRSignalKind.NONE; IROper init = null; }
+{
+    <SIGNAL> ids = identifier_list() ":"
+    type = subtype_indication() [ kind = signal_kind() ] [ ":=" init = expression() ] ";"
+    { addSignals(ids, type, kind, init); }
+}
+
+
+IRSignalKind signal_kind() :
+{ IRSignalKind kind = IRSignalKind.NONE; }
+{
+    ( <REGISTER> {kind=IRSignalKind.REGISTER;})
+  | (<BUS> {kind=IRSignalKind.BUS;})
+  { return kind; }
+}
+
+void signal_list() :
+{}
+{
+    signal_name() ( "," signal_name() )*
+  | <OTHERS>
+  | <ALL>
+}
+
+
+void signature() :
+{}
+{
+  [ type_mark() ( LOOKAHEAD( "," type_mark() ) "," type_mark() )* ]
+  [ <RETURN> type_mark() ]
+}
+
+
+IROper simple_expression()  :
+{ boolean sign = true; IROper op1, op2; IROperKind op; }
+{
+   [ sign = sign() ] op1 = term()
+   { if( !sign) op1 = new IRUnaryOper(IROperKind.NEG, op1);}
+   ( LOOKAHEAD(2) op=adding_operator() op2 = term()
+   { op1 = new IRBinaryOper(op1, op, op2); }
+     )*
+     { return op1; }
+}
+
+
+IROper simple_name()  :
+{ String name; IROper res; IRNamedElement el; }
+{
+  name = identifier()
+  {
+  	el = resolve(name);
+  	if( el != null ) return IROper.create(el);
+  	return new IRName(name)/*IROper.create(resolve(name))*/;}
+}
+
+IROper slice_name() :
+{ IROper res; Object obj; }
+{
+  res = prefix() "(" obj = discrete_range(res, false) {res = (IROper)obj;} ")"
+  {return res;}
+}
+
+
+
+void subprogram_body() :
+{ IRSubProgram res; IRStatement body; }
+{
+  res = subprogram_specification() <IS>
+  {push(res);}
+     subprogram_declarative_part()
+  <BEGIN>
+         body = subprogram_statement_part() {res.setBody(body);}
+  {pop();}
+  <END> [ subprogram_kind() ] [ designator() ] ";"
+  {add(res, false);}
+}
+
+
+void subprogram_declaration()  :
+{IRSubProgram res;}
+{
+  res = subprogram_specification() ";"
+  {add(res, false);}
+}
+
+
+void subprogram_declarative_item()  :
+{}
+{
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | file_declaration()
+  | alias_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | use_clause()
+  | LOOKAHEAD( <GROUP> identifier() <IS>)
+    group_template_declaration()
+  | group_declaration()
+}
+
+void subprogram_declarative_part() :
+{}
+{
+  ( subprogram_declarative_item() )*
+}
+
+
+int subprogram_kind()  :
+{}
+{
+    <PROCEDURE>                 { return PROCEDURE; }
+  | <FUNCTION>                  { return FUNCTION; }
+}
+
+IRSubProgram subprogram_specification() :
+{ IRSubProgram res; String name; IRType rtype; }
+{
+  (
+  <PROCEDURE> name = designator() {res = new IRSubProgram(name);}
+  
+  {push(res.getParameterHolder());} 
+  	[ "(" formal_parameter_list() ")" ]
+  {pop();}
+  
+  | [ <PURE> | <IMPURE> ]  <FUNCTION> name = designator() {res = new IRFunction(name);}
+  {push(res.getParameterHolder());} 
+     [ "(" formal_parameter_list() ")" ]
+  {pop();}
+                <RETURN> rtype = type_mark() {((IRFunction)res).setReturnType(rtype);}
+   )
+   {return res;}
+}
+
+
+
+IRStatement subprogram_statement_part() :
+{ IRStatements res = new IRStatements(); IRStatement cur; }
+{
+  ( cur = sequential_statement() {res.add(cur);} )*
+  { return res; }
+}
+
+
+void subtype_declaration() :
+{ String name; IRType res; }
+{
+  <SUBTYPE> name = identifier() <IS> res = subtype_indication() ";"
+  { res = res.dup(); res.setName(name); addType(res); }
+}
+
+
+/**
+ * Section 4.1:
+ */
+IRType subtype_indication() :
+{ IRType res = null; }
+{
+  /*
+   * enumeration resolves conflict ! After implementation of symbol tables
+   * this can be replaced by semantic lookahead.
+   */
+    
+    /*
+   (
+    LOOKAHEAD(resolution_function_name() type_mark() constraint())
+    resolution_function_name() res = type_mark() constraint((IRangedElement)res) 
+      [ LOOKAHEAD(tolerance_aspect())tolerance_aspect() ]
+
+  | LOOKAHEAD( type_mark() constraint() )
+    res = type_mark() constraint((IRangedElement)res) 
+      [ LOOKAHEAD(tolerance_aspect()) tolerance_aspect() ]
+
+  | LOOKAHEAD( resolution_function_name() type_mark() )
+    resolution_function_name() res = type_mark() 
+      [ LOOKAHEAD(tolerance_aspect())tolerance_aspect() ]
+
+  | LOOKAHEAD( type_mark() ) // {isType(getToken(1).image)} 
+    res = type_mark()  
+      [ LOOKAHEAD(tolerance_aspect()) tolerance_aspect() ]
+      )
+      { if( res == null ) { throw new RuntimeException("at line " + token.beginLine); }
+      	 return res; }
+      	 
+    */  	 
+      	 
+      	 
+      	 /*
+      	 [ resolution_function_name() ]
+      	 res = type_mark() 
+      	 [ constraint( ((IRangedElement)res) ) ]
+      	 */
+      	 
+      	 (
+      	 
+      	 (
+      	 	LOOKAHEAD( {isIdAndType( getToken(1), getToken(2) ) } ) resolution_function_name() res = type_mark()
+      	 	| LOOKAHEAD( { isType( getToken(1).image ) } ) res = type_mark()
+      	 )
+      	 [ constraint(res) ]
+      	 
+      	 )
+      	 {return res;}
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void tolerance_aspect()  :
+{}
+{
+  <TOLERANCE> string_expression()
+}
+
+
+/**
+ * Section 4.3.1.6: Quantity declaration
+ * 1076.1 extension:
+ */
+void quantity_declaration()  :
+{}
+{
+    LOOKAHEAD(free_quantity_declaration() )
+    free_quantity_declaration()
+  | LOOKAHEAD(branch_quantity_declaration() )
+    branch_quantity_declaration()
+  | source_quantity_declaration()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void free_quantity_declaration() :
+{}
+{
+  <QUANTITY> identifier_list() ":" subtype_indication() [":=" expression()] ";"
+}
+
+/**
+ * 1076.1 extension:
+ */
+void branch_quantity_declaration() :
+{}
+{
+  <QUANTITY> [LOOKAHEAD(across_aspect()) across_aspect()] 
+	     [LOOKAHEAD(through_aspect()) through_aspect()] 
+	     terminal_aspect() ";"
+}
+
+/**
+ * 1076.1 extension:
+ */
+void source_quantity_declaration() :
+{}
+{ 
+  <QUANTITY> identifier_list() ":" subtype_indication() source_aspect() ";"
+}
+
+/**
+ * 1076.1 extension:
+ */
+void across_aspect() :
+{}
+{
+  identifier_list() [ tolerance_aspect() ] [ ":=" expression() ] <ACROSS>
+}
+
+/**
+ * 1076.1 extension:
+ */
+void through_aspect() :
+{}
+{
+  identifier_list() [ tolerance_aspect() ] [ ":=" expression() ] <THROUGH>
+} 
+
+/**
+ * 1076.1 extension:
+ */
+void source_aspect() :
+{}
+{
+    <SPECTRUM> magnitude_simple_expression() "," phase_simple_expression() 
+  | <NOISE>    magnitude_simple_expression() 
+}
+
+IROper suffix()  :
+{ IROper res = null; String str; }
+{
+	(
+    str = identifier() {res = new IRName(str);} //simple_name()
+  | <character_literal>
+  | str = operator_symbol() {res = new IROperatorSymbol(str);}
+  | <ALL> {res = new IRAll();}
+//  | res = name()
+  )
+  { if( res == null ) throw new RuntimeException(); return res; }
+}
+
+IROper target()  :
+{ IROper res; }
+{
+	(
+    res = name()
+  | res = aggregate()
+  )
+  { return res; }
+}
+
+
+IROper term()  :
+{ IROper op1, op2; IROperKind op; }
+{
+  op1 = factor() 
+  ( LOOKAHEAD(2) op = multiplying_operator() op2 = factor()
+  { op1 = new IRBinaryOper(op1, op, op2); } 
+  )*
+  { return op1; }
+}
+
+void timeout_clause()  :
+{}
+{
+  <FOR> time_or_real_expression()
+}
+
+
+IROper type_conversion() :
+{}
+{
+  type_mark() "(" expression() ")"
+  {throw new RuntimeException();}
+}
+
+
+void type_declaration()  :
+{}
+{
+    LOOKAHEAD( <TYPE> identifier() <IS> )
+    full_type_declaration()
+  | incomplete_type_declaration()
+}
+
+
+IRType type_definition(String typeName)  :
+{ IRType res; }
+{
+	(
+    res = scalar_type_definition(typeName)
+  | res = composite_type_definition(typeName)
+//  | access_type_definition(typeName)
+//  | file_type_definition(typeName)
+	)
+	{return res;}
+}
+
+
+IRType type_mark()  :
+{ String name; }
+{
+	(
+    LOOKAHEAD(type_name())
+    name = type_name()
+  | LOOKAHEAD(subtype_name())
+    name = subtype_name()
+    )
+    { return getType(name); }
+}
+
+
+IRType unconstrained_array_definition(String typeName) :
+{ IRTypeArray res; IRType elType, indType; }
+{
+	{res = new IRTypeArray( typeName, null );}
+  <ARRAY> "(" indType = index_subtype_definition() {addRange(res, indType, false);}
+    ( "," indType = index_subtype_definition() {addRange(res, indType, false);} )* ")"
+      <OF> elType = element_subtype_indication()
+   
+   { res.setElementType(elType); return res; }
+}
+
+
+void use_clause() :
+{ IROper op; }
+{
+   <USE> op = selected_name() {use(op);} ( "," op = selected_name() {use(op);} )* ";"
+}
+
+
+IRStatement variable_assignment_statement() :
+{ IROper target, value; }
+{
+  [ LOOKAHEAD( label() ":") label() ":" ]
+  target = target()
+  ":=" value = expression() ";"
+  { return new IRVariableAssignment(target, value); }
+}
+
+
+void variable_declaration() :
+{ boolean shared = false; IdentifierList list; IRType type; IROper init = null; }
+{
+  [ <SHARED> {shared=true;} ] <VARIABLE> list = identifier_list() ":"
+  type = subtype_indication() [ ":=" init = expression() ] ";"
+  { addVariables(shared, list, type, init); }
+}
+
+
+IRStatement wait_statement() :
+{}
+{
+   [ LOOKAHEAD( label() ) ":" label() ":"]
+   <WAIT> [ sensitivity_clause() ]
+   [ condition_clause() ] [ timeout_clause() ] ";"
+   {throw new RuntimeException();}
+}
+
+
+IROper waveform() :
+{ IROper res = null; }
+{
+	(
+  res = waveform_element() ( "," waveform_element() {throw new RuntimeException();} )*
+  | <UNAFFECTED>
+  )
+  {return res;} 
+}
+
+IROper waveform_element() :
+{ IROper res = null; }
+{
+     LOOKAHEAD(<NULL>)
+     <NULL>             [<AFTER> time_expression() ]
+  |  res = value_expression() [ <AFTER> time_expression() ]
+  { return res; }
+}
+
+
+/** 
+ *Section 15: Simultaneous statements
+ * 1076.1 extension
+ */
+void simultaneous_statement_part()   :
+{}
+{
+  ( simultaneous_statement() )*
+}
+
+/**
+ * 1076.1 extension:
+ */
+void simultaneous_statement()  :
+{}
+{
+    LOOKAHEAD(simple_simultaneous_statement())
+    simple_simultaneous_statement()
+  | LOOKAHEAD( [if_label()] ":" <IF> condition() <USE> )
+    simultaneous_if_statement()
+  | LOOKAHEAD(simultaneous_case_statement())
+    simultaneous_case_statement()
+  | LOOKAHEAD(4) // procedural is at least as 4th position...
+    simultaneous_procedural_statement()
+  | simultaneous_null_statement()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void simple_simultaneous_statement() :
+{}
+{
+  [ LOOKAHEAD( label() ":") label() ":"] 
+  [<PURE>|<IMPURE>] simple_expression() 
+  "==" simple_expression() [ tolerance_aspect() ] ";"
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void simultaneous_if_statement() :
+{}
+{
+  [ if_label() ":"] <IF> condition() <USE>
+     simultaneous_statement_part()
+  ( <ELSIF> condition() <USE> simultaneous_statement_part() )*
+  [ <ELSE> simultaneous_statement_part() ]
+  <END> <USE> [ if_label()] ";"
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void simultaneous_case_statement() :
+{}
+{
+  [ case_label() ":"] <CASE> expression() <USE>
+    (simultaneous_alternative())*
+  <END> <CASE> [ case_label() ] ";"
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void simultaneous_alternative() :
+{}
+{
+  <WHEN> choices() <USE> simultaneous_statement_part()
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void simultaneous_procedural_statement() :
+{}
+{
+  [procedural_label() ":"] [<PURE>|<IMPURE>] <PROCEDURAL> [<IS>]
+    procedural_declarative_part()
+   <BEGIN>
+     procedural_statement_part()
+   <END> <PROCEDURAL> [ procedural_label()] ";"
+}
+
+
+// 1076.1 extension:
+void procedural_label()  :
+{}
+{
+  label()
+}
+
+// 1076.1 extension:
+void procedural_declarative_part() :
+{}
+{
+  ( procedural_declarative_item() )*
+}
+
+/**
+ * 1076.1 extension:
+ */
+void procedural_declarative_item()  :
+{}
+{
+    LOOKAHEAD(subprogram_declaration())
+    subprogram_declaration()
+  | subprogram_body()
+  | type_declaration()
+  | subtype_declaration()
+  | constant_declaration()
+  | variable_declaration()
+  | alias_declaration()
+  | LOOKAHEAD(attribute_declaration())
+    attribute_declaration()
+  | attribute_specification()
+  | use_clause()
+  | LOOKAHEAD(group_template_declaration())
+    group_template_declaration()
+  | group_declaration()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void procedural_statement_part() :
+{}
+{
+  ( sequential_statement() )*
+}
+
+
+
+// 1076.1 extension:
+void simultaneous_null_statement() :
+{}
+{
+  [ label() ":"] <NULL> ";"
+}
+
+
+
+
+//
+// parts of grammar, which have to be checked during semantic analysis
+// by semantic lookahead:
+//
+void block_label()  :
+{}
+{
+  label()
+}
+
+void block_statement_label()  :
+{}
+{
+  label()
+}
+
+void case_label()  :
+{}
+{
+  label()
+}
+
+void generate_label()  :
+{}
+{
+  label()
+}
+
+void generate_statement_label()  :
+{}
+{
+  label()
+}
+
+void if_label()  :
+{}
+{
+  label()
+}
+
+void instantiation_label()  :
+{}
+{
+  label()
+}
+
+String loop_label()  :
+{ String res; }
+{
+  res = label()
+  {return res;}
+}
+
+String process_label()  :
+{ String label; }
+{
+  label = label()
+  { return label; }
+}
+
+void architecture_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+IROper attribute_simple_name()  :
+{IROper res;String name;}
+{
+	(
+	name = identifier() {res = new IRName(name);}
+  //res = simple_name()
+  | <RANGE>{res = new IRName("RANGE");}
+  )
+  {return res;}
+}
+
+void component_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+void configuration_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+IROper element_simple_name()  :
+{ IROper res; }
+{
+  res = simple_name()
+  {return res;}
+}
+
+void entity_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+IROper package_simple_name()  :
+{IROper res;}
+{
+  res = simple_name()
+  {return res;}
+}
+
+
+
+void architecture_name()  :
+{}
+{
+  name()
+}
+
+void entity_name()  :
+{}
+{
+  name()           
+}
+
+void file_name()  :
+{}
+{
+  name()
+}
+
+IROper function_name()  :
+{IROper res; String id;}
+{
+  id = identifier(){res = resolveAndCreate(id);}//name()
+  {return res;}
+}
+
+void configuration_name()  :
+{}
+{
+  name()
+}
+
+void component_name()  :
+{}
+{
+  name()
+}
+
+void generic_name()  :
+{}
+{
+  name()
+}
+
+void group_template_name()  :
+{}
+{
+  name()
+}
+
+void parameter_name()  :
+{}
+{
+  name()
+}
+
+void physical_type_simple_name()  :
+{}
+{
+  simple_name() 
+}
+
+void port_name()  :
+{}
+{
+  name()
+}
+
+void procedure_name()  :
+{}
+{
+  name()
+}
+
+IROper range_attribute_name()  :
+{IROper res;}
+{
+  res = name()
+  {return res;}
+}
+
+IROper signal_name() :
+{ IROper res; }
+{
+  res = name()
+  {return res;}
+}
+
+//
+// Name, der einen Typen bezeichnet...
+//
+String type_name() :
+{String res;}
+{
+  res = identifier()//name()
+  { return res; }
+}
+
+
+// 1076.1 extension:
+void record_nature_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+void record_type_simple_name()  :
+{}
+{
+  simple_name()
+}
+
+void resolution_function_name()  :
+{}
+{
+  name()
+}
+
+String subtype_name()  :
+{ String res; }
+{
+  //name()
+  res = identifier()
+  {return res;}
+}
+
+void unit_name()  :
+{}
+{
+  name()
+}
+
+IROper variable_name()  :
+{ IROper res; }
+{
+  res = name()
+  {return res;}
+}
+
+void architecture_identifier()  :
+{}
+{
+  identifier()
+}
+
+IROper static_expression()  :
+{ IROper res; }
+{
+  res = expression()
+  {return res;}
+}
+
+
+IROper boolean_expression()  :
+{IROper res;}
+{
+  res = expression()
+  {return res;}
+}
+
+void file_open_kind_expression()  :
+{}
+{
+  expression()
+}
+
+void guard_expression()  :
+{}
+{
+  expression()
+}
+
+void time_expression()  :
+{}
+{
+  expression() // unit_name()
+  // unit_name can be derived by expression!!! 
+}
+
+// 1076.1 extension:
+void time_or_real_expression()  :
+{}
+{
+  expression() // unit_name()
+  // unit_name can be derived by expression!!!
+}
+
+
+IROper value_expression()  :
+{ IROper res; }
+{
+  res = expression()
+  {return res;}
+}
+
+void string_expression()  :
+{}
+{
+  expression()
+}
+
+
+void guarded_signal_list()  :
+{}
+{
+  signal_list()
+}
+
+IROper[] parameter_association_list()  :
+{IROper[] res;}
+{
+  res = association_list()
+  {return res;}
+}
+
+void port_association_list()  :
+{}
+{
+  association_list()
+}
+
+void generic_association_list()  :
+{}
+{
+  association_list()
+}
+
+void generic_interface_list()  :
+{}
+{
+  interface_list()
+}
+
+void parameter_interface_list()  :
+{}
+{
+  interface_list()
+}
+
+void port_interface_list()  :
+{}
+{
+  interface_list()
+}
+
+//
+// fraglich:
+//
+void formal_port_clause()  :
+{}
+{
+  port_clause()
+}
+
+void local_port_clause()  :
+{}
+{
+  port_clause()
+}
+
+void formal_generic_clause()  :
+{}
+{
+  generic_clause()
+}
+
+void local_generic_clause()  :
+{}
+{
+  generic_clause()
+}
+
+IRType element_subtype_indication()  :
+{ IRType res; }
+{
+  res = subtype_indication()
+  {return res;}
+}
+
+IRType discrete_subtype_indication()  :
+{IRType res;}
+{
+  res = subtype_indication()
+  {return res;}
+}
+
+void loop_parameter_specification(IRLoopVariable var)  :
+{}
+{
+  parameter_specification(var)
+}
+
+void generate_parameter_specification()  :
+{}
+{
+  parameter_specification()
+}
+
+void passive_concurrent_procedure_call_statement()  :
+{}
+{
+  concurrent_procedure_call_statement()
+}
+
+void passive_process_statement()  :
+{}
+{
+  process_statement()
+}
+
+
+void magnitude_simple_expression()  :
+{}
+{ 
+  simple_expression() 
+}
+
+void phase_simple_expression()  :
+{}
+{
+  simple_expression()
+}
+
+
+void nature_name()  :
+{}
+{
+  name() 
+}
+
+void subnature_name()  :
+{}
+{
+  name()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void terminal_name()  :
+{}
+{
+  name()
+}
+
+
+/**
+ * 1076.1 extension:
+ */
+void quantity_name()  :
+{}
+{
+  name()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void plus_terminal_name()  :
+{}
+{
+  name()
+}
+
+/**
+ * 1076.1 extension:
+ */
+void minus_terminal_name()  :
+{}
+{
+  name()
+}
+
+
+/**
+ * still missing:
+ */
+void shared_variable_declaration() :
+{}
+{
+  [ <SHARED> ] <VARIABLE> identifier_list() ":"
+  subtype_indication() [ ":=" expression() ] ";"
+}
+
+
+
+
+/**
+ *
+ * for error recovery:
+ *
+ */
+JAVACODE void error_skipto(int kind, String message) 
+{
+	System.out.println(token.beginLine + ": " + message);
+//  errs.Error(message);
+  Token t;
+  do 
+  {
+    t = getNextToken();
+  } while ((t.kind != kind));
+}
+
+

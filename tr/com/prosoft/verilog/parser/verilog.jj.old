@@ -1,0 +1,1870 @@
+/*
+ * This file contains a Verilog subset grammar.
+ * For Pittsburgh Simulation
+ * copyright Jan 2002
+ * Author: Charles Havener - CDH Consulting - http://www.cdhconsult.com
+ */
+
+
+options {
+  JAVA_UNICODE_ESCAPE = true;
+  STATIC=false;
+//  MULTI=true;
+//  VISITOR=true;
+//  NODE_USES_PARSER=true;
+}
+
+
+PARSER_BEGIN(VerilogParser)
+
+package com.prosoft.verilog.parser; // put a package name here if desired
+
+import com.prosoft.verilog.ir.*;
+import com.prosoft.common.*;
+
+import java.util.*;
+
+public class VerilogParser extends VParserBase
+{
+    public final static String version = ".99";
+}
+
+PARSER_END(VerilogParser)
+
+/* WHITE SPACE */
+<DEFAULT,IN_TABLE_BLOCK>
+SPECIAL_TOKEN :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+| "\f"
+}
+
+/* COMMENTS, note specify blocks are treated as comments */
+
+MORE :
+{
+  "//" : IN_SINGLE_LINE_COMMENT
+| "`"  : IN_SINGLE_LINE_COMMENT
+| <"/**" ~["/"]> { input_stream.backup(1); } : IN_FORMAL_COMMENT
+| "`ifdef" : IN_MULTI_LINE_COMMENT
+| "/*" : IN_MULTI_LINE_COMMENT
+/* | "specify" : IN_SPECIFY_BLOCK */
+}
+
+<IN_TABLE_BLOCK>
+MORE:
+{
+  "//" : IN_ONE_LINE_COMMENT
+}
+
+<IN_ONE_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <ONE_LINE_COMMENT: "\n" | "\r" | "\r\n" > : IN_TABLE_BLOCK
+}
+
+<IN_SINGLE_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <SINGLE_LINE_COMMENT: "\n" | "\r" | "\r\n" > : DEFAULT
+}
+
+<IN_FORMAL_COMMENT>
+SPECIAL_TOKEN :
+{
+  <FORMAL_COMMENT: "*/" > : DEFAULT
+}
+
+<IN_MULTI_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <MULTI_LINE_COMMENT: "*/" | "`endif" > : DEFAULT
+}
+
+<IN_SPECIFY_BLOCK>
+SPECIAL_TOKEN :
+{
+  <SPECIFYBLOCK: "endspecify" > : DEFAULT
+}
+
+TOKEN :
+{
+  <TABLE: "table" > : IN_TABLE_BLOCK
+}
+
+
+<IN_TABLE_BLOCK>
+TOKEN :
+{
+  < OUTPUT_SYMBOL:  <OUT> >
+| < LEVEL_SYMBOL:   "?" | "b" | "B" | "*" >  // must also allow all OUTPUT_SYMBOLs too wherever used
+      // "*" not in spec but used in level input lines of example code
+| < EDGE_SYMBOL: "r" | "R" | "f" | "F" | "p" | "P" | "n" | "N" | "*" >
+| < ENDTABLE: "endtable" > : DEFAULT   // return to DEFAULT lexer state
+| < #OUT: "0" | "1" | "x" | "X" | "?">
+  // "?" not in spec but used in level input lines of example code
+| < DASH: "-" >
+//| <IF: "if" >
+}
+
+
+<IN_SINGLE_LINE_COMMENT,IN_FORMAL_COMMENT,IN_MULTI_LINE_COMMENT,IN_SPECIFY_BLOCK,IN_ONE_LINE_COMMENT>
+MORE : {  < ~[] > }
+
+/*
+// --  All verilog keywords from Appendix B of the IEEE Std 1364-1995 --
+always  and assign  begin buf bufif0  bufif1  case  casex casez cmos
+deassign  default defparam  disable edge  else  end endcase endmodule
+endfunction endprimitive  endspecify  endtable  endtask event for
+force forever fork  function  highz0  highz1  if  ifnone  initial
+inout input integer join  large macromodule medium  module  nand
+negedge nmos  nor not notif0  notif1  or  output  parameter pmos
+posedge primitive pull0 pull1 pullup  pulldown  rcmos real  realtime
+reg release repeat  rnmos rpmos rtran rtranif0  rtranif1  scalared
+small specify specparam strong0 strong1 supply0 supply1 table
+task  time  tran  tranif0 tranif1 tri tri0  tri1  triand  trior trireg
+vectored  wait  wand  weak0 weak1 while wire  wor xnor  xor
+*/
+
+TOKEN :
+{
+  <GATETYPE :
+        "and" | "nand" |"or" | "nor" | "xor" | "xnor" |  // n_input_gatetype for semantics, many inputs last one is output
+        "buf"  | "not"   // n_output_gatetype i.e. many outputs last one is input
+        | "bufif0" | "bufif1" |  "notif0" |  "notif1" |
+        "pulldown" |  "pullup" |  "nmos" |  "rnmos" |  "pmos" |
+        "rpmos" |  "cmos" |   "rcmos" |  "tran" | "rtran" | "tranif0" |
+        "rtranif0" |  "tranif1" |  "rtranif1"
+    >
+  | <NET_TYPE :
+    "wire" | "tri" | "tri1" | "supply0" | "supply1" | "wand" |
+    "triand" | "wor" | "trior" >
+}
+
+/*
+number ::=
+decimal_number
+| octal_number
+| binary_number
+| hex_number
+| real_number
+real_number ::=
+[ sign ] unsigned_number . unsigned_number
+| [ sign ] unsigned_number [ . unsigned_number] e [ sign ] unsigned_number
+| [ sign ] unsigned_number [ . unsigned_number] e [ sign ] unsigned_number
+decimal_number ::=
+[ sign ] unsigned_number
+| [size] decimal_base unsigned_number
+binary_number ::= [size] binary_base binary_digit { _ | binary_digit}
+octal_number ::= [size] octal_base octal_digit { _ | octal_digit}
+hex_number ::= [size] hex_base hex_digit { _ | hex_digit}
+sign ::= + | -
+size ::= unsigned_number
+unsigned_number ::= decimal_digit { _ | decimal_digit }
+decimal_base ::= Õd | ÕD
+binary_base ::= Õb | ÕB
+octal_base ::= Õo | ÕO
+hex_base ::= Õh | ÕHF
+decimal_digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0
+binary_digit ::= x | X | z | Z | 0 | 1
+octal_digit ::= x | X | z | Z | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+hex_digit ::= x | X | z | Z | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | a | b | c | d | e | f | A | B | C | D | E | F
+
+*/
+
+TOKEN :
+{
+  // unsigned_number ::= decimal_digit { _ | decimal_digit }
+   <UNSIGNED_NUMBER: <DECIMAL_DIGIT> ( "_" | <DECIMAL_DIGIT> )* >
+   | < #DECIMAL_DIGIT : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" >
+   | <REAL_NUMBER: <UNSIGNED_NUMBER> "." <UNSIGNED_NUMBER> >
+}
+
+/*
+TOKEN :  // must be after UNSIGNED_NUMBER or it gets confused with the 1 and 0
+{
+  < INIT_VAL:  "1'b0" | "1'b1" | "1'bx" | "1'bX" | "1'B0" | "1'B1" | "1'Bx" | "1'BX" | "1" | "0" >
+}
+*/
+
+/* SEPARATORS */
+
+<DEFAULT,IN_TABLE_BLOCK>
+TOKEN :
+{
+  < LPAREN: "(" >
+| < RPAREN: ")" >
+| < LBRACE: "{" >
+| < RBRACE: "}" >
+| < LBRACKET: "[" >
+| < RBRACKET: "]" >
+| < SEMICOLON: ";" >
+| < COMMA: "," >
+| < COLON: ":" >
+| < DOT: "." >
+| < SHARP: "#" >
+//| < EMPTY: "" >   // this is questionable, not sure how to deal with empty productions in JavaCC
+}
+
+/* OPERATORS ( From Java Grammar, needs to be revised ) */
+
+TOKEN :
+{
+  < ASSIGN: "=" >
+| < GT: ">" >
+| < LT: "<" >
+| < BANG: "!" >
+| < TILDE: "~" >
+//| < HOOK: "?" >
+| < EQ: "==" >
+| < LE: "<=" >
+| < GE: ">=" >
+| < NE: "!=" >
+| < OR: "||" >
+| < AND: "&&" >
+| < INCR: "++" >
+| < DECR: "--" >
+| < PLUS: "+" >
+| < MINUS: "-" >
+| < SLASH: "/" >
+| < BIT_AND: "&" >
+| < BIT_OR: "|" >
+| < XOR: "^" >
+| < REM: "%" >
+| < LSHIFT: "<<" >
+ | < STAR_RIGHT_CARET: "*>" >
+ | < ASSIGN_RIGHT_CARET: "=>" >
+}
+
+TOKEN :
+{
+	<INTEGER: "integer"> |
+	<REAL: "real"> |
+	<REALTIME: "realtime"> |
+	<TIME: "time">
+}
+
+/* RESERVED WORDS AND LITERALS */
+
+TOKEN :
+{
+ < MODULE: "module" >
+| < ENDMODULE: "endmodule" >
+| < SPECIFY: "specify" >
+| < ENDSPECIFY: "endspecify" >
+| < SPECPARAM: "specparam" >
+| < INPUT: "input" >
+| < OUTPUT: "output" >
+| < INOUT: "inout" >
+| < REG: "reg" >
+| < STRENGTH0: "supply0" | "strong0" | "pull0" | "weak0" >
+| < STRENGTH1: "supply1" | "strong1" | "pull1" | "weak1" >
+| < HIGHZ0: "highz0" >
+| < HIGHZ1: "highz1" >
+| <IFNONE: "ifnone" >
+| <CELLDEFINE: "`celldefine" >
+| <POSEDGE: "posedge" | "POSEDGE" >
+| <NEGEDGE: "negedge" | "NRGEDGE" >
+| <VECTORED: "vectored" | "VECTORED">
+| <SCALARED: "scalared" | "SCALARED">
+| <TASK: "task">
+| <FUNCTION: "function">
+| <AUTOMATIC: "automatic">
+| <BEGIN: "begin">
+| <END: "end">
+| <CASE: "case">
+| <CASEX: "casex">
+| <CASEZ: "casez">
+| <SMALL: "small">
+| <LARGE: "large">
+| <MEDIUM: "medium">
+| <ALWAYS: "always">
+| <INITIAL: "initial">
+| <REPEAT: "repeat">
+| <PRIMITIVE: "primitive">
+| <ENDPRIMITIVE: "endprimitive">
+| <DEFAULT1: "default">
+| <SIGNED: "signed">
+| <FORCE: "force">
+| <ASSIGN_KEY: "assign">
+| <RELEASE: "release">
+| <ENDCASE: "endcase">
+| <DEASSIGN: "deassign">
+| <PARAMETER: "parameter">
+| <IF: "if">
+| <ELSE: "else">
+}
+
+/* IDENTIFIERS */
+/* hacked up Nov 4 2002 to allow slash and backslash as temporary 'escaped identifiers'  */
+TOKEN :
+{
+  < IDENTIFIER:  <LETTER> (<LETTER>|<DECIMAL_DIGIT>|"$")*
+  | <BACKSLASH> ( ~[" "] )+ >
+  /* | <BACKSLASH> <ANYTHING> ( <ANYTHING> )* " " > */
+  | < #LETTER: ["a"-"z","A"-"Z","_"] >
+  | < #BACKSLASH: "\\" >
+ /* | < #ANYTHING: ["a"-"z","A"-"Z","_","/","0"-"9","[","]"] > */
+}
+
+
+TOKEN :
+{
+<non_zero_decimal_digit: "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9">
+| <binary_digit: "x" | "z" | "0" | "1">
+| <octal_digit: "x" | "z" | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7">
+| <decimal_digit: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9">
+| <hex_digit:
+"x" | "z" | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+| "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F">
+| <non_zero_unsigned_number1: <non_zero_decimal_digit> ( "_" | <decimal_digit>)*>
+| <unsigned_number1: <decimal_digit> ( "_" | <decimal_digit> )* >
+| <binary_value1: <binary_digit> ( "_" | <binary_digit> )* >
+| <octal_value1: <octal_digit> ( "_" | <octal_digit> )* >
+| <hex_value1: <hex_digit> ( "_" | <hex_digit> )*>
+//| <decimal_base1: ("’"["s"/*|"S"*/]"d") | ("’"["s"/*|"S"*/]"D") >
+| <hex_base1: "'"["s"/*|"S"*/]"h" | "'"["s"/*|"S"*/]"H">
+/*
+| <hex_number: 
+	["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+	("0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "_")*
+	"'" 
+	["h", "H"] <hex_value1> >
+	*/
+| <apostrophed_number: 
+	["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+	("0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "_")*
+	"'" 
+	["h", "H", "d", "D", "o", "O", "b", "B"] 
+	("0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "_")*
+	>
+//| <apostrophed_number: [<non_zero_unsigned_number1>]"'"["s"] ("d"|"b"|"o") <hex_value1> >
+/*
+binary_base1 ::= ’[s|S]b | ’[s|S]B
+octal_base1 ::= ’[s|S]o | ’[s|S]O
+hex_base1 ::= ’[s|S]h | ’[s|S]H
+*/
+}
+
+/*
+binary_number ::= [ size ] binary_base binary_value
+octal_number ::= [ size ] octal_base octal_value
+hex_number ::= [ size ] hex_base hex_value
+sign ::= + | -
+size ::= non_zero_unsigned_number
+non_zero_unsigned_number1 ::= non_zero_decimal_digit { _ | decimal_digit}
+unsigned_number1 ::= decimal_digit { _ | decimal_digit }
+binary_value1 ::= binary_digit { _ | binary_digit }
+octal_value1 ::= octal_digit { _ | octal_digit }
+hex_value1 ::= hex_digit { _ | hex_digit }
+decimal_base1 ::= ’[s|S]d | ’[s|S]D
+binary_base1 ::= ’[s|S]b | ’[s|S]B
+octal_base1 ::= ’[s|S]o | ’[s|S]O
+hex_base1 ::= ’[s|S]h | ’[s|S]H
+non_zero_decimal_digit ::= 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+decimal_digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+binary_digit ::= x_digit | z_digit | 0 | 1
+octal_digit ::= x_digit | z_digit | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+*/
+
+
+
+/*****************************************
+ * THE VERILOG SUBSET LANGUAGE GRAMMAR STARTS HERE *
+ *****************************************/
+/*
+ * Program structuring syntax follows.
+ */
+
+void CompilationUnit() :
+{ }
+{
+	{
+		disable_tracing();
+	}
+	
+  source_text()
+  <EOF>
+}
+
+void source_text() :
+{}
+{
+    ( description() )*
+}
+
+void description() :
+{}
+{
+  module_declaration()
+  | <CELLDEFINE>
+  | udp_declaration()
+}
+/* here is the official spec grammar  - Nov 5 2002
+module_declaration ::=
+module_keyword module_identifier [ list_of_ports ] ; { module_item } endmodule
+module_keyword ::= module | macromodule
+list_of_ports ::= ( port { , port } )
+port ::=
+[ port_expression ]
+| . port_identifier ( [ port_expression ] )
+port_expression ::=
+port_reference
+| { port_reference { , port_reference} }
+port_reference ::=
+port_identifier
+| port_identifier [ constant_expression ]
+| port_identifier [ msb_constant_expression : lsb_constant_expression ]
+
+*/
+
+void module_declaration() :
+{ Token name; VModule module; }
+{
+  < MODULE > name = <IDENTIFIER > {module =  new VModule(env(), name.image);setModule(module);push(module.getEnvironment());}  
+  	
+  	Arguments()   
+  	
+  	<SEMICOLON>
+      ( module_item() )*
+  < ENDMODULE >
+  {putModule(module);pop();}
+}
+
+void module_parameter_port_list() :
+{}
+{
+	"#" "(" parameter_declaration() ( "," parameter_declaration() )* ")"
+}
+
+void parameter_declaration() :
+{ VType type; VOperRange range; }
+{
+	"parameter" 
+	(
+			( "integer" {type = new VTypeInteger();}
+			| "real" {type = new VTypeReal();}
+			| "realtime" {type = new VTypeRealTime();}
+			| "time" {type = new VTypeTime();})
+		| 
+		([ "signed" ] [ range() ])
+	)
+	list_of_param_assignments() ";"
+}
+
+void list_of_param_assignments() :
+{}
+{
+	param_assignment() ( "," param_assignment() )*
+}
+
+void param_assignment() :
+{}
+{
+	<IDENTIFIER> "=" expression()
+}
+
+void module_item() :
+{}
+{
+  /*
+  module_item ::=
+    module_item_declaration
+    | parameter_override
+    | continuous_assign
+    | gate_instantiation
+    | udp_instantiation
+    | module_instantiation
+    | specify_block
+    | initial_construct
+    | always_construct
+  */
+    module_item_decl()
+	| GateInstantiation()
+        | LOOKAHEAD(3) module_instantiation()
+        | udp_instantiation()
+        | specify_block()
+}
+
+void module_or_generate_item() :
+{}
+{
+	/*
+	( attribute_instance() )* module_or_generate_item_declaration()
+	| ( attribute_instance() )* parameter_override()
+	| ( attribute_instance() )* gate_instantiation()
+	| ( attribute_instance() )* udp_instantiation()
+	| ( attribute_instance() )* module_instantiation()
+	| ( attribute_instance() )* initial_construct()
+	| 
+	*/
+	( attribute_instance() )* 
+	( 
+		continuous_assign()
+		| initial_or_always_construct()
+	)
+}
+
+void continuous_assign() :
+{ DriveStrength ds = null; VOper delay = null; }
+{
+	"assign" [ LOOKAHEAD(2) ds = drive_strength() ] [ delay = delay3() ]
+	net_assignment(ds, delay) ("," net_assignment(ds, delay) )* ";" 
+}
+
+void net_assignment(DriveStrength ds, VOper delay) :
+{ VOper l, r; VAssignStatement res; TextCoord c = begin(); }
+{
+	l = expression() "=" r = expression()
+	{res = new VAssignStatement(l, VAssignKind.EQ, r, ds, delay); res.setBegin(c); res.setEnd(end()); module().addConcurrent(res);}
+}
+
+void initial_or_always_construct() :
+{VStatement stat; String name = null; boolean isAlways = false; TextCoord c = begin(); VInitialOrAlways res;}
+{
+	("initial" | "always" {isAlways = true;}) stat = statement()
+	{res = new VInitialOrAlways(module(), name, stat, isAlways); res.setBegin(c); c = end(); res.setEnd(c); module().add(res);}
+}
+
+void attribute_instance() :
+{}
+{
+	"(*" attr_spec() ( "," attr_spec() )* "*)"
+}
+
+void attr_spec() :
+{}
+{
+	LOOKAHEAD(2) <IDENTIFIER> "=" /*constant_*/ expression()
+	| <IDENTIFIER>
+}
+
+void specify_block() :
+{}
+{
+  <SPECIFY> ( specify_item() )+ <ENDSPECIFY>
+}
+
+void specify_item() :
+{}
+{
+  specparam_declaration()
+  | path_declaration()
+  /* | system_timimg_check */
+}
+
+void specparam_declaration() :
+{}
+{
+  <SPECPARAM> list_of_specparam_assignments() <SEMICOLON>
+}
+
+void list_of_specparam_assignments() :
+{}
+{
+  specparam_assignment() ( <COMMA> specparam_assignment() )*
+
+}
+
+void specparam_assignment() :
+{}
+{
+  <IDENTIFIER> <ASSIGN> constant_expression()
+  /* | pulse_control_specparam() */
+}
+
+void path_declaration() :
+{}
+{
+   LOOKAHEAD(4) simple_path_declaration() <SEMICOLON>  /*  did not work with just 3 lookahead! */
+  | edge_sensitive_path_declaration() <SEMICOLON>
+  | state_dependent_path_declaration() <SEMICOLON>
+}
+
+/*
+edge_sensitive_path_declaration ::=
+parallel_edge_sensitive_path_description = path_delay_value
+| full_edge_sensitive_path_description = path_delay_value
+
+parallel_edge_sensitive_path_description ::=
+( [ edge_identifier ] specify_input_terminal_descriptor =>
+specify_output_terminal_descriptor [ polarity_operator ] : data_source_expression ) )
+
+full_edge_sensitive_path_description ::=
+( [ edge_identifier ] list_of_path_inputs *>
+list_of_path_outputs [ polarity_operator ] : data_source_expression ) )
+
+data_source_expression ::= expression
+edge_identifier ::= posedge | negedge
+*/
+
+
+void edge_sensitive_path_declaration() :
+{}
+{
+  parallel_edge_sensitive_path_description() <ASSIGN> path_delay_value()
+ /* | full_edge_sensitive_path_description() <ASSIGN> path_delay_value() */
+}
+
+void parallel_edge_sensitive_path_description() :
+{}
+{
+  <LPAREN> [ edge_identifier() ]  specify_input_terminal_descriptor()  <ASSIGN_RIGHT_CARET> <LPAREN>
+    specify_output_terminal_descriptor() [ polarity_operator() ] <COLON> expression() <RPAREN> <RPAREN>
+}
+
+void edge_identifier() :
+{}
+{
+  <POSEDGE>
+  | <NEGEDGE>
+}
+
+void simple_path_declaration() :
+{}
+{
+  LOOKAHEAD(3) parallel_path_description() <ASSIGN> path_delay_value()
+ | full_path_description() <ASSIGN> path_delay_value()
+}
+
+void path_delay_value() :
+{}
+{
+  LOOKAHEAD(3) list_of_path_delay_expressions()
+  | <LPAREN> list_of_path_delay_expressions()  <RPAREN>
+}
+
+void list_of_path_delay_expressions() :
+{}
+{
+  path_delay_expression()  ( <COMMA> path_delay_expression() )*
+  // actually semantically restricted to 1,2,3,6, or 12 values in the list
+
+}
+
+void path_delay_expression() :
+{}
+{
+  constant_mintypmax_expression()
+}
+
+void full_path_description() :
+{}
+{
+  <LPAREN> list_of_path_inputs() [ polarity_operator() ] <STAR_RIGHT_CARET> list_of_path_outputs() <RPAREN>
+}
+
+void list_of_path_inputs() :
+{}
+{
+  specify_input_terminal_descriptor() ( <COMMA> specify_input_terminal_descriptor() )*
+}
+
+void list_of_path_outputs() :
+{}
+{
+  specify_output_terminal_descriptor() ( <COMMA> specify_output_terminal_descriptor() )*
+}
+
+/*
+parallel_path_description ::=
+( specify_input_terminal_descriptor [ polarity_operator ] => specify_output_terminal_descriptor )
+*/
+void parallel_path_description() :
+{}
+{
+  <LPAREN> specify_input_terminal_descriptor() [ polarity_operator() ] <ASSIGN_RIGHT_CARET> specify_output_terminal_descriptor() <RPAREN>
+}
+
+void polarity_operator() :
+{}
+{
+  <PLUS>
+  | <MINUS>
+}
+
+void specify_input_terminal_descriptor() :
+{}
+{
+  <IDENTIFIER>
+  /* input_identifer() */
+  /* etc */
+}
+
+/*
+specify_output_terminal_descriptor ::=
+output_identifier
+| output_identifier [ constant_expression ]
+| output_identifier [ msb_constant_expression : lsb_constant_expression ]
+*/
+void specify_output_terminal_descriptor() :
+{}
+{
+  <IDENTIFIER>
+  /* output_identifer() */
+  /* etc */
+}
+
+/*
+state_dependent_path_declaration ::=
+if ( conditional_expression ) simple_path_declaration
+| if ( conditional_expression ) edge_sensitive_path_declaration
+| ifnone simple_path_declaration
+*/
+void state_dependent_path_declaration() :
+{}
+{
+  <IF> <LPAREN> conditional_expression() <RPAREN> simple_or_edge_decl()
+  | <IFNONE>  simple_path_declaration()
+}
+
+void simple_or_edge_decl() :  // cdh added intermediate rule
+{}
+{ // look ahead of 4 works! But 3 fails to find the edge_sens path
+   LOOKAHEAD(4) simple_path_declaration()  // if (!B && C) (A +=> ZC) = (rdly, fdly);
+  | edge_sensitive_path_declaration()  // if (CK) (CDN => (Q +: 1'b0)) = (rdly, fdly);
+}
+
+/*
+void conditional_expression() :
+{}
+{
+  expression()   // supposedly more restrictive than this but for now let's just use expr 
+}
+*/
+
+
+void udp_instantiation() :
+{}
+{
+/*
+udp_instantiation ::= udp_identifier [ drive_strength ] [ delay2 ] udp_instance { , udp_instance } ;
+*/
+  <IDENTIFIER> [  LOOKAHEAD(2) drive_strength() ] [ delay2() ] udp_instance() ( <COMMA> udp_instance() )* <SEMICOLON>
+
+}
+
+void udp_instance() :
+{}
+{
+/*
+udp_instance ::= [ name_of_udp_instance ] ( output_port_connection , input_port_connection
+{ , input_port_connection } )
+
+*/
+  [ name_of_udp_instance() ] <LPAREN> output_port_connection() <COMMA>
+      input_port_connection() ( <COMMA>  input_port_connection() )* <RPAREN>
+
+}
+/*
+ordered_port_connection ::= [ expression ]
+named_port_connection ::= . port_identifier ( [ expression ] )
+*/
+
+void input_port_connection() :
+{}
+{
+  list_of_module_connections(null)   // ????? beats me
+}
+
+void output_port_connection() :
+{}
+{
+  ordered_port_connection()  // only one allowed here, not a list!
+}
+
+void name_of_udp_instance() :
+{}
+{
+/* name_of_udp_instance ::= udp_instance_identifier [ range ] */
+  <IDENTIFIER> [ range() ]
+
+}
+
+DriveStrength drive_strength() :
+{}
+{
+/*
+drive_strength ::=
+( strength0 , strength1 )
+| ( strength1 , strength0 )
+| ( strength0 , highz1 )
+| ( strength1 , highz0 )
+| ( highz1 , strength0 )
+| ( highz0 , strength1 )
+strength0 ::= supply0 | strong0 | pull0 | weak0
+strength1 ::= supply1 | strong1 | pull1 | weak1
+*/
+  LOOKAHEAD(3) <LPAREN> <STRENGTH0> <COMMA> <STRENGTH1> <RPAREN>
+  | LOOKAHEAD(2) <LPAREN> <STRENGTH1> <COMMA> <STRENGTH0> <RPAREN>
+  | LOOKAHEAD(2)<LPAREN> <STRENGTH0> <COMMA> <HIGHZ1> <RPAREN>
+  | LOOKAHEAD(2)<LPAREN> <HIGHZ1> <COMMA> <STRENGTH0> <RPAREN>
+  | <LPAREN> <HIGHZ0> <COMMA> <STRENGTH1> <RPAREN>
+  {throw new RuntimeException();}
+}
+
+void delay2() :
+{}
+{
+/*
+delay3 ::= # delay_value | # ( delay_value [ , delay_value [ , delay_value ] ] )
+delay2 ::= # delay_value | # ( delay_value [ , delay_value ] )
+
+*/
+  LOOKAHEAD(2) "#" delay_value()
+  | "#" <LPAREN> delay_value() [ delay_value() <COMMA> delay_value() ] <RPAREN>
+}
+
+VOper delay3() :
+{}
+{
+/*
+delay3 ::= # delay_value | # ( delay_value [ , delay_value [ , delay_value ] ] )
+delay2 ::= # delay_value | # ( delay_value [ , delay_value ] )
+
+*/
+  LOOKAHEAD(2) "#" delay_value()
+  | "#" <LPAREN> delay_value() [ delay_value() <COMMA> delay_value() [<COMMA> delay_value()] ] <RPAREN>
+  {throw new RuntimeException();}
+}
+
+void delay_value() :
+{}
+{
+/* delay_value ::= unsigned_number | parameter_identifier | constant_mintypmax_expression */
+  LOOKAHEAD(2) <UNSIGNED_NUMBER>
+  | constant_mintypmax_expression()
+}
+
+void constant_mintypmax_expression() :
+{}
+{
+  LOOKAHEAD(2) constant_expression()
+  | constant_expression() <COLON> constant_expression() <COLON> constant_expression()
+}
+/*
+unary_operator ::=
++ | - | ! | ~ | & | ~& | | | ~| | ^ | ~^ | ^~
+*/
+VUnaryKind unary_operator() :
+{VUnaryKind op;}
+{
+	(
+  <PLUS> {op = VUnaryKind.PLUS;}
+  | <MINUS> {op = VUnaryKind.MINUS;}
+  | <BANG> {op = VUnaryKind.LNOT;}
+  | "~" {op = VUnaryKind.BNOT;}
+  )
+  {return op;}
+}
+/*
+binary_operator ::=
++ | - | * | / | % | == | != | === | !== | && | ||
+| < | <= | > | >= | & | | | ^ | ^~ | ~^ | >> | <<
+*/
+void binary_operator() :
+{}
+{
+  <PLUS>
+  | <MINUS>
+  | <SLASH>
+  | <AND>
+  | <OR>
+  | "*"
+}
+
+void constant_expression() :
+{}
+{
+/*
+constant_expression ::=
+constant_primary
+| unary_operator constant_primary
+| constant_expression binary_operator constant_expression
+| constant_expression ? constant_expression : constant_expression
+| string
+
+constant_primary ::=
+number
+| parameter_identifier
+| constant_concatenation
+| constant_multiple_concatenation
+
+
+mintypmax_expression ::=
+expression
+| expression : expression : expression
+
+expression ::=
+primary
+| unary_operator primary
+| expression binary_operator expression  // LEFT RECURSIVE!!!
+| expression ? expression : expression
+| string
+
+*/
+  // the spec is bizarre. For now an exprssion seems to subsume constant_expression
+  expression()
+}
+
+void udp_declaration() :
+{}
+{
+/*
+udp_declaration ::=
+  primitive udp_identifier ( udp_port_list ) ;
+  udp_port_declaration { udp_port_declaration }
+  udp_body
+  endprimitive
+
+// udp_port_list ::= output_port_identifier , input_port_identifier { , input_port_identifier }
+*/
+  "primitive" <IDENTIFIER> <LPAREN> list_of_module_connections(null) /* ?? */ <RPAREN> <SEMICOLON>
+  ( udp_port_declaration() )+ udp_body() "endprimitive"
+
+}
+
+void udp_port_declaration() :
+{}
+{
+/*
+  udp_port_declaration ::=
+  output_declaration
+  | input_declaration
+  | reg_declaration
+*/
+  output_declaration()
+  | input_declaration()
+  | reg_declaration()
+
+}
+
+void udp_body() :
+{}
+{
+/* udp_body ::= combinational_body | sequential_body */
+  LOOKAHEAD(8000) combinational_body()  // these look too much alike. Must be a better way than infinite lookahed
+   | sequential_body()
+}
+
+void combinational_body() :
+{}
+{
+/* combinational_body ::= table combinational_entry { combinational_entry } endtable */
+  <TABLE> ( combinational_entry() )+  <ENDTABLE>
+}
+
+void sequential_body() :
+{}
+{
+/* sequential_body ::= [ udp_initial_statement ] table sequential_entry { sequential_entry } endtable */
+  [ udp_initial_statement() ] <TABLE> ( sequential_entry() )+  <ENDTABLE>
+}
+
+void udp_initial_statement() :
+{}
+{
+/* udp_initial_statement ::= initial udp_output_port_identifier = init_val ;
+init_val ::= 1'b0 | 1'b1 | 1'bx | 1ÕbX | 1ÕB0 | 1ÕB1 | 1ÕBx | 1ÕBX | 1 | 0 */
+  "initial" <IDENTIFIER>  "=" <apostrophed_number>
+}
+
+void edge_input_list() :
+{}
+{
+/* edge_input_list ::= { level_symbol } edge_indicator { level_symbol } */
+  ( <OUTPUT_SYMBOL> | <LEVEL_SYMBOL>)* edge_indicator() ( <OUTPUT_SYMBOL> | <LEVEL_SYMBOL> )*
+}
+
+void sequential_entry() :
+{}
+{
+/* sequential_entry ::= seq_input_list : current_state : next_state ; */
+  seq_input_list() <COLON> (<OUTPUT_SYMBOL> | <LEVEL_SYMBOL>) <COLON> next_state() <SEMICOLON>
+}
+
+void seq_input_list() :
+{}
+{
+/* seq_input_list ::= level_input_list | edge_input_list */
+  //LOOKAHEAD( 20, <LPAREN> ) edge_input_list()
+  LOOKAHEAD(8000) edge_input_list()  // another infinite lookahead, need better way
+  | level_input_list()
+}
+
+void next_state() :
+{}
+{
+  <OUTPUT_SYMBOL>
+  | <DASH>
+}
+
+void combinational_entry() :
+{}
+{
+/* combinational_entry ::= level_input_list : output_symbol ; */
+  level_input_list() <COLON> <OUTPUT_SYMBOL> <SEMICOLON>
+}
+
+void level_input_list() :
+{}
+{
+/* level_input_list ::= level_symbol {cont level_symbol } */
+  ( <OUTPUT_SYMBOL> | <LEVEL_SYMBOL> )+
+}
+
+void edge_indicator() :
+{}
+{
+/* edge_indicator ::= ( level_symbol level_symbol ) | edge_symbol */
+  <LPAREN> ( <OUTPUT_SYMBOL> | <LEVEL_SYMBOL> ) ( <OUTPUT_SYMBOL> | <LEVEL_SYMBOL> ) <RPAREN>
+  | <EDGE_SYMBOL>
+}
+
+/*
+A.5 UDP declaration and instantiation
+
+sequential_entry ::= seq_input_list : current_state : next_state ;
+seq_input_list ::= level_input_list | edge_input_list
+level_input_list ::= level_symbol { level_symbol }
+edge_input_list ::= { level_symbol } edge_indicator { level_symbol }
+*/
+
+void module_instantiation() :
+{ Token mType; ArrayList<VOper> p = new ArrayList<VOper>(); VOper op; }
+{
+  /*
+  module_instantiation ::=
+      module_identifier [ parameter_value_assignment ] module_instance { , module_instance } ;
+  parameter_value_assignment ::= # ( expression { , expression } )
+
+
+
+  */
+  mType = <IDENTIFIER> 
+  
+  [ <SHARP> "(" op = expression() {p.add(op);} 
+  			( "," op = expression() {p.add(op);} )* ")" 
+  ] 
+  
+  module_instance(mType, p) ( "," module_instance(mType, p) )* <SEMICOLON>
+}
+
+void module_instance(Token name, ArrayList<VOper> params) :
+{Token instName; VOperRange range=null; ArrayList<VOper> conn = new ArrayList<VOper>(); }
+{
+  /* module_instance ::= name_of_instance ( [ list_of_module_connections ] )
+  name_of_instance ::= module_instance_identifier [ range ]
+  */
+  instName = <IDENTIFIER> [ range = range() ]  <LPAREN> [ list_of_module_connections(conn) ] <RPAREN>
+  {createInst(name, params, range, instName, conn);}
+}
+
+void list_of_module_connections(ArrayList<VOper> conn) :
+{VOper op;}
+{
+  /*
+  list_of_module_connections ::=
+  ordered_port_connection { , ordered_port_connection }
+  | named_port_connection { , named_port_connection }
+  */
+  op = named_port_connection() {conn.add(op);} ( LOOKAHEAD(2) <COMMA> op = named_port_connection() {conn.add(op);})*
+  | op = expression() {conn.add(op);} ( LOOKAHEAD(2) {op=null;} <COMMA> [op = expression()] {conn.add(op);})*
+}
+
+void ordered_port_connection() :
+{}
+{
+  /*  ordered_port_connection ::= [ expression ] */
+  /**   ERROR from JavaCC here if I make this be an optional expression e.g.
+  * ( expression() )?  or [ expression() ]
+  *  Error: Line 481, Column 39: Expansion within "(...)?" can be matched by empty string.
+  **/
+  //  <COMMA>  /* attempt to handle empty ports in list e.g. out,,,in1,in2  no good if last one!*/
+   // <EMPTY>
+    expression()
+}
+
+VNamedAssign named_port_connection() :
+{VName name; VOper expr = null; }
+{
+  /* named_port_connection ::= . port_identifier ( [ expression ] ) */
+  <DOT> name = identifier() <LPAREN>  ( expr = expression() )? <RPAREN>
+  {return new VNamedAssign(name, expr);}
+}
+
+void module_item_decl() :
+{}
+{
+    /*
+    module_item_declaration ::=
+      parameter_declaration
+      | input_declaration
+      | output_declaration
+      | inout_declaration
+      | net_declaration
+      | reg_declaration
+      | integer_declaration
+      | real_declaration
+      | time_declaration
+      | realtime_declaration
+      | event_declaration
+      | function_declaration
+    */
+//	input_declaration()
+//	| output_declaration()
+ //       | inout_declaration()
+ 		port_declaration()
+        | net_declaration()
+        | reg_declaration()
+        | module_or_generate_item()
+        | task_declaration()
+}
+
+void port_declaration() :
+{ Direction dir; boolean signed = false; VType type = VTypeVector.singleBit; VOperRange range; Token t; }
+{
+	(
+		<INPUT> {dir=Direction.INPUT;}
+		| <INOUT> {dir=Direction.INOUT;}
+		| <OUTPUT> {dir=Direction.OUTPUT;}
+	)
+	[<REG>]
+	["signed"{signed=true;}]
+	[range = range() {type=new VTypeVector(range, signed);}]
+	
+	t = <IDENTIFIER> {createPort(t, type, dir);}
+	("," t = <IDENTIFIER> {createPort(t, type, dir);} )*
+	
+	<SEMICOLON>
+}
+
+void input_declaration() :
+{}
+{
+    <INPUT> optRngArgList() <SEMICOLON>
+}
+
+void output_declaration() :
+{}
+{
+    <OUTPUT> optRngArgList() <SEMICOLON>
+}
+
+void inout_declaration() :
+{}
+{
+  <INOUT> optRngArgList() <SEMICOLON>
+}
+
+
+void reg_declaration() :
+{ VType type = VTypeVector.singleBit; VOperRange range; boolean signed = false; Token name; VOper init; }
+{
+/* reg_declaration ::= reg [range] list_of_register_identifiers ; */
+  <REG>
+  ["signed" {signed=true;}] 
+  [range = range(){type=new VTypeVector(range,signed);}]
+  
+  {init=null;}
+  name = <IDENTIFIER> ["=" init=expression()] {createVar(name,type, init);}
+  ({init=null;} "," name = <IDENTIFIER> ["=" init=expression()] {createVar(name,type, init);} )*
+   
+  <SEMICOLON>
+}
+
+void optRngArgList() :
+{}
+{
+  [ range() ] ArgumentList()
+}
+
+
+/* list_of_port_identifiers ::= port_identifier { , port_identifier } */
+
+VOperRange range() :
+{VOper op1, op2;}
+{  /* range ::= [ msb_constant_expression : lsb_constant_expression ] */
+  // cdh simplified to just integers - maybe fix later
+  <LBRACKET> op1 = expression() <COLON> op2 = expression() <RBRACKET>
+  { return new VOperRange(op1, op2); }
+}
+
+void net_declaration() :
+{Token type; VectorScalarity s = VectorScalarity.NONE; ChargeStrength ch = null; DriveStrength dr = null; 
+	VOperRange range = null; VType vtype = VTypeVector.singleBit; VNetAttrib attrib;}
+{
+/*
+
+net_declaration ::=
+net_type [ vectored | scalared ] [range] [delay3] list_of_net_identifiers ;
+| trireg [ vectored | scalared ] [charge_strength] [range] [delay3] list_of_net_identifiers ;
+| net_type [ vectored | scalared ] [drive_strength] [range] [delay3] list_of_net_decl_assignments ;
+
+net_type ::= wire | tri | tri1 | supply0 | wand | triand | tri0 | supply1 | wor | trior
+
+*/
+  /* <NET_TYPE> ArgumentList() <SEMICOLON> */
+  /*
+    LOOKAHEAD(4) <NET_TYPE> [ <VECTORED> | <SCALARED> ] [drive_strength()] [range()] [delay3()] list_of_net_decl_assignments() ";"
+  | <NET_TYPE> [range()]  list_of_identifiers() <SEMICOLON>
+  | "trireg" [ LOOKAHEAD(2) charge_strength() ] ArgumentList() <SEMICOLON>  // to handle "trireg (large) B;"
+  */
+
+    type = <NET_TYPE> 
+    
+    [ <VECTORED> | <SCALARED> ]
+    
+    [LOOKAHEAD(charge_strength()) ch = charge_strength()] 
+    
+    [LOOKAHEAD(drive_strength()) dr = drive_strength()] 
+    
+    [range = range() {vtype = new VTypeVector(range, false);}] 
+    
+    [delay3()] 
+    
+    {attrib = new VNetAttrib(type.image, s, dr, dr, ch, vtype);}
+    ( 
+    	LOOKAHEAD(hierarchical_identifier() "=") list_of_net_decl_assignments(attrib)
+    	| list_of_identifiers(attrib)
+    )
+    ";"
+//  | <NET_TYPE> [range()]  list_of_identifiers() <SEMICOLON>
+//  | "trireg" [ LOOKAHEAD(2) charge_strength() ] ArgumentList() <SEMICOLON>  // to handle "trireg (large) B;"
+}
+
+void list_of_net_decl_assignments(VNetAttrib attrib) :
+{}
+{
+	net_decl_assignment(attrib) ( "," net_decl_assignment(attrib) )*
+}
+
+void net_decl_assignment(VNetAttrib attrib) :
+{Token name; VOper init;}
+{
+	/*net_identifier()*/ name = <IDENTIFIER> "=" init = expression()
+	{createNet(attrib, name, init);}
+}
+
+void list_of_identifiers(VNetAttrib attrib) :
+{Token name;}
+{
+  name = <IDENTIFIER> {createNet(attrib, name, null);} ( "," name = <IDENTIFIER> {createNet(attrib, name, null);} )*
+}
+
+ChargeStrength charge_strength() :
+{ Token t; }
+{
+/* charge_strength ::= ( small ) | ( medium ) | ( large ) */
+//  LOOKAHEAD(2) <LPAREN> "small" <RPAREN>
+//  | LOOKAHEAD(2) <LPAREN> "medium" <RPAREN>
+
+  	<LPAREN> 
+    t = <SMALL>
+  	| t = <LARGE>
+  	| t = <MEDIUM> 
+    <RPAREN>
+    {return ChargeStrength.fromString(t.image);}
+}
+
+VSubProgram task_declaration() :
+{ VSubProgram res; boolean isAuto=false; Token name; VStatement stat; }
+{
+	<TASK> [<AUTOMATIC>{isAuto=true;}] name = <IDENTIFIER> {res=new VSubProgram(module(), name.image, false);}
+	[ "(" task_port_list(res) ")" ] ";"
+
+
+	(
+		task_port_item(res)
+		| block_item_declaration(res)
+	) *
+	
+	stat = statement_or_null()
+	
+	{res.setBody(stat); return res;}
+}
+
+void task_port_list(VSubProgram sub) :
+{}
+{
+	task_port_item(sub) ("," task_port_item(sub))*
+}
+
+void task_port_item(VSubProgram sub) :
+{VType type; Direction dir = null; VOperRange range=null; boolean signed=false; IdentifierList list;}
+{
+	(<INPUT>{dir=Direction.INPUT;} | <OUTPUT>{dir=Direction.OUTPUT;} | <INOUT>{dir=Direction.INOUT;})
+	
+	<TIME>{type=VTypeTime.TYPE;} | <REAL>{type=VTypeReal.TYPE;} | <REALTIME>{type=VTypeRealTime.TYPE;} | <INTEGER>{type=VTypeInteger.TYPE;} |
+	(
+	[<REG>]
+	["signed" {signed=true;}] 
+	[range = range()]{type=new VTypeVector(range,signed);}
+	)
+	list = identifier_list()
+	{ createParams( sub, type, dir, list ); }
+	
+}
+
+IdentifierList identifier_list() :
+{IdentifierList res = new IdentifierList(); Token t;}
+{
+	t = <IDENTIFIER> {res.add(t);}
+	(LOOKAHEAD(2)"," t = <IDENTIFIER> {res.add(t);})*
+	{return res;}	
+}
+
+void block_item_declaration(VNamedElement owner) :
+{}
+{
+/*	
+{ attribute_instance } block_reg_declaration
+| { attribute_instance } event_declaration
+| { attribute_instance } integer_declaration
+| { attribute_instance } local_parameter_declaration
+| { attribute_instance } parameter_declaration
+| { attribute_instance } real_declaration
+| { attribute_instance } realtime_declaration
+| { attribute_instance } time_declaration
+*/
+	parameter_declaration() |
+	reg_declaration() |
+	scalar_var_declaration((IVarHolder)owner)
+}
+
+void scalar_var_declaration(IVarHolder holder) :
+{VType type; IdentifierList list;}
+{
+	<TIME>{type=VTypeTime.TYPE;} | <REAL>{type=VTypeReal.TYPE;} | <REALTIME>{type=VTypeRealTime.TYPE;} | <INTEGER>{type=VTypeInteger.TYPE;}
+	list = identifier_list()
+	{createVars(holder, type, list);}
+}
+
+void GateInstantiation() :
+{}
+{
+/*
+gate_instantiation ::=
+n_input_gatetype [drive_strength] [delay2] n_input_gate_instance { , n_input_gate_instance } ;
+| n_output_gatetype [drive_strength] [delay2] n_output_gate_instance { , n_output_gate_instance } ;
+| enable_gatetype [drive_strength] [delay3] enable_gate_instance { , enable_gate_instance} ;
+| mos_switchtype [delay3] mos_switch_instance { , mos_switch_instance } ;
+| pass_switchtype pass_switch_instance { , pass_switch_instance } ;
+| pass_en_switchtype [delay3] pass_en_switch_instance { , pass_en_switch_instance } ;
+| cmos_switchtype [delay3] cmos_switch_instance { , cmos_switch_instance } ;
+| pullup [pullup_strength] pull_gate_instance { , pull_gate_instance } ;
+| pulldown [pulldown_strength] pull_gate_instance { , pull_gate_instance } ;
+n_input_gate_instance ::= [name_of_gate_instance] ( output_terminal , input_terminal { , input_terminal } )
+n_output_gate_instance ::= [name_of_gate_instance] ( output_terminal { , output_terminal } , input_terminal )
+enable_gate_instance ::= [name_of_gate_instance] ( output_terminal , input_terminal , enable_terminal )
+mos_switch_instance ::= [name_of_gate_instance] ( output_terminal , input_terminal , enable_terminal )
+pass_switch_instance ::= [name_of_gate_instance] ( inout_terminal , inout_terminal )
+pass_enable_switch_instance ::= [name_of_gate_instance] ( inout_terminal , inout_terminal , enable_terminal )
+cmos_switch_instance ::= [name_of_gate_instance] ( output_terminal , input_terminal ,
+ncontrol_terminal , pcontrol_terminal )
+pull_gate_instance ::= [name_of_gate_instance] ( output_terminal )
+name_of_gate_instance ::= gate_instance_identifier [range]
+*/
+
+  <GATETYPE>  [ LOOKAHEAD(2) drive_strength() ] [ delay2() ] [ name_of_gate_instance() ] Arguments() <SEMICOLON>
+}
+
+void name_of_gate_instance() :
+{}
+{
+/* name_of_gate_instance ::= gate_instance_identifier [range] */
+  <IDENTIFIER> range()
+}
+
+void Arguments() :
+{}
+{
+   "(" [ ArgumentList() ] ")"
+}
+
+void ArgumentList() :
+{}
+{
+  expression() ( "," expression() )*
+}
+
+/*
+  unary_operator ::=
+  + | - | ! | ~ | & | ~& | | | ~| | ^ | ~^ | ^~
+  binary_operator ::=
+  + | - | * | / | % | == | != | === | !== | && | ||
+  | < | <= | > | >= | & | | | ^ | ^~ | ~^ | >> | <<
+*/
+
+
+
+VOper variable_lvalue() :
+{VOper res;}
+{
+	res = hierarchical_identifier()
+	/*
+	| hierarchical_variable_identifier [ expression ] { [ expression ] }
+	| hierarchical_variable_identifier [ expression ] { [ expression ] } [ range_expression ]
+	| hierarchical_variable_identifier [ range_expression ]
+	| variable_concatenation
+	*/
+	{return res;}
+}
+
+
+
+VOper expression() :
+{VOper res; TextCoord c = begin();}
+{
+  /*
+  expression ::=
+  primary
+  | unary_operator primary
+  | expression binary_operator expression
+  | expression ? expression : expression
+  | string
+  */
+  // basically fully reworked to avoid left recursion, cdh
+  // see "You don't know Jack " article JavaWorld Dec 1996
+  res = conditional_expression()//sum()
+  /* | <LPAREN> sum() <RPAREN> */
+  {res.setBegin(c); return res;}
+}
+
+VOper conditional_expression() :
+{VOper cond, t, f;}
+{
+	cond = bitwise_oper()
+		["?" ( attribute_instance() {throw new RuntimeException();} )* t = expression() ":" f = expression()
+		{cond = new VOperCond(cond, t, f);}
+		]
+	{ return cond; }
+}
+
+VOper bitwise_oper() :
+{ VBinaryKind op; VOper res, arg; }
+{
+	res = equality() 
+	( 
+		(
+			  "&" {op = VBinaryKind.BAND;}
+			| "|" {op = VBinaryKind.BOR;}
+			| "^" {op = VBinaryKind.BXOR;}
+		) 
+		arg = equality()
+		{res = new VOperBinary(res, op, arg);} 
+	)*
+	{return res;}
+}
+
+VOper equality() :
+{ VBinaryKind op; VOper res, arg; }
+{
+	res = compare() 
+	( 
+		(
+			"==" {op = VBinaryKind.EQ;}
+			|"!=" {op = VBinaryKind.NE;}
+		) 
+		arg = compare()
+		{ res = new VOperBinary(res, op, arg);} 
+	)*
+	{return res;}
+}
+
+VOper compare() :
+{ VBinaryKind op; VOper res, arg; }
+{
+	res = sum() 
+	( 
+		(
+			"<"   {op = VBinaryKind.LT;}
+			|"<=" {op = VBinaryKind.LE;}
+			|">"  {op = VBinaryKind.GT;}
+			|">=" {op = VBinaryKind.GE;}
+		) 
+		arg = sum()
+		{res = new VOperBinary(res, op, arg);} 
+	)*
+	{return res;}
+}
+
+VOper sum() :
+{ VBinaryKind op; VOper res, arg; }
+{
+  res = term() 
+  ( LOOKAHEAD(2) op = addop() 
+  	arg = term()
+  	{res = new VOperBinary(res, op, arg);} 
+  )*
+  {return res;}
+}
+
+VOper term() :
+{VBinaryKind op; VOper res, arg;}
+{
+  res = unary() 
+  ( 
+  	"*" {op = VBinaryKind.MUL;} 
+  	| <SLASH> {op = VBinaryKind.DIV;}
+  	arg = unary()
+  	{res = new VOperBinary(res, op, arg);} 
+  )*
+  {return res;}
+}
+
+VOper unary() :
+{ VOper res; VUnaryKind op; }
+{
+	(
+	   op = unary_operator() res = element() {res = new VOperUnary(op, res);}
+	   | res = element()
+   )
+   {return res;}
+}
+
+VOper element() :
+{VOper res;}
+{
+	(
+  /*LOOKAHEAD(3)*/ res = primary()
+  | <LPAREN> res = /*sum()*/ expression() <RPAREN>
+  )
+  {return res;}
+}
+
+VBinaryKind addop() :
+{ VBinaryKind res; }
+{
+	(
+  <PLUS> {res = VBinaryKind.ADD;} 
+  | <MINUS> {res = VBinaryKind.SUB;}
+  | <AND> {res = VBinaryKind.LAND;}
+  | <OR> {res = VBinaryKind.LOR;}
+  )
+  {return res;}
+}
+
+VOper primary() :
+{ VOper res = null, arg; }
+{
+  /*
+  primary ::=
+  number
+  | identifier
+  | identifier [ expression ]
+  | identifier [ msb_constant_expression : lsb_constant_expression ]
+  | concatenation
+  | multiple_concatenation
+  | function_call
+  | ( mintypmax_expression )
+  */
+  /* the order of the next two productions matters. In order to match the longer one
+     it must be first! */
+     /* cdh added the [  constant_expr : constant_expr ] Nov 4 2002 to allow parse of Agere circuit,
+     however it broke all the test cases and had to be removed */
+//  LOOKAHEAD(4) <IDENTIFIER> <LBRACKET> expression() <RBRACKET>
+//  |  LOOKAHEAD(3) <IDENTIFIER> range() /*  <LBRACKET> expression() <COLON> expression()  <RBRACKET> */
+//  |  <IDENTIFIER>
+
+	(
+     res = index_expression()
+  |  res = number()
+  |  res = concatenation()
+//  | <LPAREN> res = mintypmax_expression() <RPAREN>
+  	)
+  	{if( res == null ) throw new RuntimeException(); return res;}
+
+}
+
+VOper index_expression() :
+{ VOper res, arg, arg2; }
+{
+	res = hierarchical_identifier()
+	(
+		{arg2 = null;}
+		"[" arg = expression() [ ":" arg2 = expression() ] "]" 
+		{if( arg2 == null) res = new VOperIndex(res, arg); else res = new VOperSlice( res, new VOperRange( arg, arg2) );}
+	)*
+	{markAsTop(res); return res;}
+}
+
+VOper hierarchical_identifier() :
+{ VOper res, arg; }
+{
+	res = identifier()
+	(
+		"." arg = identifier() {res = new VOperDot(res, arg);}
+	)*
+	{return res;}
+}
+
+VName identifier() :
+{ Token t; VName res; }
+{
+	t = <IDENTIFIER>
+	{res = new VName(t.image); markBegin(res, t); /*res.setIsTop(true);*/ return res;}
+}
+
+/*
+mintypmax_expression ::=
+expression
+| expression : expression : expression
+*/
+
+void mintypmax_expression() :
+{}
+{
+  LOOKAHEAD(3) expression()
+  | expression()  <COLON>  expression()  <COLON> expression()
+}
+
+VOper number() :
+{ Token t; }
+{
+/*
+number ::=
+decimal_number
+| octal_number
+| binary_number
+| hex_number
+| real_number
+*/
+	(
+    t = <UNSIGNED_NUMBER> {return new VConst(VValue.integer(t.image));}
+  | <REAL_NUMBER>
+  | t = <apostrophed_number> {return new VConst(VValue.vector(t.image));}
+//  | <INIT_VAL>  /* a kludge to let it parse all those 1'b0 etc things */
+	)
+}
+
+
+
+VOper concatenation() :
+{ArrayList<VOper> args = new ArrayList<VOper>(); VOper arg;}
+{
+/* concatenation ::= { expression { , expression} } */
+  <LBRACE> arg = expression() {args.add(arg);} ( <COMMA> arg = expression() {args.add(arg);})* <RBRACE>
+  {return new VOperConcat(args);}
+}
+
+/*
+multiple_concatenation ::= { expression { expression { , expression } } }
+*/
+
+
+
+
+
+VStatement seq_block() :
+{VStatements res = new VStatements(); VStatement stat;}
+{
+	<BEGIN> [ ":" <IDENTIFIER>//block_identifier
+	/*( block_item_declaration() )**/ ] ( stat = statement() {res.add(stat);} )* <END>
+	{return res;}
+}
+
+
+
+VStatement statement() :
+{ VStatement stat; TextCoord c = begin(); }
+{
+	/*
+	{
+		if( getToken(1).beginLine >= 153 ) {
+			trace_indent = 0;
+			enable_tracing();
+		}
+	}
+	*/
+	
+	/*
+	( attribute_instance() )* blocking_assignment ";"
+	| ( attribute_instance() )* conditional_statement
+	| ( attribute_instance() )* disable_statement
+	| ( attribute_instance() )* event_trigger
+	| ( attribute_instance() )* loop_statement
+	| ( attribute_instance() )* nonblocking_assignment ";"
+	| ( attribute_instance() )* par_block
+	| ( attribute_instance() )* procedural_continuous_assignments ";"
+	*/
+//	| 
+	( attribute_instance() )*
+	( 
+		stat = seq_block()
+		| LOOKAHEAD(<CASE>) stat = case_statement()
+		| stat = procedural_timing_control_statement()
+		| stat = assignment()
+		| stat = conditional_statement()
+		| stat = procedural_continuous_assignments()
+	)
+	/*
+	| ( attribute_instance() )* system_task_enable
+	| ( attribute_instance() )* task_enable
+	| ( attribute_instance() )* wait_statement
+	*/
+	{stat.setBegin(c); return stat;}
+}
+
+VStatement statement_or_null() :
+{VStatements res = new VStatements(); VStatement stat;}
+{
+	LOOKAHEAD(( attribute_instance() )* ";") ( attribute_instance() )* ";" {return res;}
+	|  stat = statement() {return stat;}
+}
+
+//blocking_assignment ::= variable_lvalue = [ delay_or_event_control ] expression
+//nonblocking_assignment ::= variable_lvalue <= [ delay_or_event_control ] expression
+
+VStatement assignment() :
+{VOper src, trg; VAssignKind kind;}
+{
+	trg = variable_lvalue() ("=" {kind=VAssignKind.EQ;}| "<="{kind=VAssignKind.ARROW;}) [delay_or_event_control()] src = expression() ";"
+	{return new VAssignStatement(trg, kind, src);}
+}
+
+VStatement procedural_continuous_assignments() :
+{ VAssignKind kind; VOper l, r; VReleaseKind rkind; }
+{
+	(
+		( "assign" {kind=VAssignKind.ASSIGN;}| "force" {kind=VAssignKind.FORCE;})
+		l = expression() "=" r = expression() ";"
+		{ return new VAssignStatement( l, kind, r ); }
+	)
+	| (
+		( "release" {rkind=VReleaseKind.RELEASE;}| "deassign" {rkind=VReleaseKind.DEASSIGN;})
+		l = expression() ";"
+		{ return new VReleaseStatement(l, rkind);}
+	)
+}
+
+/*
+function_statement ::=
+{ attribute_instance() } function_blocking_assignment ";"
+| { attribute_instance() } function_case_statement
+| { attribute_instance() } function_conditional_statement
+| { attribute_instance() } function_loop_statement
+| { attribute_instance() } function_seq_block
+| { attribute_instance() } disable_statement
+| { attribute_instance() } system_task_enable
+*/
+
+
+VStatement case_statement() :
+{ValueSet type = null; VOper expr; VCaseStatement res;}
+{
+	( "case" | "casez" {type=ValueSet.Z;} | "casex" {type=ValueSet.X;})   "(" expr = expression() ")"
+	{res = new VCaseStatement(type, expr);}
+	
+	case_item(res) ( case_item(res) )* "endcase"
+	{return res;}
+}
+
+void case_item(VCaseStatement stat) :
+{VCaseElement el = new VCaseElement(); VOper expr;}
+{
+	(
+	"default" [ ":" ] expr=statement_or_null() {el.add(expr);}
+	| expr=expression() {el.add(expr);} ( "," expr=expression() {el.add(expr);} )* ":" expr = statement_or_null() {el.add(expr);}
+	)
+	{stat.add(el);}
+}
+
+
+
+
+VStatement conditional_statement() :
+{VOper expr; VStatement ifStat, elseStat = new VStatements();}
+{
+//if ( expression )
+//statement_or_null [ else statement_or_null ]
+//| if_else_if_statement
+//if_else_if_statement ::=
+	<IF> "(" expr = expression() ")" ifStat = statement_or_null()
+//	( LOOKAHEAD(2) "else" "if" "(" expression() ")" statement_or_null() )*
+	[ LOOKAHEAD(2) <ELSE> elseStat = statement_or_null() ]
+	{return new VIfStatement(expr, ifStat, elseStat);}
+}
+
+
+
+VOper delay_control() :
+{}
+{
+	"#" ( LOOKAHEAD(3) delay_value()
+		| "(" mintypmax_expression() ")" )
+	{throw new RuntimeException();}
+}
+
+VDelayOrEventControl delay_or_event_control() :
+{ VOper delay = null, event = null, expr = null; }
+{
+	(
+	delay = delay_control()
+	| event = event_control()
+	| "repeat" "(" expr = expression() ")" event = event_control()
+	)
+	{return new VDelayOrEventControl(delay, event, expr);}
+}
+
+/*
+void disable_statement() :
+{}
+{
+	"disable" ( hierarchical_task_identifier()
+				| hierarchical_block_identifier() ) ";"
+}
+*/
+
+VOper event_control() :
+{VOper res = null;}
+{
+	"@" ( res = identifier()//<IDENTIFIER>//event_identifier
+		| "*"
+		| "(" ( res = event_expression() | "*" ) ")"
+	)
+	{return res;}
+}
+
+//event_trigger ::=
+//-> hierarchical_event_identifier ;
+
+VOper event_expression() :
+{VOper res, arg; TextCoord c = begin();}
+{
+	(
+		res = expression()
+		| <POSEDGE> res = expression() {res=new VOperEdge(res, false);}
+		| <NEGEDGE> res = expression() {res=new VOperEdge(res, true);}
+	)
+	(LOOKAHEAD(2) "," arg = event_expression() {res=new VOperBinary(res, VBinaryKind.LOR, arg);} )*
+	
+	/*
+	| hierarchical_identifier()
+	| event_expression() "or" event_expression()
+	| event_expression() "," event_expression()
+	*/
+	{res.setBegin(c); return res;}
+}
+
+VStatement procedural_timing_control_statement() :
+{VStatement res; VDelayOrEventControl delay;}
+{
+	{// TODO delay_or_event_control
+	}
+	delay = delay_or_event_control() res = statement_or_null()
+	{res.setControl(delay); return res;}
+}
+
+//wait_statement ::=
+//wait ( expression ) statement_or_null
+
+
+
+
+
+
+

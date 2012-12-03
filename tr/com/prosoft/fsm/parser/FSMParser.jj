@@ -1,0 +1,379 @@
+
+/**
+ *
+ * VHDL-93, VHDL-AMS grammar for JavaCC 
+ * (c) 1997 Christoph Grimm
+ * 
+ * EMail: grimm@ti.informatik.uni-frankfurt.de
+ * Address:
+ * Christoph Grimm
+ * J. W. Goethe-University Frankfurt
+ * Robert-Mayer-Strasse 11-15
+ * 60054 Frankfurt
+ * Germany
+ *
+ *
+ * By using this file, I agree with the following:
+ * -----------------------------------------------
+ *
+ * 1. This grammar is free for evaluation purposes.
+ *
+ * 2. You may use and modify it, but when distributing is, you must also
+ *    include the original files and copyright notes from me.
+ *
+ * 3. For commercial use of derived works contact me.
+ *   
+ * 4. The grammar is NOT optimized for speed. The aim is to keep the grammar 
+ *    similar to the original productions in the LRM.
+ *
+ * 5. Don't complain about errors - report them, maybe with fixes to me.
+ *
+ */
+
+
+options
+{
+  // DEBUG_PARSER = true;
+  // CHOICE_AMBIGUITY_CHECK=3;
+  IGNORE_CASE=true;
+//  NODE_SCOPE_HOOK=true;
+//  MULTI=true;
+  JAVA_UNICODE_ESCAPE = true;
+  STATIC = false;
+}
+
+
+
+
+/**
+ * The parser is instanciated in the file vhdl.java
+ */
+PARSER_BEGIN(FSMParser)
+
+package com.prosoft.fsm.parser;
+
+//import com.prosoft.vhdl.ir.*;
+import com.prosoft.fsm.*;
+import com.prosoft.common.name.*;
+import java.util.*;
+
+public class FSMParser //extends ParserBase
+{
+	/*
+	protected boolean isFunctionCall() {
+		Token t;
+		return (t=getToken(1)).kind == basic_identifier && getToken(2).kind == OPENBRACE
+    	&& resolve(t.image, false) instanceof IRSubProgram;
+	}
+	*/
+ /*
+  static ErrorHandler errs = new ErrorHandler();
+  
+  public ConstantPool constantPool;
+  
+  public Enums enums;
+  public String[] sourceLines;
+  public IdentifiableList idents;
+
+  public Node rootNode() {
+  	return jjtree.rootNode();
+  }
+  */  
+}
+
+PARSER_END(FSMParser)
+
+
+SKIP :
+{
+    " "
+  | "\n"
+  | "\r"
+  | "\t"
+}
+
+SPECIAL_TOKEN :
+{
+  <COMMENT: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n"|"\n\r")>
+}
+
+
+
+/** 
+ * Section 13: Lexical elements
+ * with extensions from IEEE 1076.1
+ */
+TOKEN [IGNORE_CASE] :
+{
+    <ABS:          "abs">
+  | <ACCESS:       "access">
+  | <ACROSS:       "across">
+  | <ACTION:       "action">
+  | <AFTER:        "after">
+  | <ALIAS:        "alias">
+  | <ALL:          "all">
+  | <AND:          "and">
+  | <ARCHITECTURE: "architecture">
+  | <ARRAY:        "array">
+  | <ASSERT:       "assert">
+  | <ATTRIBUTE:    "attribute">
+  | <BEGIN:        "begin">
+  | <BLOCK:        "block">
+  | <BODY:         "body">
+  | <BREAK:        "break">
+  | <BUFFER:       "buffer">
+  | <BUS:          "bus">
+  | <CASE:         "case">
+  | <COMPONENT:    "component">
+  | <CONFIGURATION: "configuration">
+  | <CONSTANT:      "constant">
+  | <DISCONNECT:    "disconnect">
+  | <DOWNTO:        "downto">
+  | <ELSE:          "else">
+  | <ELSIF:         "elsif">
+  | <END:           "end">
+  | <ENTITY:        "entity">
+  | <EXIT:          "exit">
+  | <FILE:          "file">
+  | <FOR:           "for">
+  | <FUNCTION:      "function">
+  | <GENERATE:      "generate">
+  | <GENERIC:       "generic">
+  | <GROUP:         "group">
+  | <GUARDED:       "guarded">
+  | <IF:            "if">
+  | <IMPURE:        "impure">
+  | <IN:            "in">
+  | <INERTIAL:      "inertial">
+  | <INOUT:         "inout">
+  | <IS:            "is">
+  | <LABEL:         "label">
+  | <LIBRARY:       "library">
+  | <LINKAGE:       "linkage">
+  | <LITERAL:       "literal">
+  | <LOOP:          "loop">
+  | <MAP:           "map">
+  | <MOD:           "mod">
+  | <NAND:          "nand">
+  | <NATURE:        "nature">
+  | <NEW:           "new">
+  | <NEXT:          "next">
+  | <NOISE:         "noise">
+  | <NOR:           "nor">
+  | <NOT:           "not">
+  | <NULL:          "null">
+  | <OF:            "of">
+  | <ON:            "on">
+  | <OPEN:          "open">
+  | <OR:            "or">
+  | <OTHERS:        "others">
+  | <OUT:           "out">
+  | <PACKAGE:       "package">
+  | <PORT:          "port">
+  | <POSTPONED:     "postponed">
+  | <PROCEDURAL:    "procedural">
+  | <PROCEDURE:     "procedure">
+  | <PROCESS:       "process">
+  | <PURE:          "pure">
+  | <QUANTITY:      "quantity">
+  | <RANGE:         "range">
+  | <RECORD:        "record">
+  | <REGISTER:      "register">
+  | <REJECT:        "reject">
+  | <REM:           "rem">
+  | <REPORT:        "report">
+  | <RETURN:        "return">
+  | <ROL:           "rol">
+  | <ROR:           "ror">
+  | <SELECT:        "select">
+  | <SEVERITY:      "severity">
+  | <SIGNAL:        "signal">
+  | <SHARED:        "shared">
+  | <SLA:           "sla">
+  | <SLL:           "sll">
+  | <SPECTRUM:      "spectrum">
+  | <SRA:           "sra">
+  | <SRL:           "srl">
+  | <SUBNATURE:     "subnature">
+  | <SUBTYPE:       "subtype">
+  | <TERMINAL:      "terminal">
+  | <THEN:          "then">
+  | <THROUGH:       "through">
+  | <TO:            "to">
+  | <TOLERANCE:     "tolerance">
+  | <TRANSPORT:     "transport">
+  | <TYPE:          "type">
+  | <UNAFFECTED:    "unaffected">
+  | <UNITS:         "units">
+  | <UNTIL:         "until">
+  | <USE:           "use">
+  | <VARIABLE:      "variable">
+  | <WAIT:          "wait">
+  | <WHEN:          "when">
+  | <WHILE:         "while">
+  | <WITH:          "with">
+  | <XNOR:          "xnor">
+  | <XOR:           "xor">
+}
+
+
+
+TOKEN :
+{
+    <#upper_case_letter:               ["A"-"Z"/*,"À"-"ß"*/]>
+  | <#lower_case_letter:               ["a"-"z"/*,"à"-"ÿ"*/]>
+  | <#digit:                           ["0"-"9"]>
+  | <#extended_digit:                  ["0"-"9","A"-"F"]>
+  | <#special_character:               ["\"", "#","&","'","(",")","*","+",",","-",
+                                        ".","/",":",";","<","=",">","[","]",
+                                        "_","|"]>
+  | <#str_special_character:               ["#","&","'","(",")","*","+",",","-",
+                                        ".","/",":",";","<","=",">","[","]",
+                                        "_","|"]>
+  | <#other_special_character:         ["!","$","%","@","?","^","`","{","}","~",
+                                        "\\"]>
+  | <#format_effector:                 ["\n","\t"]>
+  | <#base_specifier:                  ["B","O","X"]>
+  | <#underline:                       "_">
+  | <#letter:                          ["a"-"z","A"-"Z"/*,"À"-"ß","à"-"ÿ"*/]>
+  | <#letter_or_digit:                 ["a"-"z","A"-"Z"/*,"À"-"ß","à"-"ÿ"*/,"0"-"9"]>
+  | <#integer: <digit> (("_")? <digit>)*>
+  | <#base: <integer>>
+  | <#based_integer: (("_")? <extended_digit>)*>
+  | <based_literal: <base> "#" <based_integer> ("." <based_integer>)? "#" (<exponent>)?>
+  | <#basic_character: (<basic_graphic_character>|<format_effector>)>
+  | <#str_basic_character: (<str_basic_graphic_character>|<format_effector>)>
+  | <#basic_graphic_character: (["A"-"Z"/*,"À"-"ß"*/]|<digit>|<special_character>|" ")>
+  | <#str_basic_graphic_character: (["A"-"Z"/*,"À"-"ß"*/]|<digit>|<str_special_character>|" ")>
+  | <basic_identifier: <letter> ( ("_")? <letter_or_digit> )*>
+  | <bit_string_literal: <base_specifier> "\"" <bit_value> "\"">
+  | <#bit_value: <extended_digit> ( ("_")? <extended_digit>)*>
+  | <character_literal:  "'" (<graphic_character> | " ") "'">
+  | <decimal_literal: <integer> ( "." <integer>)? ( <exponent> )?>
+  | <#exponent: ("E" ("+")? <integer>) | ("E" "-" <integer>)>
+  | <extended_identifier: "\\" <graphic_character> ( <graphic_character> )* "\\">
+  | <#graphic_character: (<basic_graphic_character>
+                          | <lower_case_letter>
+                          | <other_special_character>)>
+  | <#str_graphic_character: (<str_basic_graphic_character>
+                          | <lower_case_letter>
+                          | <other_special_character>)>
+  | <string_literal: "\"" ( <str_graphic_character> | "\"\"")* "\"">
+
+  | <EXP: "**">
+  | <MUL: "*">
+  | <DIV: "/">
+  | <ADD: "+">
+  | <SUB: "-">
+  | <CONCAT: "&">
+  | <EQ:  "=">
+  | <NEQ: "/=">
+  | <GE:  ">=">
+  | <LE:  "<=">
+  | <GT:  ">">
+  | <LO:  "<">
+  | <SEMICOLON: ";">
+  | <OPENBRACE: "(">
+  | <CLOSEDBRACE: ")">
+  | <OPENBRACKET: "{">
+  | <CLOSEDBRACKET: "}">
+  | <EXCLAMATION_MARK: "!">
+//  | <#russian_letter: ["À"-"ß","à"-"ÿ"]>
+}
+
+String identifier() : {}
+{
+	<basic_identifier>
+	{return token.image;}
+}
+
+Name name() : 
+{Name res; String part;}
+{
+	part = identifier() {res = new Name(new String[]{part});} ( "." part = identifier() {res = res.append(part);} )*
+	{return res;}
+}
+
+State state(StateHolder parent) : 
+{State res; String name; State child; Transition trans; Action action; Name otherParent; }
+{
+	name = identifier()
+	{res = new State(parent, name);} 
+	
+	[ <IN> otherParent = name() {res.addOtherParent(otherParent);} 
+	  ( "," otherParent = name() {res.addOtherParent(otherParent);} )*
+	]
+	
+	"{"
+		(
+		child = state(res) {res.add(child);}
+		| trans = transition(res) {res.add(trans);}
+		| action = action(res) {res.add(action);}
+		)*
+	"}"
+	{return res;}
+}
+
+Transition transition(State state) :
+{ Name name; Oper cond; Statement stat; }
+{
+	"=>" name = name() cond = expression_in_braces() stat = statement_block() [";"]
+	{return new Transition(state, name, cond, stat);}
+}
+
+Oper expression_in_braces() :
+{ ArrayList<Token> res = new ArrayList<Token>(); int count = 1; }
+{
+	"("
+	{
+		while( count > 0 )
+		{
+			Token t = getNextToken();
+			{res.add(t);}
+			if( t.kind == OPENBRACE ) count++;
+			else if( t.kind == CLOSEDBRACE ) count--;
+//			s( t.kind );
+		} 
+	}
+//	")"
+	{
+		res.remove(res.size()-1);
+		return new Oper(res.toArray(new Token[res.size()]));}
+}
+
+Statement statement_block() :
+{ ArrayList<Token> res = new ArrayList<Token>(); int count = 1; }
+{
+	"{"
+	{
+		while( count > 0 )
+		{
+			Token t = getNextToken();
+			{res.add(t);}
+			if( t.kind == OPENBRACKET ) count++;
+			else if( t.kind == CLOSEDBRACKET ) count--;
+//			jj_consume_token( t.kind );
+		} 
+	}
+//	"}"
+	{
+		res.remove(res.size()-1);
+		return new Statement(res.toArray(new Token[res.size()]));}
+}
+
+FSM fsm() :
+{ FSM fsm = new FSM("test"); State stat; }
+{
+	( stat = state(fsm) {fsm.add(stat);} )*
+	{return fsm;}
+}
+
+Action action(State state) :
+{ ActionKind kind = ActionKind.CORE; Statement stat; }
+{
+	<ACTION> [ <IN> {kind = ActionKind.IN;} | <OUT> {kind = ActionKind.OUT;}  ]
+	stat = statement_block()
+	{ return new Action(state, kind, stat);}
+}
+
+
