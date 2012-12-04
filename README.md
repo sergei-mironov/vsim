@@ -27,3 +27,26 @@ Installing
 
     $ cabal build
 
+Running
+=======
+
+To run an example (say, vhdl/assign4.vhd), one has to do the following:
+
+1. Setup bash environment
+
+    $ . simenv
+
+2. Run the VHDL-to-VIR translator, combined with VIR-to-Haskell code generator
+
+    $ vsim vhdl/assign4.vhd > src_r/Test/Autogen.hs
+
+3. Build the model (run GHC interactive console)
+
+    $ cd src_r ; ghci Test/Autogen.hs
+
+4. Run the model from the console
+
+    *Main> :main
+
+
+
