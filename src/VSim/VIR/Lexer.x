@@ -400,4 +400,15 @@ alexGetChar (AlexInput p cp cs) = unsafePerformIO $ do
               p' = alexMove p c
           in p' `seq` return (Just (c, AlexInput p' cp' cs))
 
+-- for alex 3
+alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
+alexGetByte (AlexInput p cp cs) = unsafePerformIO $ do
+    let cp' = plusPtr cp 1
+    w <- peek cp'
+    if w == 0
+     then return Nothing
+     else let c = B.w2c w
+              p' = alexMove p c
+          in p' `seq` return (Just (fromIntegral $ ord c, AlexInput p' cp' cs))
+
 }
