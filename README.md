@@ -1,23 +1,27 @@
 Installing
 ==========
 
-1. Install recent Haskell Platform
+1. Install recent 'Haskell Platform' bundle
 
 2. Unpack the sources into work dir
 
 3. CD to work dir
 
-4. Install compiler build tools
+4. Build java translator
+
+	$ cd tr ; make clean all
+
+5. Install compiler build tools
 
     $ cabal install happy alex
 
-5. Generate lexer and parser
+6. Generate lexer and parser
 
     $ alex src/Vir/VIR/Lexer.x
 
     $ happy src/Vir/VIR/AST.y
 
-6. Build the sources
+7. Build the sources
 
     $ cabal configure
 
