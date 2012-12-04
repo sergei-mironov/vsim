@@ -8,7 +8,7 @@ public class ArrayValue extends SimValue {
 	final SimValue[] value;
 	IRType elementType;
 
-	// здесь IRType вместо IRTypeArray потому, что кроме это может еще быть IRArrayIndex
+	// Р·РґРµСЃСЊ IRType РІРјРµСЃС‚Рѕ IRTypeArray РїРѕС‚РѕРјСѓ, С‡С‚Рѕ РєСЂРѕРјРµ СЌС‚Рѕ РјРѕР¶РµС‚ РµС‰Рµ Р±С‹С‚СЊ IRArrayIndex
 	public ArrayValue(/*IRTypeArray*/IRType type, SimValue[] value, IRType elementType) {
 		super(type);
 		this.value = value;
@@ -34,7 +34,7 @@ public class ArrayValue extends SimValue {
 	public boolean isEqualTo(SimValue otherValue) {
 		if( !(otherValue instanceof ArrayValue) ) return false;
 		ArrayValue ot = (ArrayValue) otherValue;
-		// TODO надо сделать полноценное сравнение типов
+		// TODO РЅР°РґРѕ СЃРґРµР»Р°С‚СЊ РїРѕР»РЅРѕС†РµРЅРЅРѕРµ СЃСЂР°РІРЅРµРЅРёРµ С‚РёРїРѕРІ
 		if( elementType != ot.elementType || value.length != ot.value.length ) return false;
 		for( int i = 0; i < value.length; i++ ) {
 			if( !value[i].isEqualTo(ot.value[i]) ) return false;

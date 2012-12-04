@@ -947,8 +947,8 @@ public abstract class ParserBase implements ILocalResolver {
 //					} else if( prev.getBody() != null && sub.getBody() != null ) {
 //						err.redeclaration(prev, sub);
 //					} else if( prev.getBody() != null && sub.getBody() == null ) {
-//						// TODO: да вроде ничего страшного, для уже заделарированной подпрограммы еще раз написали заголовок
-//						// однако ActiveHDL ругается
+//						// TODO: РґР° РІСЂРѕРґРµ РЅРёС‡РµРіРѕ СЃС‚СЂР°С€РЅРѕРіРѕ, РґР»СЏ СѓР¶Рµ Р·Р°РґРµР»Р°СЂРёСЂРѕРІР°РЅРЅРѕР№ РїРѕРґРїСЂРѕРіСЂР°РјРјС‹ РµС‰Рµ СЂР°Р· РЅР°РїРёСЃР°Р»Рё Р·Р°РіРѕР»РѕРІРѕРє
+//						// РѕРґРЅР°РєРѕ ActiveHDL СЂСѓРіР°РµС‚СЃСЏ
 //						err.subProgramHasNoBody( prev );
 //					} else {
 //						if( !prev.isDeclarationEqualsTo(sub) ) {
@@ -1353,7 +1353,7 @@ public abstract class ParserBase implements ILocalResolver {
 		cnst = IRConst.getConstantValue(op2, err);
 		if( cnst != null ) op2 = cnst;
 		if( element == null ) {
-			// по ходу объявляется новый тип
+			// РїРѕ С…РѕРґСѓ РѕР±СЉСЏРІР»СЏРµС‚СЃСЏ РЅРѕРІС‹Р№ С‚РёРї
 			if( op1.getType().isInt() && op2.getType().isInt() ) {
 				element = new IRTypeInteger(currentPackage, false/*currentPackage == null || !currentPackage.isStandard()*/ ? ("AUTOINTEGER" + autoIntIndex) : null);
 				autoIntIndex++;
@@ -1372,7 +1372,7 @@ public abstract class ParserBase implements ILocalResolver {
 				a++;
 			}
 			IRArrayIndex index = inds[arr._currentIndex];
-			// TODO сделать проверку адекватности новых границ
+			// TODO СЃРґРµР»Р°С‚СЊ РїСЂРѕРІРµСЂРєСѓ Р°РґРµРєРІР°С‚РЅРѕСЃС‚Рё РЅРѕРІС‹С… РіСЂР°РЅРёС†
 		  	if(isDownTo.isConst()) {
 		  		if(isDownTo.getBooleanValue()) {
 			  		index.getRange().setRangeHigh( op1 );
@@ -1392,7 +1392,7 @@ public abstract class ParserBase implements ILocalResolver {
 			IRArrayIndex index = (IRArrayIndex) element; 
 			index = getNextArrayIndex(index, op2);
 			if( index == null ) return element;
-			// TODO сделать проверку адекватности новых границ
+			// TODO СЃРґРµР»Р°С‚СЊ РїСЂРѕРІРµСЂРєСѓ Р°РґРµРєРІР°С‚РЅРѕСЃС‚Рё РЅРѕРІС‹С… РіСЂР°РЅРёС†
 		  	if(isDownTo.getBooleanValue()) {
 		  		index.getRange().setRangeHigh( op1 );
 		  		index.getRange().setRangeLow( op2 );
@@ -1402,7 +1402,7 @@ public abstract class ParserBase implements ILocalResolver {
 		  	}
 		  	return index;
 		} else if( element instanceof IRangedElement ) {
-			// TODO сделать проверку адекватности новых границ
+			// TODO СЃРґРµР»Р°С‚СЊ РїСЂРѕРІРµСЂРєСѓ Р°РґРµРєРІР°С‚РЅРѕСЃС‚Рё РЅРѕРІС‹С… РіСЂР°РЅРёС†
 			IRangedElement ranged = (IRangedElement) element;
 		  	if(isDownTo.getBooleanValue()) {
 		  		ranged.getRange().setRangeHigh( op1 );
@@ -2085,7 +2085,7 @@ public abstract class ParserBase implements ILocalResolver {
 	}
 	
 	
-	// все что касается текстовых координат
+	// РІСЃРµ С‡С‚Рѕ РєР°СЃР°РµС‚СЃСЏ С‚РµРєСЃС‚РѕРІС‹С… РєРѕРѕСЂРґРёРЅР°С‚
 	TextCoord begin() {
 		Token t = getToken(1);
 		return begin(t);

@@ -15,7 +15,7 @@ public class VValue {
 	
 	protected static String getRepresentation( boolean signed, char c, int radix ) {
 		if( signed ) {
-			throw new RuntimeException("è ÷å äåëàòü?");
+			throw new RuntimeException("Ð¸ Ñ‡Ðµ Ð´ÐµÐ»Ð°Ñ‚ÑŒ?");
 		}
 		int len = 0;
 		for( int i = radix; i > 1; i >>= 1 ) len++;

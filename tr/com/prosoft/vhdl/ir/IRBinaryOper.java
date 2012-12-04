@@ -30,7 +30,7 @@ public class IRBinaryOper extends IROper {
 		return kind;
 	}
 	
-	// для случаев вроде '0'&std_logic_vector
+	// РґР»СЏ СЃР»СѓС‡Р°РµРІ РІСЂРѕРґРµ '0'&std_logic_vector
 	protected boolean processEnumLiteralAndArray(IROper op1, IROper op2, IRErrorFactory err) throws CompilerError {
 		if( op1 instanceof IRConst && 
 				!(op2 instanceof IRConst)  ) {
@@ -428,7 +428,7 @@ public class IRBinaryOper extends IROper {
 //			}
 //			
 //			
-//			// TODO надо сделать настоящую проверку совместимости типов
+//			// TODO РЅР°РґРѕ СЃРґРµР»Р°С‚СЊ РЅР°СЃС‚РѕСЏС‰СѓСЋ РїСЂРѕРІРµСЂРєСѓ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё С‚РёРїРѕРІ
 //			if( !( (t1.isInt() && t2.isInt()) || (t1.isReal() && t2.isReal() ) || (t1.isEnum() && t2.isEnum() || (t1.isArray() && t2.isArray()) )  ) ) {
 //				err.incompatibleTypes(t1, t2, this);
 //			}
@@ -617,7 +617,7 @@ public class IRBinaryOper extends IROper {
 				int lowBound = IRConst.getIntFromDescreteConst(err, ((IRTypeInteger)index.getIndexType()).getRange().getRangeLow(), true);
 //				int lowBound = ((IRTypeInteger)index.getIndexType()).getActualRangeLow().constant.getIntValue();
 				index.getRange().setRangeLow( IRTypeInteger.createConstant(lowBound) );
-				index.getRange().setRangeHigh( IRTypeInteger.createConstant(size + lowBound - 1 + 1) ); // + 1 для нового элемента
+				index.getRange().setRangeHigh( IRTypeInteger.createConstant(size + lowBound - 1 + 1) ); // + 1 РґР»СЏ РЅРѕРІРѕРіРѕ СЌР»РµРјРµРЅС‚Р°
 				setType( arrayType );
 				if( isDefinedType() && array.getType() != null ) {
 					array.setFixedType(array.getType());
@@ -629,7 +629,7 @@ public class IRBinaryOper extends IROper {
 					setFixedType( getType() );
 				}
 			} else {
-				// мы не можем определить диапазон - оставляем неопределенный
+				// РјС‹ РЅРµ РјРѕР¶РµРј РѕРїСЂРµРґРµР»РёС‚СЊ РґРёР°РїР°Р·РѕРЅ - РѕСЃС‚Р°РІР»СЏРµРј РЅРµРѕРїСЂРµРґРµР»РµРЅРЅС‹Р№
 				arrayType = arrayType.dup();
 				IRArrayIndex index = getIndex(arrayType);
 				index.getRange().setRangeHigh(null);

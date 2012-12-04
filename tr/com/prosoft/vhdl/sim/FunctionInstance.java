@@ -34,7 +34,7 @@ public class FunctionInstance extends SimulationObject implements Environment {
 			if( desc.getType().isArray() ) {
 				IRArrayIndex ind = IRTypeArray.getIndex(desc.getType(), sim.err, null);
 				if( ind.getRange().getRangeHigh() == null && ind.getRange().getRangeLow() == null ) {
-					// если это массив неизвестной длины, то берем тип из параметра
+					// РµСЃР»Рё СЌС‚Рѕ РјР°СЃСЃРёРІ РЅРµРёР·РІРµСЃС‚РЅРѕР№ РґР»РёРЅС‹, С‚Рѕ Р±РµСЂРµРј С‚РёРї РёР· РїР°СЂР°РјРµС‚СЂР°
 					varType = args[i].getType();
 				} else {
 					varType = ind;

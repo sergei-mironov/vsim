@@ -18,7 +18,7 @@ public class IROperAssoc extends IROper {
 
 	@Override
 	public void semanticCheck(IRErrorFactory err) throws CompilerError {
-		// первый child - IRChoices
+		// РїРµСЂРІС‹Р№ child - IRChoices
 		getChild(0).semanticCheck(err);
 		getChild(1).semanticCheck(err);
 	}

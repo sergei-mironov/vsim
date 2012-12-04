@@ -26,7 +26,7 @@ public class HDLType {
 			if( vhdlType.isInt() ) return HDLTypeFamily.INT;
 			if( vhdlType.isReal() ) return HDLTypeFamily.FLOAT;
 			if( vhdlType.isArray() ) return HDLTypeFamily.ARRAY;
-			// TODO проверить какие поля входят в структуру
+			// TODO РїСЂРѕРІРµСЂРёС‚СЊ РєР°РєРёРµ РїРѕР»СЏ РІС…РѕРґСЏС‚ РІ СЃС‚СЂСѓРєС‚СѓСЂСѓ
 			if( vhdlType.isRecord() ) return HDLTypeFamily.ARRAY;
 			return HDLTypeFamily.UNKNOWN;
 			

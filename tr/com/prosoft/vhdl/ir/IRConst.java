@@ -360,7 +360,7 @@ public class IRConst extends IROper {
 		}
 		if( oper instanceof IRAggreg ) {
 			IRAggreg agg = (IRAggreg) oper;
-			// это просто выражение в скобках?
+			// СЌС‚Рѕ РїСЂРѕСЃС‚Рѕ РІС‹СЂР°Р¶РµРЅРёРµ РІ СЃРєРѕР±РєР°С…?
 			if( agg.getChildNum() == 1 && !(agg.getChild(0) instanceof IROperAssoc) ) {
 				return getConstantValue(agg.getChild(0), err, isDeclaration);
 			} else if( agg.getType().isArray() ) {
@@ -441,7 +441,7 @@ public class IRConst extends IROper {
 				resolvedConstant = createStringConst(err, processed, elType, ind, this);
 			} else {
 				if( str.getValue().length() == 3 && str.getValue().charAt(0) == '\'' && str.getValue().charAt(2) == '\'' ) {
-					// это литерал типа '1'
+					// СЌС‚Рѕ Р»РёС‚РµСЂР°Р» С‚РёРїР° '1'
 					if( getType() != null ) {
 						if( getType().isArray() && getParentOper() != null && getParentOper().getKind() == IROperKind.CONCAT ) {
 							IRTypeArray arr = IRTypeArray.getArray(getType(), err, this);
@@ -477,7 +477,7 @@ public class IRConst extends IROper {
 						resolvedConstant = v.getSimValue().getConstant();
 					}
 				} else {
-					// эта константа должна стать частью массива в выражении типа '0'&array или '0'&'1'
+					// СЌС‚Р° РєРѕРЅСЃС‚Р°РЅС‚Р° РґРѕР»Р¶РЅР° СЃС‚Р°С‚СЊ С‡Р°СЃС‚СЊСЋ РјР°СЃСЃРёРІР° РІ РІС‹СЂР°Р¶РµРЅРёРё С‚РёРїР° '0'&array РёР»Рё '0'&'1'
 					if( getParentOper() != null && getParentOper().getKind() == IROperKind.CONCAT 
 							&& getType() != null && getType().isArray() ) {
 						IRTypeArray arr = IRTypeArray.getArray(getType(), err, this);

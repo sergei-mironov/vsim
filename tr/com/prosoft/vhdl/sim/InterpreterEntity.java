@@ -87,7 +87,7 @@ public class InterpreterEntity extends Entity {
 				Data[] left = sim.resolveSignal(ass.getChild(0), child);
 				Data[] right = sim.resolveSignal(ass.getChild(1), this);
 				if( right.length == 0 ) {
-					// значит был open
+					// Р·РЅР°С‡РёС‚ Р±С‹Р» open
 				} else {
 					if( left.length != right.length ) {
 						throw new RuntimeException();

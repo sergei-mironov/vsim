@@ -111,7 +111,7 @@ public class IRArrayIndex extends IRType implements IRangedElement {
 
 	public boolean isCompatibleTo( IRArrayIndex other ) {
 		if( !indexType.isEqualTo(other.indexType) ) return false;
-		if( !isConst() || !other.isConst() ) return true; // невозможно проверить, проверка будет только в ран-тайм
+		if( !isConst() || !other.isConst() ) return true; // РЅРµРІРѕР·РјРѕР¶РЅРѕ РїСЂРѕРІРµСЂРёС‚СЊ, РїСЂРѕРІРµСЂРєР° Р±СѓРґРµС‚ С‚РѕР»СЊРєРѕ РІ СЂР°РЅ-С‚Р°Р№Рј
 		
 		if( IsInt() && other.IsInt() ) {
 			int size1 = ((IRConst)getRange().getRangeHigh()).getConstant().getIntValue() - ((IRConst)getRange().getRangeLow()).getConstant().getIntValue();

@@ -38,14 +38,14 @@ import com.prosoft.vhdl.fs.*;
 import com.prosoft.vhdl.MemoryMapRecord;
 
 public class HDLTranslator {
-	// номер версии.
+	// ┬н┬о┬м╥Р╨░ ╤Ю╥Р╨░╨▒╨Б╨Б.
 	static String version = "v0.90";
 
-	// Библиотеки:
+	// ╨Г╨Б╨О┬л╨Б┬о╨▓╥Р╨Д╨Б:
 	static LibEnvironment libEnv = null;
 	static TranslatorErrorHandler handler = null;
 
-	// Результат разбора карт памяти.
+	// ╤Т╥Р┬з╨│┬л╨╝╨▓┬а╨▓ ╨░┬а┬з╨О┬о╨░┬а ╨Д┬а╨░╨▓ ╨З┬а┬м╨┐╨▓╨Б.
 	static List<MemoryMapRecord> memoryMapRecords = null;
 
 	static void resetLibEnv() {
@@ -55,7 +55,7 @@ public class HDLTranslator {
 		memoryMapRecords = new ArrayList<MemoryMapRecord>();
 	}
 
-	// основной цикл.
+	// ┬о╨▒┬н┬о╤Ю┬н┬о┬й ╨╢╨Б╨Д┬л.
 	public static void main( String[] args ) throws Exception {
 		Library.disableProgress();
 		resetLibEnv();

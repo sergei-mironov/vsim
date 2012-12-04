@@ -54,7 +54,7 @@ public class IRTypes {
 	}
 	
 //	IRTypes putStdTypes() {
-//        // перенес integer и real в standard.vhd, чтобы parent был
+//        // РїРµСЂРµРЅРµСЃ integer Рё real РІ standard.vhd, С‡С‚РѕР±С‹ parent Р±С‹Р»
 //        //		put( IRTypeInteger.TYPE );        
 ////		put( new IRTypeInteger("natural", true) );
 ////		put( new IRTypeReal(null, "real") );

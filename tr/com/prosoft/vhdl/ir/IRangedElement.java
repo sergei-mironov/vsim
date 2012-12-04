@@ -11,8 +11,8 @@ public interface IRangedElement {
 	public void setRangeHigh(IROper rangeHigh);
 	public void setDownTo( IROper downTo );
 	
-	// для случаев, когда нам надо описывать границы лево-право надо выставить leftRight в true
-	// при это "лево" соответствует !isDownTo, "право" isDownTo
+	// РґР»СЏ СЃР»СѓС‡Р°РµРІ, РєРѕРіРґР° РЅР°Рј РЅР°РґРѕ РѕРїРёСЃС‹РІР°С‚СЊ РіСЂР°РЅРёС†С‹ Р»РµРІРѕ-РїСЂР°РІРѕ РЅР°РґРѕ РІС‹СЃС‚Р°РІРёС‚СЊ leftRight РІ true
+	// РїСЂРё СЌС‚Рѕ "Р»РµРІРѕ" СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓРµС‚ !isDownTo, "РїСЂР°РІРѕ" isDownTo
 	public void setLeftRight(boolean leftRight);
 	public boolean isLeftRight();
 	public IROper isRight();
@@ -22,7 +22,7 @@ public interface IRangedElement {
     */
 	IROperRange getRange();
 	IRangedElement dup();
-    // тип диапазона для unconstrained массивов
+    // С‚РёРї РґРёР°РїР°Р·РѕРЅР° РґР»СЏ unconstrained РјР°СЃСЃРёРІРѕРІ
     IRType getRangeType();
 
 }

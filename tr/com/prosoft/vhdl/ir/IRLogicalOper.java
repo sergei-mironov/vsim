@@ -21,7 +21,7 @@ public class IRLogicalOper extends IRBinaryOper {
 
 //	@Override
 //	public void semanticCheck(IRErrorFactory err) throws CompilerError {
-//		// TODO Сделать нормальное определение типа
+//		// TODO РЎРґРµР»Р°С‚СЊ РЅРѕСЂРјР°Р»СЊРЅРѕРµ РѕРїСЂРµРґРµР»РµРЅРёРµ С‚РёРїР°
 //		getChild(0).semanticCheck(err);
 //		getChild(1).semanticCheck(err);
 //		setType( getChild(0).getType() );

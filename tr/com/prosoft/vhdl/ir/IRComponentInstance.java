@@ -80,7 +80,7 @@ public class IRComponentInstance extends IRFullNamedElement implements ILocalRes
 	/*
 	public void semanticCheck(IRErrorFactory err) throws CompilerError {
 		if( genericsAssociations != null ) {
-			boolean namedMet = false; // мы встретили уже встретили именовый элемент? 
+			boolean namedMet = false; // РјС‹ РІСЃС‚СЂРµС‚РёР»Рё СѓР¶Рµ РІСЃС‚СЂРµС‚РёР»Рё РёРјРµРЅРѕРІС‹Р№ СЌР»РµРјРµРЅС‚? 
 			for( int i = 0; i < genericsAssociations.length; i++ ) {
 				if( genericsAssociations[i] instanceof IROperAssoc ) {
 					namedMet = true;
@@ -117,7 +117,7 @@ public class IRComponentInstance extends IRFullNamedElement implements ILocalRes
 			for( int i = 0; i < portAssociations.length; i++ ) {
 				IROperAssoc assoc = (IROperAssoc) portAssociations[i];
 				assoc.setParent(this);
-				if( assoc.getChild(0) instanceof IRSignalOper ) continue; // значит замена на настоящий сигнал уже проведена
+				if( assoc.getChild(0) instanceof IRSignalOper ) continue; // Р·РЅР°С‡РёС‚ Р·Р°РјРµРЅР° РЅР° РЅР°СЃС‚РѕСЏС‰РёР№ СЃРёРіРЅР°Р» СѓР¶Рµ РїСЂРѕРІРµРґРµРЅР°
 				IRName formal = (IRName) assoc.getChild(0);
 				IRNamedElement target = ((ILocalResolver)component).localResolve(formal.getName());
 				if( target == null ) {
@@ -131,7 +131,7 @@ public class IRComponentInstance extends IRFullNamedElement implements ILocalRes
 						throw new RuntimeException();
 				}
 				expr.semanticCheck(err);
-				// заменяем на настоящий сигнал
+				// Р·Р°РјРµРЅСЏРµРј РЅР° РЅР°СЃС‚РѕСЏС‰РёР№ СЃРёРіРЅР°Р»
 //				assoc.setChild(0, new IRSignalOper((IRSignal) target) );
 			}
 		}
@@ -186,7 +186,7 @@ public class IRComponentInstance extends IRFullNamedElement implements ILocalRes
 			return;
 		}
 		if( genericsAssociations != null ) {
-			boolean namedMet = false; // мы встретили уже встретили именовый элемент? 
+			boolean namedMet = false; // РјС‹ РІСЃС‚СЂРµС‚РёР»Рё СѓР¶Рµ РІСЃС‚СЂРµС‚РёР»Рё РёРјРµРЅРѕРІС‹Р№ СЌР»РµРјРµРЅС‚? 
 			for( int i = 0; i < genericsAssociations.length; i++ ) {
 				if( genericsAssociations[i] instanceof IROperAssoc ) {
 					namedMet = true;
@@ -227,13 +227,13 @@ public class IRComponentInstance extends IRFullNamedElement implements ILocalRes
 			}
 		}
 		if( portAssociations != null ) {
-			boolean namedMet = false; // мы встретили уже встретили именовый элемент? 
+			boolean namedMet = false; // РјС‹ РІСЃС‚СЂРµС‚РёР»Рё СѓР¶Рµ РІСЃС‚СЂРµС‚РёР»Рё РёРјРµРЅРѕРІС‹Р№ СЌР»РµРјРµРЅС‚? 
 			for( int i = 0; i < portAssociations.length; i++ ) {
 				if( portAssociations[i] instanceof IROperAssoc ) {
 					namedMet = true;
 					IROperAssoc assoc = (IROperAssoc) portAssociations[i];
 					assoc.setParent(this);
-					if( assoc.getChild(0) instanceof IRSignalOper ) continue; // значит замена на настоящий сигнал уже проведена
+					if( assoc.getChild(0) instanceof IRSignalOper ) continue; // Р·РЅР°С‡РёС‚ Р·Р°РјРµРЅР° РЅР° РЅР°СЃС‚РѕСЏС‰РёР№ СЃРёРіРЅР°Р» СѓР¶Рµ РїСЂРѕРІРµРґРµРЅР°
 					if( assoc.getChild(0) instanceof IRName ) {
 						IRName formal = (IRName) assoc.getChild(0);
 						PortDesc target = component.getPort(formal.getName());

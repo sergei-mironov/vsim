@@ -7,8 +7,8 @@ import com.prosoft.vhdl.sim.SimValue;
 
 public class IRAggreg extends IROper {
 	
-	// сюда в качестве детей могут входит либо IROperAssoc, тогда здесь будут именованые таргеты 
-	// либо просто IROper, тогда таргеты определяются порядком перечисления
+	// СЃСЋРґР° РІ РєР°С‡РµСЃС‚РІРµ РґРµС‚РµР№ РјРѕРіСѓС‚ РІС…РѕРґРёС‚ Р»РёР±Рѕ IROperAssoc, С‚РѕРіРґР° Р·РґРµСЃСЊ Р±СѓРґСѓС‚ РёРјРµРЅРѕРІР°РЅС‹Рµ С‚Р°СЂРіРµС‚С‹ 
+	// Р»РёР±Рѕ РїСЂРѕСЃС‚Рѕ IROper, С‚РѕРіРґР° С‚Р°СЂРіРµС‚С‹ РѕРїСЂРµРґРµР»СЏСЋС‚СЃСЏ РїРѕСЂСЏРґРєРѕРј РїРµСЂРµС‡РёСЃР»РµРЅРёСЏ
 	
 	public IRAggreg( ArrayList<IROper> elements ) {
 		for( int i = 0; i < elements.size(); i++ ) {
@@ -63,7 +63,7 @@ public class IRAggreg extends IROper {
 			arrayIndex = ((IRTypeArray)getType()).indexes.get(0);
 		} else {
 			arrayIndex = (IRArrayIndex) getType();
-			// берем следующий индекс
+			// Р±РµСЂРµРј СЃР»РµРґСѓСЋС‰РёР№ РёРЅРґРµРєСЃ
 //			arrayIndex = arrayIndex.arrayType.indexes.get(arrayIndex.indexInArray+1);
 		}
 		return arrayIndex;
@@ -76,7 +76,7 @@ public class IRAggreg extends IROper {
 			a++;
 		}
 		if( getChildNum() == 1 && !(getChild(0) instanceof IROperAssoc) ) {
-			// это просто выражение в скобках, а не агрегат
+			// СЌС‚Рѕ РїСЂРѕСЃС‚Рѕ РІС‹СЂР°Р¶РµРЅРёРµ РІ СЃРєРѕР±РєР°С…, Р° РЅРµ Р°РіСЂРµРіР°С‚
 			if( getChild(0).getFixedType() != null ) {
 				setFixedType(getChild(0).getFixedType());
 				return;
@@ -153,7 +153,7 @@ public class IRAggreg extends IROper {
 	for( int ai = 0; ai < getChildNum(); ai++ ) {
 		IROper op = getChild(ai);
 		
-		// именованный агрегат
+		// РёРјРµРЅРѕРІР°РЅРЅС‹Р№ Р°РіСЂРµРіР°С‚
 		if( op instanceof IROperAssoc ) {
 			IRChoices choices = (IRChoices) op.getChild(0);
 //			if( aggType == AGG_TYPE.UNDEFINED || aggType == AGG_TYPE.NAMED ) {
@@ -188,7 +188,7 @@ public class IRAggreg extends IROper {
 						err.othersShouldBeAtLeastOne(this);
 					}
 					
-					// возможно совпадение имени поля и имени константы или имени сигнала или имени переменной.
+					// РІРѕР·РјРѕР¶РЅРѕ СЃРѕРІРїР°РґРµРЅРёРµ РёРјРµРЅРё РїРѕР»СЏ Рё РёРјРµРЅРё РєРѕРЅСЃС‚Р°РЅС‚С‹ РёР»Рё РёРјРµРЅРё СЃРёРіРЅР°Р»Р° РёР»Рё РёРјРµРЅРё РїРµСЂРµРјРµРЅРЅРѕР№.
 				} else if( ch instanceof IRName || ch instanceof IRConstRead || ch instanceof IRSignalOper || ch instanceof IRVarOper ) {
 					String fName;
 					switch( ch.getKind() ) {
@@ -308,7 +308,7 @@ public class IRAggreg extends IROper {
 		for (int ai = 0; ai < getChildNum(); ai++) {
 			IROper op = getChild(ai);
 
-			// именованный агрегат
+			// РёРјРµРЅРѕРІР°РЅРЅС‹Р№ Р°РіСЂРµРіР°С‚
 			if (op instanceof IROperAssoc) {
 				IROperAssoc assoc = (IROperAssoc) op;
 				IRChoices choices = (IRChoices) assoc.getChild(0);
@@ -398,8 +398,8 @@ public class IRAggreg extends IROper {
 						memberIndexes.add(choice);
 						memberValues.add(expr);
 					} else if (choice instanceof IROperIndex) {
-						// индексом в аггрегате будет индекс из операции
-						// "индекс"
+						// РёРЅРґРµРєСЃРѕРј РІ Р°РіРіСЂРµРіР°С‚Рµ Р±СѓРґРµС‚ РёРЅРґРµРєСЃ РёР· РѕРїРµСЂР°С†РёРё
+						// "РёРЅРґРµРєСЃ"
 						memberIndexes.add(choice.getChild(1));
 						memberValues.add(expr);
 					} else {
@@ -520,7 +520,7 @@ public class IRAggreg extends IROper {
 //		for( int ai = 0; ai < getChildNum(); ai++ ) {
 //			IROper op = getChild(ai);
 //			
-//			// именованный агрегат
+//			// РёРјРµРЅРѕРІР°РЅРЅС‹Р№ Р°РіСЂРµРіР°С‚
 //			if( op instanceof IROperAssoc ) {
 //				IROperAssoc assoc = (IROperAssoc) op;
 //				IRChoices choices = (IRChoices) assoc.getChild(0);
@@ -615,7 +615,7 @@ public class IRAggreg extends IROper {
 //		for( int ai = 0; ai < getChildNum(); ai++ ) {
 //			IROper op = getChild(ai);
 //			
-//			// именованный агрегат
+//			// РёРјРµРЅРѕРІР°РЅРЅС‹Р№ Р°РіСЂРµРіР°С‚
 //			if( op instanceof IROperAssoc ) {
 //				IRChoices choices = (IRChoices) op.getChild(0);
 //				if( aggType == AGG_TYPE.UNDEFINED || aggType == AGG_TYPE.NAMED ) {
@@ -650,7 +650,7 @@ public class IRAggreg extends IROper {
 //							err.othersShouldBeAtLeastOne(this);
 //						}
 //						
-//						// возможно совпадение имени поля и имени константы. в этом случае будет IRConstRead
+//						// РІРѕР·РјРѕР¶РЅРѕ СЃРѕРІРїР°РґРµРЅРёРµ РёРјРµРЅРё РїРѕР»СЏ Рё РёРјРµРЅРё РєРѕРЅСЃС‚Р°РЅС‚С‹. РІ СЌС‚РѕРј СЃР»СѓС‡Р°Рµ Р±СѓРґРµС‚ IRConstRead
 //					} else if( ch instanceof IRName || ch instanceof IRConstRead ) {
 //						String fName;
 //						if( ch instanceof IRName ) {

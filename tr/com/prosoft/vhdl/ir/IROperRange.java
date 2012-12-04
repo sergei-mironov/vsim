@@ -14,8 +14,8 @@ public class IROperRange extends IROper implements IRangedElement, IObjectElemen
 //	SimValue rangeHigh;
 //	boolean isDownTo;
 	
-	// в child'е с индексом 3 хранится isDownTo для совместимости с кодом, 
-	// который уже использует 1 и 2-ой child'ы для хранения диапазона 
+	// РІ child'Рµ СЃ РёРЅРґРµРєСЃРѕРј 3 С…СЂР°РЅРёС‚СЃСЏ isDownTo РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃ РєРѕРґРѕРј, 
+	// РєРѕС‚РѕСЂС‹Р№ СѓР¶Рµ РёСЃРїРѕР»СЊР·СѓРµС‚ 1 Рё 2-РѕР№ child'С‹ РґР»СЏ С…СЂР°РЅРµРЅРёСЏ РґРёР°РїР°Р·РѕРЅР° 
 	
 	public IROperRange( IROper src ) {
         if ( src != null ) setBegin(src.getBegin());
@@ -214,7 +214,7 @@ public class IROperRange extends IROper implements IRangedElement, IObjectElemen
 			if( index.getIndexType().isInt() ) {
 				
 				if( getRangeHigh() == null || !getRangeHigh().isConst() || getRangeLow() == null || !getRangeLow().isConst() ) {
-					// диапазон не опереден, выходим ничего не проверяя
+					// РґРёР°РїР°Р·РѕРЅ РЅРµ РѕРїРµСЂРµРґРµРЅ, РІС‹С…РѕРґРёРј РЅРёС‡РµРіРѕ РЅРµ РїСЂРѕРІРµСЂСЏСЏ
 	//				t = t.dup();
 	//				IRArrayIndex ind = IRTypeArray.getIndex(t, err, this);
 	//				ind.setRangeHigh(null);
@@ -228,18 +228,18 @@ public class IROperRange extends IROper implements IRangedElement, IObjectElemen
 				if( index.getRange().getRangeHigh() == null || index.getRange().getRangeLow() == null || 
 						!index.getRange().getRangeHigh().isConst() || !index.getRange().getRangeLow().isConst() || 
 						!getRangeHigh().isConst() || !getRangeLow().isConst() ) {
-					// массив не с неопределенным диапазоном
+					// РјР°СЃСЃРёРІ РЅРµ СЃ РЅРµРѕРїСЂРµРґРµР»РµРЅРЅС‹Рј РґРёР°РїР°Р·РѕРЅРѕРј
 	//				index.setRangeHigh(null);
 	//				index.setRangeLow(null);
 					setType( index );
 					return;
 				}
 				
-				// границы массива
+				// РіСЂР°РЅРёС†С‹ РјР°СЃСЃРёРІР°
 				int a_h = index.getRangeHighAsInt(err);
 				int a_l = index.getRangeLowAsInt(err);
 				
-				// границы предполагаемого слайса
+				// РіСЂР°РЅРёС†С‹ РїСЂРµРґРїРѕР»Р°РіР°РµРјРѕРіРѕ СЃР»Р°Р№СЃР°
 				int s_h, s_l;
 				if( getRangeHigh() instanceof IRConst ) {
 					s_h = ((IRConst)getRangeHigh()).getConstant().getIntValue();

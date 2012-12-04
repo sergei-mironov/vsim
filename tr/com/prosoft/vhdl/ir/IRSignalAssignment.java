@@ -39,7 +39,7 @@ public class IRSignalAssignment extends IRStatement {
 
 	@Override
 	protected void semanticCheckInternal(IRErrorFactory err) throws CompilerError {
-		// TODO Нормальную проверку типов
+		// TODO РќРѕСЂРјР°Р»СЊРЅСѓСЋ РїСЂРѕРІРµСЂРєСѓ С‚РёРїРѕРІ
 		getChild(0).semanticCheck(err);
 		IRType t1 = getChild(0).getType();
 		setType( t1 );

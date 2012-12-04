@@ -6,7 +6,6 @@ import com.prosoft.common.*;
 import java.util.*;
 
 /** Token Manager. */
-@SuppressWarnings("all")
 public class VhdlParserTokenManager implements VhdlParserConstants
 {
 

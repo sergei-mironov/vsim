@@ -183,7 +183,7 @@ public class IRSubProgram extends IRUniqueNamedElement implements IRVarHolder, I
 		vars = sub.vars;
 		constants = sub.constants;
 		map = sub.map;
-		parameters = sub.parameters; // копируем, т.к. параметры будут в map
+		parameters = sub.parameters; // РєРѕРїРёСЂСѓРµРј, С‚.Рє. РїР°СЂР°РјРµС‚СЂС‹ Р±СѓРґСѓС‚ РІ map
 	}
 	
 	public String toString() {
@@ -213,8 +213,8 @@ public class IRSubProgram extends IRUniqueNamedElement implements IRVarHolder, I
 //	logical_operator ::= "and", "or", "nand", "nor", "xor", "xnor"
 //	relational_operator "=", "/=", "<", "<=", ">", ">="
 //	shift_operator ::= "sll", "srl", "sla", "sra", "rol", "ror"
-//	adding_operator ::= "+", "–", "&"
-//	sign ::= "+", "–"
+//	adding_operator ::= "+", "вЂ“", "&"
+//	sign ::= "+", "вЂ“"
 //	multiplying_operator ::= "*", "/", "mod", "rem"
 //	miscellaneous_operator ::= "**", "abs", "not"
 	

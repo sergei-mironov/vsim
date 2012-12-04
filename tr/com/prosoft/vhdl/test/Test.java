@@ -388,7 +388,7 @@ public class Test {
 //			gen.generate( p.archs.get(0).getName(), p.archs.get(0), out );
 //			finally
                 {
-                        // в любом случае генерим вывод, чтобы найти, где упало
+                        // РІ Р»СЋР±РѕРј СЃР»СѓС‡Р°Рµ РіРµРЅРµСЂРёРј РІС‹РІРѕРґ, С‡С‚РѕР±С‹ РЅР°Р№С‚Рё, РіРґРµ СѓРїР°Р»Рѕ
                         symEnv.generate();
                         env.generate();
                 }
@@ -498,7 +498,7 @@ public class Test {
 
 //		genMainEntityComponentInstancesInfo(null, comp, library, out);
 
-		// ��� ������ ����� ������������.
+		// эти строки можно игнорировать.
 
 //		for (MemoryMapRecord memMapRec : memoryMapRecords) {
 //

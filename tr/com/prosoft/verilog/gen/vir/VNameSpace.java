@@ -59,7 +59,7 @@ public class VNameSpace {
 	
 //	public String getUniqueName(IUniqueNamedElement el) {
 //		String newName = getElementFullName(el);
-//		// для параметров уникальные имена не генерируем
+//		// РґР»СЏ РїР°СЂР°РјРµС‚СЂРѕРІ СѓРЅРёРєР°Р»СЊРЅС‹Рµ РёРјРµРЅР° РЅРµ РіРµРЅРµСЂРёСЂСѓРµРј
 //		if( !(el instanceof IRPrimary && ((IRPrimary)el).isParameter()) ) {
 //			newName = getUniqueName(el, newName);
 //			el.setUniqueName(newName);

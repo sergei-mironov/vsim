@@ -22,7 +22,7 @@ public abstract class IRType extends IRNamedElement {
 //		}
 	}
 
-	// возвращает оригинальный тип для подтипов
+	// РІРѕР·РІСЂР°С‰Р°РµС‚ РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ С‚РёРї РґР»СЏ РїРѕРґС‚РёРїРѕРІ
 	public IRType getOriginalType() {
 		if( subtypedFrom != null ) {
 			return subtypedFrom.getOriginalType();

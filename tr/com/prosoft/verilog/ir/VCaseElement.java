@@ -6,7 +6,7 @@ public class VCaseElement extends VOper {
 		setChildAt(getChildNum(), op);
 	}
 	
-	// если выражения есть - это case, а если нет, т.е. первый child - это statement, - то default
+	// РµСЃР»Рё РІС‹СЂР°Р¶РµРЅРёСЏ РµСЃС‚СЊ - СЌС‚Рѕ case, Р° РµСЃР»Рё РЅРµС‚, С‚.Рµ. РїРµСЂРІС‹Р№ child - СЌС‚Рѕ statement, - С‚Рѕ default
 	public boolean isDefault() {
 		return getChild(0).getKind() == VOperKind.STATEMENT;
 	}

@@ -73,11 +73,11 @@ public class IRNamedElement extends IRElement implements ICoordinatedElement {
             p instanceof IRProcess ||
             p instanceof IRSubProgram.ParameterHolder ||
             p instanceof IRForStatement ||
-            // бывает у портов
+            // Р±С‹РІР°РµС‚ Сѓ РїРѕСЂС‚РѕРІ
             p instanceof IRForGenerateStatement ||
             p instanceof IROperAssoc ||
             p instanceof IRDotOper // ||
-            // TODO: временная заглушка для case choice-ов
+            // TODO: РІСЂРµРјРµРЅРЅР°СЏ Р·Р°РіР»СѓС€РєР° РґР»СЏ case choice-РѕРІ
             //p instanceof IRChoices
             ;
     }
@@ -103,8 +103,8 @@ public class IRNamedElement extends IRElement implements ICoordinatedElement {
                 res = ((Library)cur).getName() + "." + res;
             } else if( cur instanceof IRArchitecture ) {
 //                 res = ((IRArchitecture)cur).getName() + "." + res;
-                // выбора архитектур пока все равно нет
-                // так что не засоряем промежуточное представление
+                // РІС‹Р±РѕСЂР° Р°СЂС…РёС‚РµРєС‚СѓСЂ РїРѕРєР° РІСЃРµ СЂР°РІРЅРѕ РЅРµС‚
+                // С‚Р°Рє С‡С‚Рѕ РЅРµ Р·Р°СЃРѕСЂСЏРµРј РїСЂРѕРјРµР¶СѓС‚РѕС‡РЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ
             } else if( cur instanceof IREntity ) {
             	IREntity en = ((IREntity)cur); 
                 res = en.getName() + "." + res;

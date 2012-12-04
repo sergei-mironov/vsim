@@ -20,7 +20,7 @@ public enum VOperKind {
 	
 	EDGE,
 	
-	NAMED_ASSIGN, // операция связывания для именованных параметров типа param_name <= param_value
+	NAMED_ASSIGN, // РѕРїРµСЂР°С†РёСЏ СЃРІСЏР·С‹РІР°РЅРёСЏ РґР»СЏ РёРјРµРЅРѕРІР°РЅРЅС‹С… РїР°СЂР°РјРµС‚СЂРѕРІ С‚РёРїР° param_name <= param_value
 	
 	STATEMENT,
 	CASE_ELEMENT

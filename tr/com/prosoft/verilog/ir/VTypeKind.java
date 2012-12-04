@@ -2,7 +2,7 @@ package com.prosoft.verilog.ir;
 
 public enum VTypeKind {
 
-	INT, // это тоже вектор, только фиксированный
+	INT, // СЌС‚Рѕ С‚РѕР¶Рµ РІРµРєС‚РѕСЂ, С‚РѕР»СЊРєРѕ С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Р№
 	REAL,
 	REALTIME,
 	TIME,

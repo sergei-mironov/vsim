@@ -44,7 +44,7 @@ public class VOperRange extends VOper {
 	
 	@Override
 	protected VType inferTypeInternal(VEnvironment env) {
-		// Проверка осуществляется на уровне выше
+		// РџСЂРѕРІРµСЂРєР° РѕСЃСѓС‰РµСЃС‚РІР»СЏРµС‚СЃСЏ РЅР° СѓСЂРѕРІРЅРµ РІС‹С€Рµ
 		return null;
 	}
 

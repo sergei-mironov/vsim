@@ -126,7 +126,7 @@ public class Simulator {
 	
 	
 	
-	// внешний интерфейс
+	// РІРЅРµС€РЅРёР№ РёРЅС‚РµСЂС„РµР№СЃ
 	public void resume() {
 		simMode = SIM_MODE.RESUME;
 		synchronized (sleepOn) {
@@ -270,7 +270,7 @@ public class Simulator {
 			env.setLastReturn(res, func);
 		}
 		
-		// псевдооперация в конце функции
+		// РїСЃРµРІРґРѕРѕРїРµСЂР°С†РёСЏ РІ РєРѕРЅС†Рµ С„СѓРЅРєС†РёРё
 		try {
 			simulateStatement(new IREmptyStatement(new FullCoord(func.getEnd(), func.getEnd())), inst);
 		} catch (ReturnException e) {
@@ -460,7 +460,7 @@ public class Simulator {
 		case AGGREG:
 		{
 			IRAggreg agg = (IRAggreg) op;
-			// может это просто операция в скобках?
+			// РјРѕР¶РµС‚ СЌС‚Рѕ РїСЂРѕСЃС‚Рѕ РѕРїРµСЂР°С†РёСЏ РІ СЃРєРѕР±РєР°С…?
 			if( agg.getChildNum() == 1 && !(agg.getChild(0) instanceof IROperAssoc) ) {
 				return getValue(op.getChild(0), env);
 			}
@@ -542,7 +542,7 @@ public class Simulator {
 					res[i] = src.value[low-declLow+i];
 				}
 			}
-//			throw new RuntimeException("доделать выкавыривание слайса");
+//			throw new RuntimeException("РґРѕРґРµР»Р°С‚СЊ РІС‹РєР°РІС‹СЂРёРІР°РЅРёРµ СЃР»Р°Р№СЃР°");
 			ind = ind.dup();
 			ind.getRange().setRangeHigh(IRTypeInteger.createConstant(high));
 			ind.getRange().setRangeLow(IRTypeInteger.createConstant(low));
@@ -700,10 +700,10 @@ public class Simulator {
 			if( res.type.isArray() && op.getType().isArray() ) {
 				IRArrayIndex ind = IRTypeArray.getIndex(tc.getTypeToCastTo(), err, op);
 				if( ind.getRange().getRangeHigh() != null && ind.getRange().getRangeLow() != null) {
-					// просто заменяем тип
+					// РїСЂРѕСЃС‚Рѕ Р·Р°РјРµРЅСЏРµРј С‚РёРї
 					res.type = tc.getTypeToCastTo();
 				} else {
-					// ничего не делаем, возвращаем как есть
+					// РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј, РІРѕР·РІСЂР°С‰Р°РµРј РєР°Рє РµСЃС‚СЊ
 				}
 			} else throw new RuntimeException();
 			return res;
@@ -868,7 +868,7 @@ public class Simulator {
 			}
 		}
 		if( !sometingMet && stat.getElseStatement() != null ) {
-			// самый последний else
+			// СЃР°РјС‹Р№ РїРѕСЃР»РµРґРЅРёР№ else
 			simulateStatement(stat.getElseStatement(), env);
 		}
 	}
@@ -976,7 +976,7 @@ public class Simulator {
 //					res[dstIndex] = src[srcIndex]; 
 				}
 //			}
-//			throw new RuntimeException("доделать выкавыривание слайса");
+//			throw new RuntimeException("РґРѕРґРµР»Р°С‚СЊ РІС‹РєР°РІС‹СЂРёРІР°РЅРёРµ СЃР»Р°Р№СЃР°");
 			return res;
 		}
 		case CONST:

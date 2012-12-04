@@ -150,8 +150,8 @@ public class IRTypeArray extends IRType /*implements IRangedElement*/ {
 				if( !indexes.get(i).getIndexType().
                     isAssignableFrom(other.indexes.get(i).getIndexType()) ) {
                 //if( !indexes.get(i).isCompatibleTo(other.indexes.get(i)) ) return false;
-                // совместимость проверяется в интерпретаторе с учетом динамических типов
-                // здесь проверяется только возможность присвоения
+                // СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ РІ РёРЅС‚РµСЂРїСЂРµС‚Р°С‚РѕСЂРµ СЃ СѓС‡РµС‚РѕРј РґРёРЅР°РјРёС‡РµСЃРєРёС… С‚РёРїРѕРІ
+                // Р·РґРµСЃСЊ РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ РїСЂРёСЃРІРѕРµРЅРёСЏ
                     return false;
                 }
 			}

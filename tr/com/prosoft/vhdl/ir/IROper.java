@@ -25,7 +25,7 @@ public abstract class IROper extends IRElement implements ICoordinatedElement {
 	private IRType type;
 	private IRType knownType;
 	
-	// семантическая проверка и выяснение типа
+	// СЃРµРјР°РЅС‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР° Рё РІС‹СЏСЃРЅРµРЅРёРµ С‚РёРїР°
 	public abstract void semanticCheck( IRErrorFactory err ) throws CompilerError;
 	protected abstract boolean requiresValuesAtChildren();
 	public abstract boolean isEqualTo( IROper other );

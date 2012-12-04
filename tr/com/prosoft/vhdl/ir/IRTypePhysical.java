@@ -119,7 +119,7 @@ public class IRTypePhysical extends IRType implements IRangedElement {
 //		if( type.isInt() ) return true;
 		if( !(type instanceof IRTypePhysical) && !type.isInt() ) return false;
 //		IRTypePhysical other = (IRTypePhysical) type;
-		// TODO сделать проверку с учетом диапазона
+		// TODO СЃРґРµР»Р°С‚СЊ РїСЂРѕРІРµСЂРєСѓ СЃ СѓС‡РµС‚РѕРј РґРёР°РїР°Р·РѕРЅР°
 		return true;
 	}
 
@@ -127,7 +127,7 @@ public class IRTypePhysical extends IRType implements IRangedElement {
 	public boolean isEqualTo(IRType type) {
 		if( !(type instanceof IRTypePhysical) ) return false;
 		IRTypePhysical other = (IRTypePhysical) type;
-		// TODO сделать нормальную проверку
+		// TODO СЃРґРµР»Р°С‚СЊ РЅРѕСЂРјР°Р»СЊРЅСѓСЋ РїСЂРѕРІРµСЂРєСѓ
 		return true;
 	}
 

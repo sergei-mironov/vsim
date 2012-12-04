@@ -53,10 +53,10 @@ public class Library extends IRNamedElement implements ILocalResolver, IRCompone
 			String fname = f.getName().toLowerCase(); 
 			if( fname.endsWith("vhd") || fname.endsWith("vhdl") ) {
 				readSourceFile(df, f.getPath());
-                // Убрал getCanonicalPath(), чтобы имена файлов
-                // соответствовали именам, заданным в командной
-                // строке (чтобы информация о положении в исходнике
-                // совпадала с ghdl-ной)
+                // РЈР±СЂР°Р» getCanonicalPath(), С‡С‚РѕР±С‹ РёРјРµРЅР° С„Р°Р№Р»РѕРІ
+                // СЃРѕРѕС‚РІРµС‚СЃС‚РІРѕРІР°Р»Рё РёРјРµРЅР°Рј, Р·Р°РґР°РЅРЅС‹Рј РІ РєРѕРјР°РЅРґРЅРѕР№
+                // СЃС‚СЂРѕРєРµ (С‡С‚РѕР±С‹ РёРЅС„РѕСЂРјР°С†РёСЏ Рѕ РїРѕР»РѕР¶РµРЅРёРё РІ РёСЃС…РѕРґРЅРёРєРµ
+                // СЃРѕРІРїР°РґР°Р»Р° СЃ ghdl-РЅРѕР№)
 			} else if( fname.endsWith(".v") ) {
 				readVerilogSourceFile(df, f.getPath());
 			} else {
@@ -110,7 +110,7 @@ public class Library extends IRNamedElement implements ILocalResolver, IRCompone
 			impl = new ComponentImplementation(en);
 			implementations.put(impl.getComponentName().toLowerCase(), impl);
 			comp.setImplementation(impl);
-			// не заменяем на entity, т.е. компонент может использоваться из других языков
+			// РЅРµ Р·Р°РјРµРЅСЏРµРј РЅР° entity, С‚.Рµ. РєРѕРјРїРѕРЅРµРЅС‚ РјРѕР¶РµС‚ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ РёР· РґСЂСѓРіРёС… СЏР·С‹РєРѕРІ
 		} else if( old == null && el instanceof IREntity ) {
 			elements.put( el.getName().toLowerCase(), el );
 			impl = new ComponentImplementation((IREntity) el); 

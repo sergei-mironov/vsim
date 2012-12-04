@@ -394,7 +394,7 @@ public class GenTypes {
     	
     	if( range.getRange().isRangeOf() ) {
             out.add("(i:a'range 1 ");
-            // TODO: что делать с N-ным range, и reverse_range
+            // TODO: С‡С‚Рѕ РґРµР»Р°С‚СЊ СЃ N-РЅС‹Рј range, Рё reverse_range
             generateExpression( range.getRange().getRangeOf(), parentName, out );
             out.add(")");
     	} else if( isUnconstrainedRange(range) ) {
@@ -404,7 +404,7 @@ public class GenTypes {
         } else if( range.getRange().getRangeHigh().getKind() == IROperKind.ARRAY_BOUND && range.getRange().getRangeLow().getKind() == IROperKind.ARRAY_BOUND
                    && range.getRange().isDownTo().getKind() == IROperKind.ARRAY_BOUND ) {
             out.add("(i:a'range 1 ");
-            // TODO: что делать с N-ным range, и reverse_range
+            // TODO: С‡С‚Рѕ РґРµР»Р°С‚СЊ СЃ N-РЅС‹Рј range, Рё reverse_range
             generateExpression( range.getRange().getRangeHigh().getChild(0), parentName, out );
             out.add(")");
         } else {
@@ -451,7 +451,7 @@ public class GenTypes {
 				generate(pack, out);
 			} else if( el instanceof IREntity ) {
 				IREntity en = (IREntity) el;
-				// TODO сущности надо генерировать по другому
+				// TODO СЃСѓС‰РЅРѕСЃС‚Рё РЅР°РґРѕ РіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РїРѕ РґСЂСѓРіРѕРјСѓ
 //				generate
 			}
 		}
@@ -476,7 +476,7 @@ public class GenTypes {
 		}
         if ( type.getName() != null )
         {
-            // генерируем только объявленные типы с именем
+            // РіРµРЅРµСЂРёСЂСѓРµРј С‚РѕР»СЊРєРѕ РѕР±СЉСЏРІР»РµРЅРЅС‹Рµ С‚РёРїС‹ СЃ РёРјРµРЅРµРј
             addTypeToGenerate(type, out);
         }
         
@@ -492,11 +492,11 @@ public class GenTypes {
             addTypeToGenerate(subtypedFrom, out);
         }
 
-        // DUCK для безымянного типа надо сгенерировать его описание
+        // DUCK РґР»СЏ Р±РµР·С‹РјСЏРЅРЅРѕРіРѕ С‚РёРїР° РЅР°РґРѕ СЃРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РµРіРѕ РѕРїРёСЃР°РЅРёРµ
  //       if( type.getName() == null ) subtypedFrom = null;
 
         if( !extendTypes && type.getName() != null ) {
-            // неанонимный subtype
+            // РЅРµР°РЅРѕРЅРёРјРЅС‹Р№ subtype
 //            out.add( IRNamedElement.isLocalElement(type) ?
 //                     type.getName() : type.getFullName() );
         	out.add( getTypeFullName(type).toUpperCase() );
@@ -516,14 +516,14 @@ public class GenTypes {
 		}
         
 		//String fullName = type.getFullName();
-        // у variable asdf : integer range 1 to 10
+        // Сѓ variable asdf : integer range 1 to 10
         //   constant qwer : std_logic_vector(1 to 5);
-        // имени нет
-        // parentName используется в port и function declaraion
-        // вроде как ниже он нафиг не нужен?
+        // РёРјРµРЅРё РЅРµС‚
+        // parentName РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ port Рё function declaraion
+        // РІСЂРѕРґРµ РєР°Рє РЅРёР¶Рµ РѕРЅ РЅР°С„РёРі РЅРµ РЅСѓР¶РµРЅ?
 //		String parentName = null; //fullName.substring( 0, fullName.lastIndexOf('.') );
 		if (subtypedFrom == null) {
-			// нет subtype-а, генерим тип как есть
+			// РЅРµС‚ subtype-Р°, РіРµРЅРµСЂРёРј С‚РёРї РєР°Рє РµСЃС‚СЊ
 			if (type instanceof IRTypeEnum) {
 				boolean prevCase = out.isForceLowerCase();
 				out.forceLowerCase(false);
@@ -631,8 +631,8 @@ public class GenTypes {
             else
             {
                 out.add( getTypeFullName(subtypedFrom).toUpperCase() );
-                // если subtype ничем не ограничен, то это просто синоним
-                // генерим его имя
+                // РµСЃР»Рё subtype РЅРёС‡РµРј РЅРµ РѕРіСЂР°РЅРёС‡РµРЅ, С‚Рѕ СЌС‚Рѕ РїСЂРѕСЃС‚Рѕ СЃРёРЅРѕРЅРёРј
+                // РіРµРЅРµСЂРёРј РµРіРѕ РёРјСЏ
             }
         }
         
@@ -682,7 +682,7 @@ public class GenTypes {
 		out.add("))");
 	}
 	
-    // value нужно для переопределения значения, если переопределение не нужно, то надо передавать null
+    // value РЅСѓР¶РЅРѕ РґР»СЏ РїРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ, РµСЃР»Рё РїРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёРµ РЅРµ РЅСѓР¶РЅРѕ, С‚Рѕ РЅР°РґРѕ РїРµСЂРµРґР°РІР°С‚СЊ null
 	public void generate( IRConstant cnst, String parentName, IROper value, TextOut out ) {
         //	   if( cnst.isParameter() ) return;
 		NamedObject wrap = getObjectWrap(parentName, cnst);
@@ -749,7 +749,7 @@ public class GenTypes {
 		}
 		out.nlTabAdd( "(i:set " );
 //         generate(stat.getChild(0).getType(), false, out);
-//         // i:set пока требует тип переменной
+//         // i:set РїРѕРєР° С‚СЂРµР±СѓРµС‚ С‚РёРї РїРµСЂРµРјРµРЅРЅРѕР№
 // 		out.add( " " );
 		generateExpression( stat.getChild(0), parentName, out );
 		out.add( " " );
@@ -816,7 +816,7 @@ public class GenTypes {
 		while( scopes > 0 ) {
 			out.popScope();
 			out.nlTabAdd(")))");
-            // конец else, if и location
+            // РєРѕРЅРµС† else, if Рё location
 			scopes--;
 		}
 
@@ -980,7 +980,7 @@ public class GenTypes {
         if ( stat.getKind() == IROperKind.STATS )
         {
 			generate( (IRStatements) stat, parentName, out );
-            // ^ чтобы не генерировать положение в сорце несколько раз
+            // ^ С‡С‚РѕР±С‹ РЅРµ РіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РїРѕР»РѕР¶РµРЅРёРµ РІ СЃРѕСЂС†Рµ РЅРµСЃРєРѕР»СЊРєРѕ СЂР°Р·
             return;
         }
         glue.generateLocation(stat.getBegin(), out);
@@ -1075,7 +1075,7 @@ public class GenTypes {
 		default:
 			throw new RuntimeException(stat.getKind().toString());
 		}
-        out.add(")");// конец location-а
+        out.add(")");// РєРѕРЅРµС† location-Р°
 	}
 	
 	public void generate( IRStatements stats, String parentName, TextOut out ) {
@@ -1249,7 +1249,7 @@ public class GenTypes {
 //			a++;
 //		}
 
-        // TODO: по хорошему их надо выводить в порядке объявления
+        // TODO: РїРѕ С…РѕСЂРѕС€РµРјСѓ РёС… РЅР°РґРѕ РІС‹РІРѕРґРёС‚СЊ РІ РїРѕСЂСЏРґРєРµ РѕР±СЉСЏРІР»РµРЅРёСЏ
         generateLocalTypes(localTypes, fullName, out);
 //		for( IRType type : types ) {
 //			String ownerName = parentName;
@@ -1296,7 +1296,7 @@ public class GenTypes {
 		}
 		glue.generateLocation(elt.getEnd(), out);
         out.nlTabAdd("(i:nop))");
-        // ^ пустышка в конце для создания точки останова
+        // ^ РїСѓСЃС‚С‹С€РєР° РІ РєРѕРЅС†Рµ РґР»СЏ СЃРѕР·РґР°РЅРёСЏ С‚РѕС‡РєРё РѕСЃС‚Р°РЅРѕРІР°
 		out.popScope();
         out.nlTabAdd(letNeeded ? ")))" : "))");
     }
@@ -1370,7 +1370,7 @@ public class GenTypes {
                       sub.getTypes(),
                       sub.getBody(),
                       sub.getSubprograms(),
-                      // почему-то у IRSubProgram нет вложенных subprogram
+                      // РїРѕС‡РµРјСѓ-С‚Рѕ Сѓ IRSubProgram РЅРµС‚ РІР»РѕР¶РµРЅРЅС‹С… subprogram
                       parentName, out );
         
         glue.generatePendingItems();
@@ -1390,7 +1390,7 @@ public class GenTypes {
 		generatedObjects.add(wrap);
 		glue.generateLocation(sig.getBegin(), out);
         //out.nlTabAdd(";; signal " + sig.getName());
-        // ^ и так сорец выдаем
+        // ^ Рё С‚Р°Рє СЃРѕСЂРµС† РІС‹РґР°РµРј
 //		generateFullName(parentName, sig);
 		String fullName = getFullName(parentName, sig);
 		out.nlTabAdd("(signal " + fullName + " ");
@@ -1668,19 +1668,19 @@ public class GenTypes {
             IROperRange singleRangeAssoc = null;
             boolean exprOnlyAggreg = isExpressionOnlyAggreg( aggreg );
             boolean needAnnotation =
-                !(at instanceof IRArrayIndex // пока не знаю, что с ними делать
-            // TODO: у вложенного агрегата в stdlogic_table тип std_ulogic вместо массива
-            // имеет тип IRArrayIndex
+                !(at instanceof IRArrayIndex // РїРѕРєР° РЅРµ Р·РЅР°СЋ, С‡С‚Рѕ СЃ РЅРёРјРё РґРµР»Р°С‚СЊ
+            // TODO: Сѓ РІР»РѕР¶РµРЅРЅРѕРіРѕ Р°РіСЂРµРіР°С‚Р° РІ stdlogic_table С‚РёРї std_ulogic РІРјРµСЃС‚Рѕ РјР°СЃСЃРёРІР°
+            // РёРјРµРµС‚ С‚РёРї IRArrayIndex
                   || at.isRecord()
                   || (at.isArray() &&
                       ((exprOnlyAggreg && ((IRTypeArray)at).getIndexes().length == 1)
                        ||
                        !isUnconstrainedRanges(((IRTypeArray)at.getOriginalType()).getIndexes())
                        ))
-                  // для массивов аннотация не нужна, если базовый тип
-                  // ограничен (т.е. известен размер массива), или для
-                  // одномерных массивов, состоящих только из выражений
-                  // (для них рамер можно посчитать автоматом).
+                  // РґР»СЏ РјР°СЃСЃРёРІРѕРІ Р°РЅРЅРѕС‚Р°С†РёСЏ РЅРµ РЅСѓР¶РЅР°, РµСЃР»Рё Р±Р°Р·РѕРІС‹Р№ С‚РёРї
+                  // РѕРіСЂР°РЅРёС‡РµРЅ (С‚.Рµ. РёР·РІРµСЃС‚РµРЅ СЂР°Р·РјРµСЂ РјР°СЃСЃРёРІР°), РёР»Рё РґР»СЏ
+                  // РѕРґРЅРѕРјРµСЂРЅС‹С… РјР°СЃСЃРёРІРѕРІ, СЃРѕСЃС‚РѕСЏС‰РёС… С‚РѕР»СЊРєРѕ РёР· РІС‹СЂР°Р¶РµРЅРёР№
+                  // (РґР»СЏ РЅРёС… СЂР°РјРµСЂ РјРѕР¶РЅРѕ РїРѕСЃС‡РёС‚Р°С‚СЊ Р°РІС‚РѕРјР°С‚РѕРј).
                   );
 			out.nlTabAdd(needAnnotation ? "([" : "[");
             if ( exprOnlyAggreg )
@@ -1709,7 +1709,7 @@ public class GenTypes {
             {
                 for( int i = 0; i < aggreg.getNumMembers(); i++ ) {
                     if( aggreg.getType().isRecord() ) {
-                        // TODO: а у record-ов others не бывает?
+                        // TODO: Р° Сѓ record-РѕРІ others РЅРµ Р±С‹РІР°РµС‚?
                         IRTypeRecord type = (IRTypeRecord) aggreg.getType();
                         out.add("(i:f " + type.getField(i).getName());
                     } else if( aggreg.getMemberIndex(i) instanceof IROperRange ) {
@@ -1724,7 +1724,7 @@ public class GenTypes {
                     } else {
                         out.add("(i:e ");
                         generateExpression(aggreg.getMemberIndex(i), parentName, out);
-                        // TODO: идет целое число
+                        // TODO: РёРґРµС‚ С†РµР»РѕРµ С‡РёСЃР»Рѕ
                         // IRAggreg:360: memberIndexes.add(IRTypeInteger.createConstant(ai));
                     }
                     out.add("\t\t");
@@ -1749,12 +1749,12 @@ public class GenTypes {
                 if ( singleRangeAssoc != null
                      && arr != null && arr.getIndexes().length == 1 )
                 {
-                    // агрегат состоит из единтсвенной ассоциации-диапазона
-                    // делаем тип агрегата массивом с заданным диапазоном
-                    // (без этого генерится либо фиг знает какой диапазон,
-                    // либо может сгенерить тип результата операции &
-                    // и для variable foo : array10 := (1 to 9 => '0') & '1'
-                    // сгенерит тип агрегата foo)
+                    // Р°РіСЂРµРіР°С‚ СЃРѕСЃС‚РѕРёС‚ РёР· РµРґРёРЅС‚СЃРІРµРЅРЅРѕР№ Р°СЃСЃРѕС†РёР°С†РёРё-РґРёР°РїР°Р·РѕРЅР°
+                    // РґРµР»Р°РµРј С‚РёРї Р°РіСЂРµРіР°С‚Р° РјР°СЃСЃРёРІРѕРј СЃ Р·Р°РґР°РЅРЅС‹Рј РґРёР°РїР°Р·РѕРЅРѕРј
+                    // (Р±РµР· СЌС‚РѕРіРѕ РіРµРЅРµСЂРёС‚СЃСЏ Р»РёР±Рѕ С„РёРі Р·РЅР°РµС‚ РєР°РєРѕР№ РґРёР°РїР°Р·РѕРЅ,
+                    // Р»РёР±Рѕ РјРѕР¶РµС‚ СЃРіРµРЅРµСЂРёС‚СЊ С‚РёРї СЂРµР·СѓР»СЊС‚Р°С‚Р° РѕРїРµСЂР°С†РёРё &
+                    // Рё РґР»СЏ variable foo : array10 := (1 to 9 => '0') & '1'
+                    // СЃРіРµРЅРµСЂРёС‚ С‚РёРї Р°РіСЂРµРіР°С‚Р° foo)
                     out.add("(array (");
                     generateRange(singleRangeAssoc, parentName, out);
                     //generateRange(arr.getIndexes(), parentName, out, true);
@@ -1809,11 +1809,11 @@ public class GenTypes {
         }
         if ( type.getName() != null )
         {
-            // генерируем только объявленные типы с именем
+            // РіРµРЅРµСЂРёСЂСѓРµРј С‚РѕР»СЊРєРѕ РѕР±СЉСЏРІР»РµРЅРЅС‹Рµ С‚РёРїС‹ СЃ РёРјРµРЅРµРј
             addTypeToGenerate(type, out);
-            // TODO: почему-то у report "asdf" тип "asdf" -- какой-то IRArrayIndex
-            // который непонятно, как выводить. Ну и у него нет begin(), по-этому
-            // addTypeToGenerate его отсекает, как не пойми какой тип
+            // TODO: РїРѕС‡РµРјСѓ-С‚Рѕ Сѓ report "asdf" С‚РёРї "asdf" -- РєР°РєРѕР№-С‚Рѕ IRArrayIndex
+            // РєРѕС‚РѕСЂС‹Р№ РЅРµРїРѕРЅСЏС‚РЅРѕ, РєР°Рє РІС‹РІРѕРґРёС‚СЊ. РќСѓ Рё Сѓ РЅРµРіРѕ РЅРµС‚ begin(), РїРѕ-СЌС‚РѕРјСѓ
+            // addTypeToGenerate РµРіРѕ РѕС‚СЃРµРєР°РµС‚, РєР°Рє РЅРµ РїРѕР№РјРё РєР°РєРѕР№ С‚РёРї
         }
 		if( type.isArray() ) {
 			ArrayValue arr = (ArrayValue) cnst;
@@ -1843,17 +1843,17 @@ public class GenTypes {
             if ( val.length() < 3 || val.charAt(2) != '\'' )
             {
                 out.add("'");
-                // enum ident-ы тоже имеют префиксом одинарную кавычку
+                // enum ident-С‹ С‚РѕР¶Рµ РёРјРµСЋС‚ РїСЂРµС„РёРєСЃРѕРј РѕРґРёРЅР°СЂРЅСѓСЋ РєР°РІС‹С‡РєСѓ
                 val = val.toLowerCase();
             }
 			out.add(val);
 		} else if( type.isPhysical() ) {
 			PhysicalValue v = (PhysicalValue) cnst;
-            if ( v.getUnits() == null ) // в диапазоне физического типа
+            if ( v.getUnits() == null ) // РІ РґРёР°РїР°Р·РѕРЅРµ С„РёР·РёС‡РµСЃРєРѕРіРѕ С‚РёРїР°
             {
                 out.add(v.getValue()+"");
-                // кстати, диапазон все равно надо игнорировать,
-                // т.к. 2^31 от IntValue или 2^63 от (long)doubleValue -- это мало
+                // РєСЃС‚Р°С‚Рё, РґРёР°РїР°Р·РѕРЅ РІСЃРµ СЂР°РІРЅРѕ РЅР°РґРѕ РёРіРЅРѕСЂРёСЂРѕРІР°С‚СЊ,
+                // С‚.Рє. 2^31 РѕС‚ IntValue РёР»Рё 2^63 РѕС‚ (long)doubleValue -- СЌС‚Рѕ РјР°Р»Рѕ
             }
             else
             {
@@ -1994,15 +1994,15 @@ public class GenTypes {
         {
             // out.add( "type.getBegin() == null" );
             return null;
-            // TODO: тут лажа, надо вылечить причину, а не следствие
-            // для
+            // TODO: С‚СѓС‚ Р»Р°Р¶Р°, РЅР°РґРѕ РІС‹Р»РµС‡РёС‚СЊ РїСЂРёС‡РёРЅСѓ, Р° РЅРµ СЃР»РµРґСЃС‚РІРёРµ
+            // РґР»СЏ
             //   atmega128/timer0.vhd:70:1:
             //   type register_synchronizer_t is array (0 to SYNCHRONIZER_DEEP) of synchronized_register_description_t;
-            // при печати типа
+            // РїСЂРё РїРµС‡Р°С‚Рё С‚РёРїР°
             //   (type work.timer0.register_synchronizer_t (array ((STD.STANDARD.INTEGER (range 0 to 2))) of work.timer0.synchronized_register_description_t)))
-            // получается фиг знает какой STD.STANDARD.INTEGER
+            // РїРѕР»СѓС‡Р°РµС‚СЃСЏ С„РёРі Р·РЅР°РµС‚ РєР°РєРѕР№ STD.STANDARD.INTEGER
             //   at com.prosoft.vhdl.ir.IRTypeInteger.createConstant(IRTypeInteger.java:84)
-            // который выводится потом как
+            // РєРѕС‚РѕСЂС‹Р№ РІС‹РІРѕРґРёС‚СЃСЏ РїРѕС‚РѕРј РєР°Рє
             //  (# null location 
             //  (type STD.STANDARD.INTEGER [STD.STANDARD.INTEGER (range <>)]))
         }
@@ -2084,9 +2084,9 @@ public class GenTypes {
         }
         else
         {
-            // операция & в симуляторе реализована только для массивов
-            // по-этому для склеивания элементов, мы превращаем их
-            // в одномерный массив
+            // РѕРїРµСЂР°С†РёСЏ & РІ СЃРёРјСѓР»СЏС‚РѕСЂРµ СЂРµР°Р»РёР·РѕРІР°РЅР° С‚РѕР»СЊРєРѕ РґР»СЏ РјР°СЃСЃРёРІРѕРІ
+            // РїРѕ-СЌС‚РѕРјСѓ РґР»СЏ СЃРєР»РµРёРІР°РЅРёСЏ СЌР»РµРјРµРЅС‚РѕРІ, РјС‹ РїСЂРµРІСЂР°С‰Р°РµРј РёС…
+            // РІ РѕРґРЅРѕРјРµСЂРЅС‹Р№ РјР°СЃСЃРёРІ
             out.add("[");
             generateExpression(oper, parentName, out);
             out.add("]");
@@ -2141,9 +2141,9 @@ public class GenTypes {
                         }
 //                        out.add(bo.getChild(0).getType().getBaseTypeName().toUpperCase() + " ");
                         generate(bo.getChild(0).getType(), false, parentName, out); out.add(" ");
-                        // для операций сравнения необходим базовый тип
-                        // (т.к. по типу результата понять тип
-                        // аргументов нельзя)
+                        // РґР»СЏ РѕРїРµСЂР°С†РёР№ СЃСЂР°РІРЅРµРЅРёСЏ РЅРµРѕР±С…РѕРґРёРј Р±Р°Р·РѕРІС‹Р№ С‚РёРї
+                        // (С‚.Рє. РїРѕ С‚РёРїСѓ СЂРµР·СѓР»СЊС‚Р°С‚Р° РїРѕРЅСЏС‚СЊ С‚РёРї
+                        // Р°СЂРіСѓРјРµРЅС‚РѕРІ РЅРµР»СЊР·СЏ)
                         break;
                     case MUL:
                     case DIV:
@@ -2245,7 +2245,7 @@ public class GenTypes {
                
            } else {
                generate( oper.getType(), false, parentName, out );
-               // ^ генерим как было для не real/integer
+               // ^ РіРµРЅРµСЂРёРј РєР°Рє Р±С‹Р»Рѕ РґР»СЏ РЅРµ real/integer
            }
            out.add(" ");
            generateExpression(tc.getChild(0), parentName, out);
@@ -2298,7 +2298,7 @@ public class GenTypes {
                 {
                     case ARRAY:
                         out.add("(i:a'" + aname + " 1 ");
-                        // TODO: а что делать с N-ным атрибутом?
+                        // TODO: Р° С‡С‚Рѕ РґРµР»Р°С‚СЊ СЃ N-РЅС‹Рј Р°С‚СЂРёР±СѓС‚РѕРј?
                         break;
                     case TYPE:
                         out.add("(i:t'" + aname + " ");
@@ -2368,8 +2368,8 @@ public class GenTypes {
 		case RANGE:
 			out.add("(i:slice ");
 			generateExpression( oper.getChild(0), parentName, out );
-            // TODO: у slice-а должен быть range, подходящий для generateRange
-            // не только to/downto но и тип/'range/'reverse_range
+            // TODO: Сѓ slice-Р° РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ range, РїРѕРґС…РѕРґСЏС‰РёР№ РґР»СЏ generateRange
+            // РЅРµ С‚РѕР»СЊРєРѕ to/downto РЅРѕ Рё С‚РёРї/'range/'reverse_range
 			generateRange( (IRangedElement) oper, parentName, out );
 			out.add(")");
 			/*
@@ -2599,10 +2599,10 @@ public class GenTypes {
 					a++;
 				}
 				if( type.type.getName() != null &&
-                    // ^ тут могут оказаться безымянные типы
-                    // от всяких  variable asdf : integer range 1 to 5;
-                    // или просто variable asdf : integer;
-                    // т.е. от subtypeThunk
+                    // ^ С‚СѓС‚ РјРѕРіСѓС‚ РѕРєР°Р·Р°С‚СЊСЃСЏ Р±РµР·С‹РјСЏРЅРЅС‹Рµ С‚РёРїС‹
+                    // РѕС‚ РІСЃСЏРєРёС…  variable asdf : integer range 1 to 5;
+                    // РёР»Рё РїСЂРѕСЃС‚Рѕ variable asdf : integer;
+                    // С‚.Рµ. РѕС‚ subtypeThunk
                     !generatedTypes.contains(type) &&
                     !IRNamedElement.isLocalElement(type.type)
                     ) {

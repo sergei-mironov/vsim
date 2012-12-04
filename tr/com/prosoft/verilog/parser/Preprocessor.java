@@ -30,7 +30,7 @@ public class Preprocessor extends VerilogParserTokenManager {
 	Stack<SourceFile> files = new Stack<SourceFile>();
 
 	public Preprocessor(VerilogParserTokenManager sourceFile, VerilogParser parser) {
-		// этим token manager'ом мы пользоваться не будем, это просто для обмана javacc
+		// СЌС‚РёРј token manager'РѕРј РјС‹ РїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ РЅРµ Р±СѓРґРµРј, СЌС‚Рѕ РїСЂРѕСЃС‚Рѕ РґР»СЏ РѕР±РјР°РЅР° javacc
 		super(new JavaCharStream(new ByteArrayInputStream(new byte[]{})));
 		this.parser = parser;
 		push(sourceFile, parser.fileName, parser.fullName);
@@ -134,7 +134,7 @@ public class Preprocessor extends VerilogParserTokenManager {
 				}
 			} else if( t.kind == DEFINE ) {
 //				Token macro = getNextToken();
-				// строка без 'define и оконечного \r или \n
+				// СЃС‚СЂРѕРєР° Р±РµР· 'define Рё РѕРєРѕРЅРµС‡РЅРѕРіРѕ \r РёР»Рё \n
 				String clean = t.image.substring(7, t.image.length()-1).trim();
 				int ind = clean.indexOf(' ');
 				String name;

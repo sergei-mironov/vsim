@@ -6,7 +6,6 @@ import com.prosoft.vhdl.sim.*;
 import com.prosoft.common.*;
 import java.util.*;
 
-@SuppressWarnings("all")
 public class VhdlParser extends ParserBase implements VhdlParserConstants {
 
   final public IROper abstract_literal() throws ParseException {
@@ -5432,7 +5431,7 @@ void record_nature_definition() :
  * Section 4.1:
  
  *
- *  isDeclaration = true внутри декларационной части, там возможно использовать начальные значения переменных как константы
+ *  isDeclaration = true пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
  */
   final public IRType subtype_indication(boolean isDeclaration) throws ParseException {
   IRType res = null; String resolve; TextCoord b = begin();
@@ -5459,7 +5458,7 @@ void record_nature_definition() :
         ;
       }
           if( res.getName() == null ) {
-              // назначаем координаты, если был subtype, а не синоним типа
+              // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ subtype, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
               res.setBegin(b);
               markEnd(res);
           }

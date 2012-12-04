@@ -13,7 +13,7 @@ import com.prosoft.vhdl.sim.TypeValue;
 public class IRAttrib extends IROper implements IObjectElement {
 	
 	String attributeName;
-	IROper value; // может быть чем угодно, например типом
+	IROper value; // РјРѕР¶РµС‚ Р±С‹С‚СЊ С‡РµРј СѓРіРѕРґРЅРѕ, РЅР°РїСЂРёРјРµСЂ С‚РёРїРѕРј
 	IRAttribType attribType = IRAttribType.UNDEFINED;
 	IRAttribCode code;
 	
@@ -37,7 +37,7 @@ public class IRAttrib extends IROper implements IObjectElement {
 	}
 	
 	public ArrayList<IROper> getArgs() {
-		// первый child - объект, аттрибут которого вычисляется
+		// РїРµСЂРІС‹Р№ child - РѕР±СЉРµРєС‚, Р°С‚С‚СЂРёР±СѓС‚ РєРѕС‚РѕСЂРѕРіРѕ РІС‹С‡РёСЃР»СЏРµС‚СЃСЏ
 		ArrayList<IROper> res = new ArrayList<IROper>();
 		for( int i = 1; i < getChildNum(); i++ ) {
 			res.add(getChild(i));
@@ -473,7 +473,7 @@ public class IRAttrib extends IROper implements IObjectElement {
 					this.setType( value.getType() );
 					return;
 				} else {
-					// TODO пока ничего
+					// TODO РїРѕРєР° РЅРёС‡РµРіРѕ
 					this.setType( IRTypeInteger.TYPE );
 					return;
 				}
@@ -486,7 +486,7 @@ public class IRAttrib extends IROper implements IObjectElement {
 					this.setType( value.getType() );
 					return;
 				} else {
-					// TODO пока ничего
+					// TODO РїРѕРєР° РЅРёС‡РµРіРѕ
 					this.setType( IRTypeInteger.TYPE );
 					return;
 				}
@@ -690,7 +690,7 @@ public class IRAttrib extends IROper implements IObjectElement {
 
 	@Override
 	public boolean isEqualTo(IROper op) {
-		// TODO добавить проверку параметров аттрибутов, когда те будут добавлены
+		// TODO РґРѕР±Р°РІРёС‚СЊ РїСЂРѕРІРµСЂРєСѓ РїР°СЂР°РјРµС‚СЂРѕРІ Р°С‚С‚СЂРёР±СѓС‚РѕРІ, РєРѕРіРґР° С‚Рµ Р±СѓРґСѓС‚ РґРѕР±Р°РІР»РµРЅС‹
 		if( !defaultIsEqualTo(op) ) return false;
 		if( !attributeName.equalsIgnoreCase( ((IRAttrib)op).attributeName ) ) return false;
 		return true;

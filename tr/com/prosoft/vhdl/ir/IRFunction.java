@@ -24,7 +24,7 @@ public class IRFunction extends IRSubProgram implements IRReadableNameGenerator,
 	@Override
 	public String getReadableName() {
 		if( getName().startsWith("\"") ) {
-			// это оператор
+			// СЌС‚Рѕ РѕРїРµСЂР°С‚РѕСЂ
 			boolean isBinary;
 			if( getParameters().size() == 1 ) {
 				isBinary = false;

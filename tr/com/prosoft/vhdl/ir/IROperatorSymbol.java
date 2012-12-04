@@ -41,8 +41,8 @@ public class IROperatorSymbol extends IROper {
 //	logical_operator ::= and | or | nand | nor | xor | xnor
 //	relational_operator ::= = | /= | < | <= | > | >=
 //	shift_operator ::= sll | srl | sla | sra | rol | ror
-//	adding_operator ::= + | – | &
-//	sign ::= + | –
+//	adding_operator ::= + | â€“ | &
+//	sign ::= + | â€“
 //	multiplying_operator ::= * | / | mod | rem
 //	miscellaneous_operator ::= ** | abs | not
 
@@ -60,8 +60,8 @@ public class IROperatorSymbol extends IROper {
 			"and", "or", "nand", "nor", "xor", "xnor",
 			"=", "/=", "<", "<=", ">", ">=",
 			"sll", "srl", "sla", "sra", "rol", "ror",
-			"+", "–", "&",
-			"+", "–",
+			"+", "â€“", "&",
+			"+", "â€“",
 			"*", "/", "mod", "rem",
 			"**", "abs", "not"
 	};

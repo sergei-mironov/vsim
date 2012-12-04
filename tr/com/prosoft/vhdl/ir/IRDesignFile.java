@@ -13,7 +13,7 @@ import com.prosoft.vhdl.parser.VhdlParser;
 
 public class IRDesignFile extends IRElement implements ILocalResolver {
 	
-	// временно здесь
+	// РІСЂРµРјРµРЅРЅРѕ Р·РґРµСЃСЊ
 	public VhdlParser parser;
 	
 	Library library;
@@ -27,7 +27,7 @@ public class IRDesignFile extends IRElement implements ILocalResolver {
 	
 	public IRDesignFile(Library library) {
 		super(library);
-		// добавляем стандартные типы
+		// РґРѕР±Р°РІР»СЏРµРј СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ С‚РёРїС‹
 		this.library = library;
 		advanceContext();
 	}
@@ -86,8 +86,8 @@ public class IRDesignFile extends IRElement implements ILocalResolver {
 	}
 	
 	public IRPackage getOrCreatePackage( String name ) {
-		// TODO Это используется для случая когда тело пакета встретилось, но такого пакета нет
-		// возможно что такого не должно быть и это ошибка
+		// TODO Р­С‚Рѕ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РґР»СЏ СЃР»СѓС‡Р°СЏ РєРѕРіРґР° С‚РµР»Рѕ РїР°РєРµС‚Р° РІСЃС‚СЂРµС‚РёР»РѕСЃСЊ, РЅРѕ С‚Р°РєРѕРіРѕ РїР°РєРµС‚Р° РЅРµС‚
+		// РІРѕР·РјРѕР¶РЅРѕ С‡С‚Рѕ С‚Р°РєРѕРіРѕ РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ Рё СЌС‚Рѕ РѕС€РёР±РєР°
 		IRPackage res;
 		res = getPackage(name);
 		if( res != null ) return res;

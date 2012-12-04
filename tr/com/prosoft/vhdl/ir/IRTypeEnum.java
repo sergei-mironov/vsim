@@ -39,7 +39,7 @@ public class IRTypeEnum extends IRType implements IRangedElement {
 	}
 	
 	public IREnumValue getValue(String value) {
-		// сначала ищем с учетом case'а
+		// СЃРЅР°С‡Р°Р»Р° РёС‰РµРј СЃ СѓС‡РµС‚РѕРј case'Р°
 		for( int i = 0; i < values.size(); i++ ) {
 			if( values.get(i).getName().equals(value) ) {
 				return values.get(i);
@@ -65,7 +65,7 @@ public class IRTypeEnum extends IRType implements IRangedElement {
 //         System.err.println(values.size() + " " + other.values.size());
 // 		if( values.size() < other.values.size() ) return false;
 		
-// 		int fi = 0; // other может быть подтипом, ищем первый совпадающий элемент
+// 		int fi = 0; // other РјРѕР¶РµС‚ Р±С‹С‚СЊ РїРѕРґС‚РёРїРѕРј, РёС‰РµРј РїРµСЂРІС‹Р№ СЃРѕРІРїР°РґР°СЋС‰РёР№ СЌР»РµРјРµРЅС‚
 // 		boolean found = false;
 // 		while( fi < values.size() ) {
 // 			if( values.get(fi) == other.values.get(0) ) {

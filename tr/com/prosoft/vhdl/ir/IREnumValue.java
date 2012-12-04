@@ -14,10 +14,10 @@ public class IREnumValue extends IRNamedElement {
 		this.value = value;
 		this.owningType = owningType;
 		rangeType = owningType;// .dup();
-        // непонятно, зачем ограниченный rangeType.
-        // из-за него у EnumSimValue получается тип, не
-        // соответствующий типу enum-а. Более того, он не содержит ни
-        // координат ни parent-ов.
+        // РЅРµРїРѕРЅСЏС‚РЅРѕ, Р·Р°С‡РµРј РѕРіСЂР°РЅРёС‡РµРЅРЅС‹Р№ rangeType.
+        // РёР·-Р·Р° РЅРµРіРѕ Сѓ EnumSimValue РїРѕР»СѓС‡Р°РµС‚СЃСЏ С‚РёРї, РЅРµ
+        // СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ С‚РёРїСѓ enum-Р°. Р‘РѕР»РµРµ С‚РѕРіРѕ, РѕРЅ РЅРµ СЃРѕРґРµСЂР¶РёС‚ РЅРё
+        // РєРѕРѕСЂРґРёРЅР°С‚ РЅРё parent-РѕРІ.
 		simValue = new IRConst(new EnumSimValue(this));//new EnumSimValue(this);
 		//rangeType.setRangeHigh(simValue);
 		//rangeType.setRangeLow(simValue);
