@@ -120,5 +120,8 @@ for (ma,dir,mb) body = do
 index :: (MonadProc m) => m (Ptr Compound) -> m Int -> m (Ptr Signal)
 index c mi = do
     mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
-    maybe (assert >> return undefined) return mb
+    maybe (assert >> return (error "BUG: return after assert")) return mb
+
+field :: (MonadProc m) => (x -> y) -> m (Ptr (Record x)) -> m y
+field fsel mr = (fsel . rtuple) <$> (derefM =<< mr)
 

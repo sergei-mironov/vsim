@@ -152,6 +152,12 @@ data Assignment = Assignment {
 add_assignment :: Assignment -> PS -> PS
 add_assignment a ps = ps { passignments = a:(passignments ps) }
 
+-- | VHDL records
+data Record a = Record {
+      rname :: String
+    , rtuple :: a
+    } deriving(Show)
+
 -- | Process State
 data PS = PS {
       ptime :: Time

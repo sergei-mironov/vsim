@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+-- {-# LANGUAGE NoMonomorphismRestriction #-}
 
 module VSim.Runtime.Memory where
 
@@ -10,6 +11,7 @@ import Control.Monad.Trans
 import Control.Monad.State
 import Data.IntMap as IntMap
 import Data.IORef
+-- import Data.Paired
 import Text.Printf
 import System.IO
 import System.Random
@@ -19,26 +21,79 @@ import VSim.Runtime.Process
 import VSim.Runtime.Monad
 
 class Generator x where
+    -- | Signal representation
     type SR x :: *
-    -- ^ Signal representation
+    -- | Default value representation
     type DV x :: *
-    -- ^ Default value representation
+    -- | Allocate signal for this type representation
     alloc_signal :: (MonadElab m) => String -> m (DV x) -> x -> m (SR x)
-    -- ^ Allocate signal for this type representation
+    -- | Allocate random value for this type
     rnd :: (MonadElab m) => x -> m (DV x)
 
 instance Generator Constraint where
     type SR Constraint = Ptr Signal
     type DV Constraint = Int
     alloc_signal = alloc_primitive_signal
-    -- FIXME: consraints
-    rnd _ = liftIO $ randomIO 
+    rnd c = liftIO $ randomRIO (lower c, upper c)
 
 instance Generator Array where
     type SR Array = Ptr Compound
     type DV Array = ()
     alloc_signal = alloc_array_signal
     rnd _ = return ()
+
+instance (Generator a, Generator b) => Generator (a,b)  where
+    type SR (a,b) = (SR a, SR b)
+    type DV (a,b) = (DV a, DV b)
+    alloc_signal n md (ta,tb) = do
+        (da,db) <- md
+        sa <- alloc_signal (n++".a") (return da) ta
+        sb <- alloc_signal (n++".b") (return db) tb
+        return (sa,sb)
+    rnd (ta,tb) = do
+        da <- rnd ta
+        db <- rnd tb
+        return (da,db)
+
+instance Generator ()  where
+    type SR () = ()
+    type DV () = ()
+    alloc_signal _ _ _ = return ()
+    rnd _ = return ()
+
+newtype RecordT x = RecordT x
+    deriving(Show)
+
+instance Generator x => Generator (RecordT x) where
+    type SR (RecordT x) = Ptr (Record (SR x))
+    type DV (RecordT x) = (DV x)
+    alloc_signal n mdef (RecordT t) = do
+        d <- mdef
+        t <- alloc_signal n (return d) t
+        r <- allocM $ Record n t
+        return r
+    rnd (RecordT x) = rnd x
+
+accessors = 
+    (fst,
+    (fst . snd,
+    (fst . snd . snd,
+    (fst . snd . snd . snd,
+    (fst . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
+    ()))))))))))))))))
+
+alloc_record_type x = return (RecordT x, accessors)
 
 -- | Allocates signal from the memory
 alloc_primitive_signal :: (MonadElab m) => String -> m Int -> Constraint -> m (Ptr Signal)
