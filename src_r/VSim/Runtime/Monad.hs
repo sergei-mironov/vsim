@@ -25,7 +25,7 @@ import VSim.Runtime.Waveform
 -- | Pointer type used in the simulator
 type Ptr x = IORef x
 
-class (MonadIO m) => MonadMem m where
+class (MonadIO m, Applicative m) => MonadMem m where
     get_mem :: m Memory
     put_mem :: Memory -> m ()
     -- | Embed a simple state action into the monad.
@@ -91,13 +91,6 @@ class Constrained x where
 instance Constrained (Int, Constraint) where
     within (v,(Constraint l u)) = v >= l && v <= u
 
--- | VHDL array type
-data Array = Array {
-      aconstr :: Constraint
-    , abegin :: Int
-    , aend :: Int
-    } deriving(Show)
-
 -- | VHDL variable
 data Variable = Variable {
       vname :: String
@@ -136,12 +129,24 @@ sigassign2 r w = do
     writeM r s{swave = w}
     return (sproc s)
 
--- VHDL arrays
-data Compound = Compound {
-      cname :: String
-    , csignals :: IntMap.IntMap (Ptr Signal)
-    , cconstr :: Array
+-- | VHDL array type
+data ArrayT = ArrayT {
+      aconstr :: Constraint
+    , abegin :: Int
+    , aend :: Int
     } deriving(Show)
+
+-- VHDL arrays
+data Array a = Array {
+      cname :: String
+    , csignals :: IntMap.IntMap a
+    , cconstr :: ArrayT
+    } deriving(Show)
+
+index :: (MonadMem m) => m (Ptr (Array a)) -> m Int -> m a
+index c mi = do
+    mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
+    maybe (fail "BUG: return after assert") return mb
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
@@ -157,6 +162,9 @@ data Record a = Record {
       rname :: String
     , rtuple :: a
     } deriving(Show)
+
+field :: (MonadMem m) => (x -> y) -> m (Ptr (Record x)) -> m y
+field fsel mr = (fsel . rtuple) <$> (derefM =<< mr)
 
 -- | Process State
 data PS = PS {

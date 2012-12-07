@@ -36,9 +36,10 @@ instance Generator Constraint where
     alloc_signal = alloc_primitive_signal
     rnd c = liftIO $ randomRIO (lower c, upper c)
 
-instance Generator Array where
-    type SR Array = Ptr Compound
-    type DV Array = ()
+-- | ArrayT generates Arrays
+instance Generator ArrayT where
+    type SR ArrayT = Ptr (Array (Ptr Signal))
+    type DV ArrayT = ()
     alloc_signal = alloc_array_signal
     rnd _ = return ()
 
@@ -104,14 +105,14 @@ alloc_primitive_signal n mi c = do
     return r
 
 -- | Allocates signal from the memory
-alloc_array_signal :: (MonadElab m) => String -> m () -> Array -> m (Ptr Compound)
+alloc_array_signal :: (MonadElab m) => String -> m () -> ArrayT -> m (Ptr (Array (Ptr Signal)))
 alloc_array_signal n _ a = do
     let indexes = [(abegin a) .. (aend a)]
     pairs <- forM indexes (\i -> do
         let sn = n ++ (printf "[%d]" i)
         s <- alloc_primitive_signal sn (return 0) (aconstr a)
         return (i,s))
-    allocM (Compound n (IntMap.fromList pairs) a)
+    allocM (Array n (IntMap.fromList pairs) a)
 
 -- | Allocates variable from the memory
 alloc_variable :: (MonadElab m) => String -> m Int -> Constraint -> m (Ptr Variable)
@@ -140,8 +141,8 @@ alloc_ranged_type a b = return $ ranged a b
 alloc_unranged_type :: (MonadElab m) => m Constraint
 alloc_unranged_type = return unranged
 
-alloc_array_type :: (MonadElab m) => Int -> Int -> Constraint -> m Array
-alloc_array_type b e c = return $ Array c b e
+alloc_array_type :: (MonadElab m) => Int -> Int -> Constraint -> m ArrayT
+alloc_array_type b e c = return $ ArrayT c b e
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
 printSignalsM m = liftIO $ mapM (printSignalM m) >=> mapM_ putStrLn $ (msignals m)
