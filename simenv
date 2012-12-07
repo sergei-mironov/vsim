@@ -18,7 +18,7 @@ cpto() {
 }
 
 
-xargs() {
+xargs_() {
 	local args=""
 	while read -r a ; do args="$args $a" ; done
 	"$@" $args
@@ -35,12 +35,20 @@ stime() {
 	/usr/bin/time -f '%e' "$@"
 }
 
+vimless() {
+	vim -R "$@" -
+}
+
 vircheck() {
-	runtr "$@" | xargs dist/build/VirCheck/VirCheck
+	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck | vimless -c "set ft=haskell"
 }
 
 vsim() {
-	runtr "$@" | xargs dist/build/VSim/VSim
+  runtr "$@" | xargs_ dist/build/VSim/VSim
+}
+
+viewtr() {
+  local f=`runtr "$@"`&& vim $f -c "set ft=lisp"
 }
 
 runaldec() { (
