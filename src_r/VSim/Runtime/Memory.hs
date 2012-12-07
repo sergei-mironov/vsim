@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
--- {-# LANGUAGE NoMonomorphismRestriction #-}
 
 module VSim.Runtime.Memory where
 
@@ -11,7 +10,6 @@ import Control.Monad.Trans
 import Control.Monad.State
 import Data.IntMap as IntMap
 import Data.IORef
--- import Data.Paired
 import Text.Printf
 import System.IO
 import System.Random
@@ -20,61 +18,54 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Monad
 
+class Initialisable x where
+    set :: (MonadElab m) => m Int -> m x -> m x
+
+instance Initialisable (Ptr Signal) where
+    set mi mr = mr >>= \r -> mi >>= \i -> updateM (\s -> s{ swave = wconst i }) r >> return r
+
+instance Initialisable (Ptr Variable) where
+    set mi mr = mr >>= \r -> mi >>= \i -> updateM (\v -> v{ vval = i }) r >> return r
+
+rnd' :: (MonadIO m) => Constraint -> m Int
+rnd' c = liftIO $ randomRIO (lower c, upper c)
+
 class Generator x where
     -- | Signal representation
     type SR x :: *
-    -- | Default value representation
-    type DV x :: *
     -- | Allocate signal for this type representation
-    alloc_signal :: (MonadElab m) => String -> m (DV x) -> x -> m (SR x)
-    -- | Allocate random value for this type
-    rnd :: (MonadElab m) => x -> m (DV x)
+    alloc_signal :: (MonadElab m) => String -> (m (SR x) -> m (SR x)) -> x -> m (SR x)
 
 instance Generator Constraint where
     type SR Constraint = Ptr Signal
-    type DV Constraint = Int
     alloc_signal = alloc_primitive_signal
-    rnd c = liftIO $ randomRIO (lower c, upper c)
 
 -- | ArrayT generates Arrays
 instance Generator ArrayT where
     type SR ArrayT = Ptr (Array (Ptr Signal))
-    type DV ArrayT = ()
     alloc_signal = alloc_array_signal
-    rnd _ = return ()
 
 instance (Generator a, Generator b) => Generator (a,b)  where
     type SR (a,b) = (SR a, SR b)
-    type DV (a,b) = (DV a, DV b)
-    alloc_signal n md (ta,tb) = do
-        (da,db) <- md
-        sa <- alloc_signal (n++".a") (return da) ta
-        sb <- alloc_signal (n++".b") (return db) tb
-        return (sa,sb)
-    rnd (ta,tb) = do
-        da <- rnd ta
-        db <- rnd tb
-        return (da,db)
+    alloc_signal n f (ta,tb) = do
+        sa <- alloc_signal (n++".a") id ta
+        sb <- alloc_signal (n++".b") id tb
+        f $ return (sa,sb)
 
 instance Generator ()  where
     type SR () = ()
-    type DV () = ()
     alloc_signal _ _ _ = return ()
-    rnd _ = return ()
 
 newtype RecordT x = RecordT x
     deriving(Show)
 
 instance Generator x => Generator (RecordT x) where
     type SR (RecordT x) = Ptr (Record (SR x))
-    type DV (RecordT x) = (DV x)
-    alloc_signal n mdef (RecordT t) = do
-        d <- mdef
-        t <- alloc_signal n (return d) t
-        r <- allocM $ Record n t
-        return r
-    rnd (RecordT x) = rnd x
+    alloc_signal n f (RecordT t) = do
+        t <- alloc_signal n id t
+        f $ allocM $ Record n t
 
+-- | Make me unsee that
 accessors = 
     (fst,
     (fst . snd,
@@ -97,26 +88,30 @@ accessors =
 alloc_record_type x = return (RecordT x, accessors)
 
 -- | Allocates signal from the memory
-alloc_primitive_signal :: (MonadElab m) => String -> m Int -> Constraint -> m (Ptr Signal)
-alloc_primitive_signal n mi c = do
-    i <- mi
-    r <- allocM (Signal n (wconst i) 0 c [])
+alloc_primitive_signal :: (MonadElab m) => String -> (m (Ptr Signal) -> m (Ptr Signal)) -> Constraint -> m (Ptr Signal)
+alloc_primitive_signal n f c = do
+    i <- rnd' c
+    r <- f $ allocM (Signal n (wconst i) 0 c [])
     modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
     return r
 
 -- | Allocates signal from the memory
-alloc_array_signal :: (MonadElab m) => String -> m () -> ArrayT -> m (Ptr (Array (Ptr Signal)))
-alloc_array_signal n _ a = do
+alloc_array_signal :: (MonadElab m)
+    => String
+    -> (m (Ptr (Array (Ptr Signal))) -> m (Ptr (Array (Ptr Signal))))
+    -> ArrayT
+    -> m (Ptr (Array (Ptr Signal)))
+alloc_array_signal n f a = do
     let indexes = [(abegin a) .. (aend a)]
     pairs <- forM indexes (\i -> do
         let sn = n ++ (printf "[%d]" i)
-        s <- alloc_primitive_signal sn (return 0) (aconstr a)
+        s <- alloc_primitive_signal sn id (aconstr a)
         return (i,s))
-    allocM (Array n (IntMap.fromList pairs) a)
+    f $ allocM (Array n (IntMap.fromList pairs) a)
 
 -- | Allocates variable from the memory
-alloc_variable :: (MonadElab m) => String -> m Int -> Constraint -> m (Ptr Variable)
-alloc_variable n mi c = mi >>= \i -> allocM (Variable n i c)
+alloc_variable :: (MonadElab m) => String -> (m (Ptr Variable) -> m (Ptr Variable)) -> Constraint -> m (Ptr Variable)
+alloc_variable n f c = rnd' c >>= \i -> f $ allocM (Variable n i c)
 
 -- | Registers process in the memory. Updates list of signal's reactions
 alloc_process :: (MonadElab m)

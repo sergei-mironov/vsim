@@ -315,3 +315,11 @@ type Elab s = (StateT Memory IO) s
 
 runElab elab = runStateT elab emptyMem
 
+-- | Type hint for ints
+int :: (Monad m) => Int -> m Int
+int = return
+
+-- | Type hint for strings
+str :: (Monad m) => String -> m String
+str = return
+
