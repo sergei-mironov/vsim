@@ -11,7 +11,11 @@ elab = do
     (t_rec1, f1 :- f2 :- _) <- alloc_record_type (("f1", t_int) :- ("f2", t_int) :- ())
 
     clk <- alloc_signal "clk" (set (int 0)) t_int
-    r1 <- alloc_signal "r1" id t_rec1
+
+    r1 <- alloc_signal "r1" (aggr [
+            setfld f1 (int 11),
+            setfld f2 (int 22)
+            ]) t_rec1
 
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint

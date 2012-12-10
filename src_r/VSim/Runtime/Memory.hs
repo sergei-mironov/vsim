@@ -9,6 +9,7 @@ module VSim.Runtime.Memory where
 
 import Control.Monad.Trans
 import Control.Monad.State
+import Control.Applicative
 import Data.IntMap as IntMap
 import Data.IORef
 import Text.Printf
@@ -30,6 +31,17 @@ instance Initialisable (Ptr Variable) where
 
 rnd' :: (MonadIO m) => Constraint -> m Int
 rnd' c = liftIO $ randomRIO (lower c, upper c)
+
+setfld :: (MonadElab m, Initialisable y) =>
+    (x -> y) -> m Int -> m (Ptr (Record x)) -> m (Ptr (Record x))
+setfld fs mi mr = set mi (field fs mr) >> mr
+
+setidx :: (MonadElab m, Initialisable x) =>
+    Int -> m Int -> m (Ptr (Array x)) -> m (Ptr (Array x))
+setidx idx mi mr = set mi (index mr (pure idx)) >> mr
+
+aggr :: (MonadElab m) => [m a -> m a] -> m a -> m a
+aggr xs mx = Prelude.foldl (\ma f -> f ma) mx xs
 
 class Generator x where
     -- | Signal representation
