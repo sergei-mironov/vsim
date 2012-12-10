@@ -83,8 +83,8 @@ instance Generator x => Generator (RecordT x) where
         r <- alloc_signal n id t
         f $ allocM $ Record n r
 
--- | Make me unsee that
 alloc_record_type x = return (RecordT x, accessors) where
+    -- FIXME: Make me unsee that
     accessors
         =  (fst)
         :- (fst . snd)

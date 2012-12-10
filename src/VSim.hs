@@ -93,15 +93,19 @@ gen_str s = HsLit $ HsString s
 
 gen_elab_expr :: IRExpr -> HsExp
 gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
+gen_elab_expr (IEAggregate loc ass) = gen_appl "aggr" [gen_list $ map aggr ass] where
+    aggr (IEAExprIndex loc i e) = gen_appl "setidx" [gen_elab_expr i, gen_elab_expr e]
+    aggr _ = gen_expr_unit
+
 gen_elab_expr _ = error "gen_elab_expr: int constants only, please"
 
 gen_expr_unit = unit_con
 
 gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
 
-gen_int_ident tn@(ITDName n)
-    | mkName n == HsIdent "integer" = gen_ident "integer"
-    | otherwise = error $ "gen_int_ident: integer type, please. (got: " ++ show tn ++ ")"
+gen_int_ident tn@(ITDName n) = gen_ident n
+    -- | mkName n == HsIdent "integer" = gen_ident "integer"
+    -- | otherwise = error $ "gen_int_ident: integer type, please. (got: " ++ show tn ++ ")"
 
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
