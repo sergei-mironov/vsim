@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module VSim.Runtime.Memory where
 
@@ -45,12 +46,17 @@ instance Generator ArrayT where
     type SR ArrayT = Ptr (Array (Ptr Signal))
     alloc_signal = alloc_array_signal
 
-instance (Generator a, Generator b) => Generator (a,b)  where
-    type SR (a,b) = (SR a, SR b)
-    alloc_signal n f (ta,tb) = do
-        sa <- alloc_signal (n++".a") id ta
-        sb <- alloc_signal (n++".b") id tb
-        f $ return (sa,sb)
+-- VHDL record field collection (like tuples)
+data a :- b = a :- b
+    deriving (Eq, Ord, Show)
+infixr 5 :-
+
+instance (Generator a, Generator b) => Generator ((String, a) :- b)  where
+    type SR ((String, a) :- b) = (SR a, SR b)
+    alloc_signal n f ((fn,ta) :- tb) = do
+        sa <- alloc_signal (printf "%s.%s" n fn) id ta
+        sb <- alloc_signal n id tb
+        f $ return (sa, sb)
 
 instance Generator ()  where
     type SR () = ()
@@ -62,30 +68,28 @@ newtype RecordT x = RecordT x
 instance Generator x => Generator (RecordT x) where
     type SR (RecordT x) = Ptr (Record (SR x))
     alloc_signal n f (RecordT t) = do
-        t <- alloc_signal n id t
-        f $ allocM $ Record n t
+        r <- alloc_signal n id t
+        f $ allocM $ Record n r
 
 -- | Make me unsee that
-accessors = 
-    (fst,
-    (fst . snd,
-    (fst . snd . snd,
-    (fst . snd . snd . snd,
-    (fst . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd,
-    ()))))))))))))))))
-
-alloc_record_type x = return (RecordT x, accessors)
+alloc_record_type x = return (RecordT x, accessors) where
+    accessors
+        =  (fst)
+        :- (fst . snd)
+        :- (fst . snd . snd)
+        :- (fst . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd)
+        :- (fst . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd . snd)
 
 -- | Allocates signal from the memory
 alloc_primitive_signal :: (MonadElab m) => String -> (m (Ptr Signal) -> m (Ptr Signal)) -> Constraint -> m (Ptr Signal)
