@@ -35,12 +35,12 @@ stime() {
 	/usr/bin/time -f '%e' "$@"
 }
 
-vimless() {
+vimless_() {
 	vim -R "$@" -
 }
 
 vircheck() {
-	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck | vimless -c "set ft=haskell"
+	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck | vimless_ -c "set ft=haskell"
 }
 
 vsim() {
