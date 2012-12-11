@@ -144,8 +144,8 @@ data Array a = Array {
     , cconstr :: ArrayT
     } deriving(Show)
 
-index :: (MonadMem m) => m (Ptr (Array a)) -> m Int -> m a
-index c mi = do
+index :: (MonadMem m) => m Int -> m (Ptr (Array a)) -> m a
+index mi c = do
     mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
     maybe (fail "BUG: return after assert") return mb
 

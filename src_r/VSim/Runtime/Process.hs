@@ -54,10 +54,6 @@ fs t = ticked <$> now <*> (pure $ t * femtoSecond)
 next :: (MonadProc m) => m NextTime
 next = fs 1
 
--- | Signal accessor
--- sig :: (Monad m) => Ptr Signal -> m (Ptr Signal)
--- sig = return
-
 wait :: (MonadProc m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
