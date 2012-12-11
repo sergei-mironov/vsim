@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- | Module declares various process-level DSL combinators
 module VSim.Runtime.Process where
@@ -18,16 +19,16 @@ import VSim.Runtime.Monad
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
 
-class Valueable x where
-    val :: (MonadProc m) => x -> m Int
+class (Monad m) => Valueable m x where
+    val :: x -> m Int
 
-instance Valueable Int where
+instance (Monad m) => Valueable m Int where
     val r = return r
 
-instance Valueable (Ptr Variable) where
+instance (MonadMem m) => Valueable m (Ptr Variable) where
     val r = vval `liftM` derefM r
 
-instance Valueable (Ptr Signal) where
+instance (MonadProc m) => Valueable m (Ptr Signal) where
     val r = valueAt1 <$> now <*> (swave `liftM` derefM r)
 
 printSignalM :: (MonadIO m) => Memory -> Ptr Signal -> m String
@@ -58,7 +59,7 @@ wait :: (MonadProc m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
 -- | Assigns new constant waveform to a signal
-assign :: (MonadProc m, Valueable x) => m (Ptr Signal) -> (m NextTime, m x) -> m ()
+assign :: (MonadProc m, Valueable m x) => m (Ptr Signal) -> (m NextTime, m x) -> m ()
 assign s (mt,mv) = do
     a <- Assignment <$> s <*> (PW <$> mt <*> (wconst <$> (val =<< mv)))
     modify (add_assignment a)
@@ -69,23 +70,23 @@ vassign mv ma = do
     v' <- ma
     updateM (\(Variable n v c) -> Variable n v' c) =<< mv
 
-add, (.+.) :: (MonadProc m, Valueable x, Valueable y) => m x -> m y -> m Int
+add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 add ma mb = (+) <$> (val =<< ma) <*> (val =<< mb)
 (.+.) = add
 
-minus, (.-.) :: (MonadProc m, Valueable x, Valueable y) => m x -> m y -> m Int
+minus, (.-.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 minus ma mb = (-) <$> (val =<< ma) <*> (val =<< mb)
 (.-.) = minus
 
-greater, (.>.) :: (MonadProc m, Valueable x, Valueable y) => m x -> m y -> m Bool
+greater, (.>.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Bool
 greater ma mb = (>) <$> (val =<< ma) <*> (val =<< mb)
 (.>.) = greater
 
-greater_eq, (.>=.) :: (MonadProc m, Valueable x, Valueable y) => m x -> m y -> m Bool
+greater_eq, (.>=.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Bool
 greater_eq ma mb = (>=) <$> (val =<< ma) <*> (val =<< mb)
 (.>=.) = greater_eq
 
-eq, (.==.) :: (MonadProc m, Valueable x, Valueable y) => m x -> m y -> m Bool
+eq, (.==.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Bool
 eq ma mb = (==) <$> (val =<< ma) <*> (val =<< mb)
 (.==.) = eq
 

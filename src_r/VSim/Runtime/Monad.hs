@@ -149,6 +149,10 @@ index mi c = do
     mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
     maybe (fail "BUG: return after assert") return mb
 
+-- class Assignable x v where
+--     assign :: (MonadMem m) => (x -> m ()) -> x -> m ()
+
+
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
       acurr :: Ptr Signal
