@@ -12,12 +12,15 @@ import System.IO
 import System.Exit
 import System.Environment
 import Text.Show.Pretty as PP
+import Text.Printf
 
 import VSim.Data.Loc
 import VSim.Data.TInt
 import VSim.Data.Int128
 import VSim.Data.NamePath
 import VSim.VIR
+
+perror x = error . printf x
 
 class AsIdent x where
     mkName :: x -> HsName
@@ -91,14 +94,6 @@ gen_pair es = HsTuple es
 
 gen_str s = HsLit $ HsString s
 
-gen_elab_expr :: IRExpr -> HsExp
-gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
-gen_elab_expr (IEAggregate loc ass) = gen_appl "aggr" [gen_list $ map aggr ass] where
-    aggr (IEAExprIndex loc i e) = gen_appl "setidx" [gen_elab_expr i, gen_elab_expr e]
-    aggr _ = gen_expr_unit
-
-gen_elab_expr _ = error "gen_elab_expr: int constants only, please"
-
 gen_expr_unit = unit_con
 
 gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
@@ -107,18 +102,28 @@ gen_int_ident tn@(ITDName n) = gen_ident n
     -- | mkName n == HsIdent "integer" = gen_ident "integer"
     -- | otherwise = error $ "gen_int_ident: integer type, please. (got: " ++ show tn ++ ")"
 
+gen_assign_or_aggregate f e@(IEAggregate _ ass) = gen_appl "aggregate" [
+    gen_list $ map aggr ass] where
+        aggr (IEAExprIndex loc i e) = gen_appl "setidx" [f i, gen_assign_or_aggregate f e]
+        aggr _ = gen_expr_unit
+gen_assign_or_aggregate f e = gen_appl "assign" [f e]
+
+gen_name f (IRName n _) = gen_name' n where
+    gen_name' (INIdent p) = gen_appl "pure" [gen_ident p]
+    gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [gen_name' p, f e]
+
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
       HsTypeSig noLoc [HsIdent "elab"] (HsQualType [] (
         HsTyApp (HsTyCon $ UnQual $ HsIdent "Elab") (HsTyCon $ Special $ HsUnitCon)))
     , HsFunBind [HsMatch noLoc (HsIdent "elab") [] (HsUnGuardedRhs body) []]
     ] where
-      
+
     body = HsDo $ concat [
           [gen_function "integer" "alloc_unranged_type" []]
         , gen_elab_constants ts
-        , gen_elab' ts
-        , [gen_return unit_con] 
+        , gen_elab_decls ts
+        , [gen_return unit_con]
         ]
 
     -- move all th constants to the top
@@ -126,17 +131,17 @@ gen_elab ts = [
     gen_elab_constants ((IRTConstant c):ts) = (gen_alloc_constant c) ++ (gen_elab_constants ts)
     gen_elab_constants (t:ts) = gen_elab_constants ts
 
-    gen_elab' [] = []
-    gen_elab' ((IRTType t):ts) = (gen_alloc_type t) ++ (gen_elab' ts)
-    gen_elab' ((IRTSignal s):ts) = (gen_alloc_signal s) ++ (gen_elab' ts)
-    gen_elab' ((IRTProcess p):ts) = (gen_alloc_process p) ++ (gen_elab' ts)
-    gen_elab' (t:ts) = gen_elab' ts
+    gen_elab_decls [] = []
+    gen_elab_decls ((IRTType t):ts) = (gen_alloc_type t) ++ (gen_elab_decls ts)
+    gen_elab_decls ((IRTSignal s):ts) = (gen_alloc_signal s) ++ (gen_elab_decls ts)
+    gen_elab_decls ((IRTProcess p):ts) = (gen_alloc_process p) ++ (gen_elab_decls ts)
+    gen_elab_decls (t:ts) = gen_elab_decls ts
 
     gen_alloc_type (IRType p (ITDArray [c] _)) =
         let (a,b) = gen_array_constr c in [
           gen_function (unHierPath p) "alloc_array_type" [
               gen_elab_expr a, gen_elab_expr b
-            , gen_ident "t_int"
+            , gen_ident "integer"
             ]
         ]
     gen_alloc_type _ = []
@@ -147,15 +152,13 @@ gen_elab ts = [
     gen_alloc_signal (IRSignal p t (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_signal" [
               gen_str $ unHierPath p
-            , gen_elab_expr e
             , gen_int_ident t
+            , gen_assign_or_aggregate gen_elab_expr e
             ]
         ]
     gen_alloc_signal (IRSignal p (ITDName t) (IOENothing loc)) = [
           gen_function (unHierPath p) "alloc_signal" [
-              gen_str $ unHierPath p
-            , gen_appl "rnd" [gen_ident t]
-            , gen_ident t
+              gen_str $ unHierPath p, gen_ident t, gen_ident "id"
             ]
         ]
     gen_alloc_signal _ = error $ concat [
@@ -185,6 +188,10 @@ gen_elab ts = [
             ]
         ]
 
+    gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
+    gen_elab_expr (IEName loc n) = gen_name gen_elab_expr n
+    gen_elab_expr e = perror "gen_elab_expr: int constants only, please (got %s)" (show e)
+
     gen_alloc_process (IRProcess p ns lets s) = [
           gen_function (unHierPath p) "alloc_process_let" [
               gen_str $ unHierPath p
@@ -204,15 +211,16 @@ gen_elab ts = [
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
         gen_stmt (ISAssign _ n _ e) = [
               gen_function [] "vassign" [
-                  gen_name_ident n
+                  gen_name gen_expr n
                 , gen_expr e
                 ]
             ]
         gen_stmt (ISSignalAssign _ n _ []) = error "gen_stmt: no afters"
-        gen_stmt (ISSignalAssign _ n _ [IRAfter v t]) = [
-              gen_function [] "assign" [
-                  gen_name_ident n
-                , gen_pair [maybe (gen_ident "next") (gen_expr) t, gen_expr v]
+        gen_stmt (ISSignalAssign _ n _ [IRAfter e t]) = [
+              gen_function [] "(.<=.)" [
+                  gen_name gen_expr n
+                , gen_pair [maybe (gen_ident "next") (gen_expr) t
+                    , gen_expr e]
                 ]
             ]
         gen_stmt (ISNop loc) = [gen_function [] "return" [unit_con]]
@@ -239,19 +247,12 @@ gen_elab ts = [
 
         gen_expr (IEInt loc i) = gen_appl "int" [gen_int i]
         gen_expr (IEString loc bs) = gen_appl "str" [gen_str $ BS.unpack bs]
-        gen_expr (IEName loc n) = gen_name_ident n
+        gen_expr (IEName loc n) = gen_name gen_expr n
         gen_expr (IEBinOp loc IPlus e1 e2) = gen_appl "add" [gen_expr e1, gen_expr e2]
         gen_expr (IERelOp loc IGreaterEqual _ e1 e2) =
             gen_appl "greater_eq" [gen_expr e1, gen_expr e2]
         gen_expr (IEPhysical val un) = gen_appl un [gen_int val]
         gen_expr e = error $ "gen_expr: unsupported expr " ++ show e
-
-
-        gen_name_ident (IRName n _) = gen_name_ident' n
-        gen_name_ident' (INIdent p) = gen_appl "pure" [gen_ident p]
-        gen_name_ident' (INIndex _ p _ [(_,e)]) = gen_appl "index" [
-            gen_name_ident' p, gen_expr e]
-
 
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing
 
