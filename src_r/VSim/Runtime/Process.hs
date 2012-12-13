@@ -55,18 +55,25 @@ fs t = ticked <$> now <*> (pure $ t * femtoSecond)
 next :: (MonadProc m) => m NextTime
 next = fs 1
 
-wait :: (MonadProc m) => m NextTime -> m ()
+wait :: (MonadWait m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
+instance (Valueable VAssign v) => Assignable VAssign (Ptr Signal) v where
+    assign mv mr = do
+        a <- Assignment <$> mr <*> (PW <$> ask <*> (wconst <$> (val =<< mv)))
+        modify (add_assignment a)
+        return (acurr a)
+
+instance (Valueable VAssign x) => Assignable VAssign (Ptr (Array x)) (Ptr (Array x)) where
+    assign mv mr = undefined
+
 -- | Assigns new constant waveform to a signal
-assign :: (MonadProc m, Valueable m x) => m (Ptr Signal) -> (m NextTime, m x) -> m ()
-assign s (mt,mv) = do
-    a <- Assignment <$> s <*> (PW <$> mt <*> (wconst <$> (val =<< mv)))
-    modify (add_assignment a)
+(.<=.) :: (Assignable VAssign x v) => VProc x -> (VProc NextTime, VAssign v) -> VProc ()
+(.<=.) mr (mt,mv) = mr >>= \r -> mt >>= \t -> runVAssign t (assign mv (return r) >> return ())
 
 -- | Assigns new value to the variable
-vassign :: (MonadProc m) => m (Ptr Variable) -> m Int -> m ()
-vassign mv ma = do
+(.=.) :: (MonadProc m) => m (Ptr Variable) -> m Int -> m ()
+(.=.) mv ma = do
     v' <- ma
     updateM (\(Variable n v c) -> Variable n v' c) =<< mv
 

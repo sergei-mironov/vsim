@@ -20,36 +20,14 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Monad
 
-class Initialisable x where
-    set :: (MonadMem m) => m Int -> x -> m ()
-
-instance Initialisable (Ptr Signal) where
-    set mi r = mi >>= \i -> updateM (\s -> s{ swave = wconst i }) r
-
-instance Initialisable (Ptr Variable) where
-    set mi r = mi >>= \i -> updateM (\v -> v{ vval = i }) r
-
 rnd' :: (MonadIO m) => Constraint -> m Int
 rnd' c = liftIO $ randomRIO (lower c, upper c)
-
-setfld :: (MonadMem m, Initialisable y) =>
-    (x -> y) -> m Int -> Ptr (Record x) -> m ()
-setfld fs mi r = field fs (pure r) >>= set mi
-
-setidx :: (MonadMem m, Initialisable x) =>
-    m Int -> m Int -> Ptr (Array x) -> m ()
-setidx midx mi r = index midx (pure r) >>= set mi
-
-aggr :: (MonadMem m) => [a -> m ()] -> a -> m ()
-aggr fs r = mapM_ ($ r) fs
-
--- others :: (MonadElab m) => 
 
 class Generator x where
     -- | Signal representation
     type SR x :: *
     -- | Allocate signal for this type representation
-    alloc_signal :: (MonadElab m) => String -> x -> ((SR x) -> m (SR x)) -> m (SR x)
+    alloc_signal :: (MonadElab m) => String -> x -> (m (SR x) -> m (SR x)) -> m (SR x)
 
 instance Generator Constraint where
     type SR Constraint = Ptr Signal
@@ -68,9 +46,9 @@ infixr 5 :-
 instance (Generator a, Generator b) => Generator ((String, a) :- b)  where
     type SR ((String, a) :- b) = (SR a, SR b)
     alloc_signal n ((fn,ta) :- tb) f = do
-        sa <- alloc_signal (printf "%s.%s" n fn) ta return
-        sb <- alloc_signal n tb return
-        f (sa, sb)
+        sa <- alloc_signal (printf "%s.%s" n fn) ta id
+        sb <- alloc_signal n tb id
+        f $ return (sa, sb)
 
 instance Generator ()  where
     type SR () = ()
@@ -82,9 +60,8 @@ newtype RecordT x = RecordT x
 instance Generator x => Generator (RecordT x) where
     type SR (RecordT x) = Ptr (Record (SR x))
     alloc_signal n (RecordT t) f = do
-        b <- alloc_signal n t return
-        r <- allocM $ Record n b
-        f r
+        b <- alloc_signal n t id
+        f $ allocM $ Record n b
 
 alloc_record_type x = return (RecordT x, accessors) where
     -- FIXME: Make me unsee that
@@ -109,19 +86,18 @@ alloc_record_type x = return (RecordT x, accessors) where
 -- | Allocates a signal from the memory
 alloc_primitive_signal n c f = do
     i <- rnd' c
-    r <- allocM (Signal n (wconst i) 0 c [])
+    r <- f $ allocM (Signal n (wconst i) 0 c [])
     modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
-    f r
+    return r
 
 -- | Allocates array of signals from the memory
 alloc_array_signal n a f = do
     let indexes = [(abegin a) .. (aend a)]
     pairs <- forM indexes (\i -> do
         let sn = n ++ (printf "[%d]" i)
-        s <- alloc_signal sn (aconstr a) return
+        s <- alloc_signal sn (aconstr a) id
         return (i,s))
-    r <- allocM (Array n (IntMap.fromList pairs) a)
-    f r
+    f $ allocM (Array n (IntMap.fromList pairs) a)
 
 -- | Allocates variable from the memory
 alloc_variable :: (MonadElab m) => String -> (m (Ptr Variable) -> m (Ptr Variable)) -> Constraint -> m (Ptr Variable)
@@ -161,4 +137,7 @@ printProcessesM m = do
     forM_ (mprocesses m) $ \r -> do
         p <- deref m r
         liftIO $ printf "proc %s active %s\n" (pname p) (show $ pawake p)
+
+instance (Valueable Elab v) => Assignable Elab (Ptr Signal) v where
+    assign mv mr = mr >>= \r -> (mv >>= val) >>= \v -> updateM (\s -> s{ swave = wconst v }) r >> return r 
 

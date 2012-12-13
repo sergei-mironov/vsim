@@ -37,6 +37,10 @@ class (MonadIO m, Applicative m) => MonadMem m where
       put_mem s'
       return a
 
+instance (MonadMem m) => MonadMem (ReaderT s m) where
+    get_mem = lift $ get_mem
+    put_mem = lift . put_mem
+
 modify_mem :: MonadMem m => (Memory -> Memory) -> m ()
 modify_mem f = state_mem (\s -> ((), f s))
 
@@ -147,11 +151,7 @@ data Array a = Array {
 index :: (MonadMem m) => m Int -> m (Ptr (Array a)) -> m a
 index mi c = do
     mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
-    maybe (fail "BUG: return after assert") return mb
-
--- class Assignable x v where
---     assign :: (MonadMem m) => (x -> m ()) -> x -> m ()
-
+    maybe (fail "index: out of range") return mb
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
@@ -177,10 +177,10 @@ data PS = PS {
     , passignments :: [Assignment]
     } deriving(Show)
 
-now :: (MonadProc m) => m Time
+now :: (Functor m, MonadState PS m) => m Time
 now = ptime <$> get
 
-type ProcessHandler = VProc PS VSim ()
+type ProcessHandler = VProc ()
 
 -- | Representation of VHDL's process
 data Process = Process {
@@ -217,6 +217,10 @@ data Memory = Memory {
 
 emptyMem :: Memory
 emptyMem = Memory [] []
+
+instance MonadMem (StateT Memory IO) where
+    get_mem = get
+    put_mem = put
 
 -- | Simulation event
 newtype SimStep = SimStep [Ptr Process]
@@ -266,30 +270,34 @@ data ProcPause = PP [Ptr Signal] (Maybe NextTime)
     deriving (Show)
 
 -- | Monad for process execution.
-newtype VProc s m a = VProc { unProc :: BP (ProcPause,s) (StateT s m) a }
+newtype VProc a = VProc { unProc :: BP (ProcPause,PS) (StateT PS VSim) a }
     deriving (Monad, MonadIO, Functor, Applicative)
 
-class (MonadMem m, Applicative m, MonadState PS m, MonadBP Pause m) => MonadProc m where
+class (MonadMem m, MonadState PS m) => MonadProc m
+
+instance MonadProc VProc
+
+class (MonadProc m, MonadBP Pause m) => MonadWait m where
     wait_until :: NextTime -> m ()
     wait_on :: [Ptr Signal] -> m ()
 
-instance (MonadSim m) => MonadBP Pause (VProc s m) where
+instance MonadBP Pause VProc where
     pause = VProc . lift . lift . pause
     halt =  VProc . lift . lift . halt
 
-instance (Monad m) => MonadState PS (VProc PS m) where
+instance MonadState PS VProc where
     get = VProc $ lift $ get
     put = VProc . lift . put
 
-instance (MonadMem m) => MonadMem (VProc PS m) where
+instance MonadMem VProc where
     get_mem = VProc $ lift $ lift $ get_mem
     put_mem = VProc . lift . lift . put_mem
 
-instance (MonadSim m) => MonadProc (VProc PS m) where
+instance MonadWait VProc where
     wait_until nt = get >>= \s -> VProc (pause (PP [] (Just nt),s))
     wait_on ss = get >>= \s -> VProc (pause (PP ss Nothing,s))
 
-runVProc :: (Monad m) => VProc s m () -> s -> m ((ProcPause,s),VProc s m ())
+runVProc :: VProc () -> PS -> VSim ((ProcPause,PS),VProc ())
 runVProc (VProc r) s = do
     (e,s') <- runStateT (runBP r) s
     case e of
@@ -299,26 +307,26 @@ runVProc (VProc r) s = do
 terminate :: (MonadBP Pause m) => Time -> String -> m ()
 terminate t s = halt $ Report t High s
 
-report :: (MonadProc m) => m String -> m ()
+-- | Pauses process with the report
+report :: (MonadWait m) => m String -> m ()
 report s = pause =<< (Report <$> now <*> pure Low <*> s)
 
-assert :: (MonadProc m) => m ()
+-- | Pauses process with the assertion
+assert :: (MonadWait m) => m ()
 assert = pause =<< (Report <$> now <*> pure High <*> pure "assert")
 
-breakpoint :: (MonadProc m) => m ()
+-- | Pauses process with the breakpoint
+breakpoint :: (MonadWait m) => m ()
 breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
 
 class (MonadMem m) => MonadElab m
 
-instance MonadMem (StateT Memory IO) where
-    get_mem = get
-    put_mem = put
+newtype Elab a = Elab { unElab :: (StateT Memory IO) a }
+    deriving(Monad, MonadMem, Applicative, Functor, MonadIO)
 
-instance MonadElab (StateT Memory IO)
+instance MonadElab Elab
 
-type Elab s = (StateT Memory IO) s
-
-runElab elab = runStateT elab emptyMem
+runElab e = runStateT (unElab e) emptyMem
 
 -- | Type hint for ints
 int :: (Monad m) => Int -> m Int
@@ -327,4 +335,26 @@ int = return
 -- | Type hint for strings
 str :: (Monad m) => String -> m String
 str = return
+
+-- | Monad for producing signal assignments from within processes
+newtype VAssign a = VAssign { unAssign :: ReaderT NextTime VProc a }
+    deriving(MonadMem, Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
+        MonadState PS)
+
+instance MonadProc VAssign
+
+runVAssign :: NextTime -> VAssign a -> VProc a
+runVAssign nt va = runReaderT (unAssign va) nt
+
+class (Monad m) => Assignable m c v where
+    assign :: m v -> m c -> m c
+
+setfld :: (MonadMem m, Assignable m x v) => (z -> x) -> m v -> Ptr (Record z) -> m (Ptr (Record z))
+setfld fs mv r = assign mv (field fs (pure r)) >> return r
+
+setidx :: (MonadMem m, Assignable m x v) => m Int -> m v -> Ptr (Array x) -> m (Ptr (Array x))
+setidx mi mv r = assign mv (index mi (pure r)) >> return r
+
+aggregate :: (MonadMem m) => [a -> m a] -> m a -> m a
+aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
 
