@@ -64,12 +64,11 @@ instance (Valueable VAssign v) => Assignable VAssign (Ptr Signal) v where
         modify (add_assignment a)
         return (acurr a)
 
-instance (Valueable VAssign x) => Assignable VAssign (Ptr (Array x)) (Ptr (Array x)) where
+instance (Valueable VAssign x) => Assignable VAssign (Ptr (Array t x)) (Ptr (Array t x)) where
     assign mv mr = undefined
 
--- | Assigns new constant waveform to a signal
-(.<=.) :: (Assignable VAssign x v) => VProc x -> (VProc NextTime, VAssign v) -> VProc ()
-(.<=.) mr (mt,mv) = mr >>= \r -> mt >>= \t -> runVAssign t (assign mv (return r) >> return ())
+(.<=.) :: VProc x -> (VProc NextTime, Assigner VAssign x) -> VProc ()
+(.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
 
 -- | Assigns new value to the variable
 (.=.) :: (MonadProc m) => m (Ptr Variable) -> m Int -> m ()

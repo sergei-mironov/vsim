@@ -135,20 +135,20 @@ sigassign2 r w = do
     return (sproc s)
 
 -- | VHDL array type
-data ArrayT = ArrayT {
-      aconstr :: Constraint
+data ArrayT t = ArrayT {
+      aconstr :: t
     , abegin :: Int
     , aend :: Int
     } deriving(Show)
 
 -- VHDL arrays
-data Array a = Array {
+data Array t a = Array {
       cname :: String
     , csignals :: IntMap.IntMap a
-    , cconstr :: ArrayT
+    , cconstr :: ArrayT t
     } deriving(Show)
 
-index :: (MonadMem m) => m Int -> m (Ptr (Array a)) -> m a
+index :: (MonadMem m) => m Int -> m (Ptr (Array t a)) -> m a
 index mi c = do
     mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
     maybe (fail "index: out of range") return mb
@@ -336,25 +336,30 @@ int = return
 str :: (Monad m) => String -> m String
 str = return
 
+class (MonadProc m, MonadReader NextTime m) => MonadAssign m
+
 -- | Monad for producing signal assignments from within processes
 newtype VAssign a = VAssign { unAssign :: ReaderT NextTime VProc a }
     deriving(MonadMem, Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
         MonadState PS)
 
 instance MonadProc VAssign
+instance MonadAssign VAssign
 
-runVAssign :: NextTime -> VAssign a -> VProc a
-runVAssign nt va = runReaderT (unAssign va) nt
+runVAssign :: NextTime -> VAssign a -> VProc ()
+runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 
 class (Monad m) => Assignable m c v where
     assign :: m v -> m c -> m c
 
-setfld :: (MonadMem m, Assignable m x v) => (z -> x) -> m v -> Ptr (Record z) -> m (Ptr (Record z))
-setfld fs mv r = assign mv (field fs (pure r)) >> return r
-
-setidx :: (MonadMem m, Assignable m x v) => m Int -> m v -> Ptr (Array x) -> m (Ptr (Array x))
-setidx mi mv r = assign mv (index mi (pure r)) >> return r
+type Assigner m a = m a -> m a
 
 aggregate :: (MonadMem m) => [a -> m a] -> m a -> m a
 aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
+
+setfld :: (MonadMem m) => (z -> x) -> Assigner m x -> Ptr (Record z) -> m (Ptr (Record z))
+setfld fs f r = f (field fs (pure r)) >> return r
+
+setidx :: (MonadMem m) => m Int -> Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
+setidx mi f r = f (index mi (pure r)) >> return r
 

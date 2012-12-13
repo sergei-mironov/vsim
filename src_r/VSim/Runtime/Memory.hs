@@ -33,9 +33,14 @@ instance Generator Constraint where
     type SR Constraint = Ptr Signal
     alloc_signal = alloc_primitive_signal
 
--- | ArrayT generates Arrays
-instance Generator ArrayT where
-    type SR ArrayT = Ptr (Array (Ptr Signal))
+-- | ArrayT of IntType generates Arrays of this type
+instance Generator (ArrayT Constraint) where
+    type SR (ArrayT Constraint) = Ptr (Array Constraint (Ptr Signal))
+    alloc_signal = alloc_array_signal
+
+-- | ArrayT of ArrayT generates Array of Arrays
+instance Generator (ArrayT t) => Generator (ArrayT (ArrayT t)) where
+    type SR (ArrayT (ArrayT t)) = Ptr (Array (ArrayT t) (SR (ArrayT t)))
     alloc_signal = alloc_array_signal
 
 -- VHDL record field collection (like tuples)
@@ -126,8 +131,8 @@ alloc_ranged_type a b = return $ ranged a b
 alloc_unranged_type :: (MonadElab m) => m Constraint
 alloc_unranged_type = return unranged
 
-alloc_array_type :: (MonadElab m) => m Int -> m Int -> Constraint -> m ArrayT
-alloc_array_type mb me c = ArrayT <$> (pure c) <*> mb <*> me
+alloc_array_type :: (MonadElab m) => m Int -> m Int -> t -> m (ArrayT t)
+alloc_array_type mb me t = ArrayT <$> (pure t) <*> mb <*> me
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
 printSignalsM m = liftIO $ mapM (printSignalM m) >=> mapM_ putStrLn $ (msignals m)
@@ -139,5 +144,10 @@ printProcessesM m = do
         liftIO $ printf "proc %s active %s\n" (pname p) (show $ pawake p)
 
 instance (Valueable Elab v) => Assignable Elab (Ptr Signal) v where
-    assign mv mr = mr >>= \r -> (mv >>= val) >>= \v -> updateM (\s -> s{ swave = wconst v }) r >> return r 
+    assign mv mr = do
+        v <- (mv >>= val)
+        r <- mr
+        updateM (\s -> s{ swave = wconst v }) r
+        return r 
+
 

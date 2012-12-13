@@ -7,19 +7,24 @@ elab :: Elab ()
 elab = do
     integer <- alloc_unranged_type
 
-    t_array <- alloc_array_type (pure 1) (pure 5) integer
+    array <- alloc_array_type (pure 1) (pure 5) integer
 
     clk <- alloc_signal "clk" integer (assign (int 0))
-    a1 <- alloc_signal "a1" t_array id
 
-    a2 <- alloc_signal "a2" t_array (aggregate [setidx (pure 1) (int 1)])
+    a1 <- alloc_signal "a1" array (aggregate [setidx (pure 1) (assign (int 1))])
+    a2 <- alloc_signal "a2" array id
+
+    array' <- alloc_array_type (pure 1) (pure 5) array
+    aa1 <- alloc_signal "aa1" array' id
 
     proc1 <- alloc_process "main" [] $ do
         breakpoint
-        (index (pure 1) (pure a1)) .<=. (next, ((int 1) .+. (index (pure 1) (pure a1))))
-        (pure clk) .<=. (next, (pure clk) .+. (int 1))
-        (pure a1) .<=. (next, (pure a2))
-        wait (us 1)
+        (pure clk) .<=. (next, assign ((pure clk) .+. (int 1)))
+        (pure a1) .<=. (fs 2, aggregate [
+            setidx (int 1) (assign $ (index (int 1) (pure a1)) .+. (int 1)),
+            setidx (int 2) (assign $ int 3)])
+        wait (fs 1)
+        return ()
  
     return ()
 
