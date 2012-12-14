@@ -79,6 +79,10 @@ gen_appl' n (a:as) = HsApp (gen_appl' n as) a
 gen_appl :: (AsIdent n) => n -> [HsExp] -> HsExp
 gen_appl n as = HsParen $ gen_appl' n (reverse as)
 
+gen_op :: String -> HsExp -> HsExp -> HsExp
+gen_op n e1 e2 = HsParen $ HsInfixApp e1 qn e2 where
+    qn = HsQVarOp $ UnQual $ HsSymbol n
+
 gen_function :: (AsIdent n) => String -> n -> [HsExp] -> HsStmt
 gen_function [] n [] = HsQualifier (gen_ident n)
 gen_function [] n as = HsQualifier (gen_appl' n (reverse as))
@@ -257,6 +261,7 @@ gen_elab ts = [
         gen_expr (IEString loc bs) = gen_appl "str" [gen_str $ BS.unpack bs]
         gen_expr (IEName loc n) = gen_name gen_expr n
         gen_expr (IEBinOp loc IPlus e1 e2) = gen_appl "add" [gen_expr e1, gen_expr e2]
+        gen_expr (IEBinOp loc IConcat e1 e2) = gen_op ".++." (gen_expr e1) (gen_expr e2)
         gen_expr (IERelOp loc IGreaterEqual _ e1 e2) =
             gen_appl "greater_eq" [gen_expr e1, gen_expr e2]
         gen_expr (IEPhysical val un) = gen_appl un [gen_int val]

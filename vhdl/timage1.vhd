@@ -8,6 +8,7 @@ begin
     main: process(clk)
 	begin
         report integer'image(clk);
+        report "clk = " & integer'image(clk);
     end process;
 
 	terminator : process(clk)
