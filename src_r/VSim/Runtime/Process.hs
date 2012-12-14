@@ -6,6 +6,7 @@
 -- | Module declares various process-level DSL combinators
 module VSim.Runtime.Process where
 
+import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Control.Applicative
 import Control.Monad.Trans
@@ -30,6 +31,13 @@ instance (MonadMem m) => Valueable m (Ptr Variable) where
 
 instance (MonadProc m) => Valueable m (Ptr Signal) where
     val r = valueAt1 <$> now <*> (swave `liftM` derefM r)
+
+
+class (Monad m) => Appendable m x where
+    (.++.) :: m x -> m x -> m x
+
+instance (Monad m, Monoid x) => Appendable m x where
+    (.++.) ms1 ms2 = mappend `liftM` ms1 `ap` ms2
 
 printSignalM :: (MonadIO m) => Memory -> Ptr Signal -> m String
 printSignalM m r = deref m r >>= return . printSignal

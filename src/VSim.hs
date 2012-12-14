@@ -20,7 +20,7 @@ import VSim.Data.Int128
 import VSim.Data.NamePath
 import VSim.VIR
 
-perror x = error . printf x
+perror x = error . printf (x ++ "\n")
 
 class AsIdent x where
     mkName :: x -> HsName
@@ -38,18 +38,15 @@ instance AsIdent (Ident, [Ident]) where
 instance (AsIdent a) => AsIdent (WithLoc a) where
     mkName (WithLoc _ a) = mkName a
 
--- instance AsIdent IRNameG where
---     mkName (INIdent p) = mkName p
---     mkName _ = error "mkName: INIdent only, please"
-
--- instance AsIdent IRName where
---     mkName (IRName ng _) = mkName ng
-
 gen_ident :: (AsIdent x) => x -> HsExp
 gen_ident x = HsVar $ UnQual $ mkName x
 
 gen_pat :: (AsIdent x) => x -> HsPat
 gen_pat x = HsPVar $ mkName x
+
+gen_type_ident :: IRTypeDescr -> HsExp
+gen_type_ident (ITDName p) = gen_ident p
+gen_type_ident t = perror "gen_type_ident: type names only, please (got %s)" (show t)
 
 class AsInt x where
     gen_int :: x -> HsExp
@@ -98,14 +95,17 @@ gen_expr_unit = unit_con
 
 gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
 
-gen_int_ident tn@(ITDName n) = gen_ident n
-    -- | mkName n == HsIdent "integer" = gen_ident "integer"
-    -- | otherwise = error $ "gen_int_ident: integer type, please. (got: " ++ show tn ++ ")"
-
 gen_assign_or_aggregate f e@(IEAggregate _ ass) = gen_appl "aggregate" [
-    gen_list $ map aggr ass] where
-        aggr (IEAExprIndex loc i e) = gen_appl "setidx" [f i, gen_assign_or_aggregate f e]
-        aggr _ = gen_expr_unit
+    gen_list $ others ass ++ aggr ass] where
+        others (IEAOthers loc e:as) = (gen_appl "all" [gen_assign_or_aggregate f e]) : others as
+        others (_:as) = others as
+        others [] = []
+
+        aggr (IEAExprIndex loc i e:as) = (gen_appl "setidx" [f i, gen_assign_or_aggregate f e]) : (aggr as)
+        aggr (IEAOthers _ _:as) = aggr as
+        aggr [] = []
+        aggr a = perror "gen_assign_or_aggregate: index or others, please (got %s)" (show a)
+
 gen_assign_or_aggregate f e = gen_appl "assign" [f e]
 
 gen_name f (IRName n _) = gen_name' n where
@@ -152,7 +152,7 @@ gen_elab ts = [
     gen_alloc_signal (IRSignal p t (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_signal" [
               gen_str $ unHierPath p
-            , gen_int_ident t
+            , gen_type_ident t
             , gen_assign_or_aggregate gen_elab_expr e
             ]
         ]
@@ -177,14 +177,14 @@ gen_elab ts = [
           gen_function (unHierPath p) "alloc_variable" [
               gen_str $ unHierPath p
             , gen_elab_expr e
-            , gen_int_ident t
+            , gen_type_ident t
             ]
         ]
     gen_alloc_variable (IRVariable p t (IOENothing _)) = [
           gen_function (unHierPath p) "alloc_variable" [
               gen_str $ unHierPath p
             , gen_int (0 :: Int)
-            , gen_int_ident t
+            , gen_type_ident t
             ]
         ]
 

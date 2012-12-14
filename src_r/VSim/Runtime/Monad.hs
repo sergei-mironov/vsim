@@ -338,7 +338,7 @@ str = return
 
 class (MonadProc m, MonadReader NextTime m) => MonadAssign m
 
--- | Monad for producing signal assignments from within processes
+-- | Monad for conducting assignments from within process body
 newtype VAssign a = VAssign { unAssign :: ReaderT NextTime VProc a }
     deriving(MonadMem, Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
         MonadState PS)
@@ -349,10 +349,13 @@ instance MonadAssign VAssign
 runVAssign :: NextTime -> VAssign a -> VProc ()
 runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 
+-- | States that a value can be assigned to a container in a specific monad.
+-- For example, Ints could be assigned to Signals, x can be assigned to the
+-- arrays of x
 class (Monad m) => Assignable m c v where
     assign :: m v -> m c -> m c
 
-type Assigner m a = m a -> m a
+type Assigner m c = m c -> m c
 
 aggregate :: (MonadMem m) => [a -> m a] -> m a -> m a
 aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
@@ -362,4 +365,9 @@ setfld fs f r = f (field fs (pure r)) >> return r
 
 setidx :: (MonadMem m) => m Int -> Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
 setidx mi f r = f (index mi (pure r)) >> return r
+
+all :: (MonadMem m) => Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
+all f r = do
+    mapM_ (\(k,r) -> f (pure r)) =<< (IntMap.toList <$> (csignals <$> derefM r))
+    return r
 
