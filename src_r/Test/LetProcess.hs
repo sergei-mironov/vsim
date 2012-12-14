@@ -5,13 +5,13 @@ import VSim.Runtime
 elab :: Elab ()
 elab = do
     t_int <- alloc_unranged_type
-    clk <- alloc_signal "clk" 0 t_int
+    clk <- alloc_signal "clk" t_int (assign (int 0))
 
     proc1 <- alloc_process_let "main" [clk] $ do
-        v <- alloc_variable "v" 1 t_int
+        v <- alloc_variable "v" t_int (assign (int 1))
         return $ do
             breakpoint
-            clk `assign` (next, ((val v) .+. (val clk)))
+            (pure clk) .<=. (next, assign ((val v) .+. (val clk)))
             report (str "muhaha")
             return ()
     return ()

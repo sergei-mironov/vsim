@@ -6,16 +6,16 @@ import VSim.Runtime
 elab :: Elab ()
 elab = do
     t_int <- alloc_unranged_type
-    t_0_5 <- alloc_ranged_type 0 5
+    t_0_5 <- alloc_ranged_type (int 0) (int 5)
 
-    s1 <- alloc_signal "s1" (set (int 0)) t_int
-    clk <- alloc_signal "clk" (set (int 0)) t_int
-    v <- alloc_variable "v" (set (int 0)) t_0_5
+    s1 <- alloc_signal "s1" t_int (assign (int 0))
+    clk <- alloc_signal "clk" t_int (assign (int 0))
+    v <- alloc_variable "v" t_0_5 (assign (int 0))
 
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint
-        (pure s1)  `assign` (fs 5, (pure clk))
-        (pure clk) `assign` (next, ((int 1) .+. (pure clk)))
+        (pure s1)  .<=. (fs 5, assign (pure clk))
+        (pure clk) .<=. (next, assign $ ((int 1) .+. (pure clk)))
         report (str "muhaha")
         return ()
  

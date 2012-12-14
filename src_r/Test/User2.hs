@@ -8,8 +8,8 @@ import VSim.Runtime
 
 elab :: Elab ()
 elab = do
-    s1 <- alloc_signal "s1" 0 (ranged 0 5)
-    clk <- alloc_signal "clk" 0 unranged
+    s1 <- alloc_signal "s1" (ranged 0 5)
+    clk <- alloc_signal "clk" unranged
 
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint

@@ -32,7 +32,6 @@ instance (MonadMem m) => Valueable m (Ptr Variable) where
 instance (MonadProc m) => Valueable m (Ptr Signal) where
     val r = valueAt1 <$> now <*> (swave `liftM` derefM r)
 
-
 class (Monad m) => Appendable m x where
     (.++.) :: m x -> m x -> m x
 
@@ -72,6 +71,11 @@ instance (Valueable VAssign v) => Assignable VAssign (Ptr Signal) v where
         modify (add_assignment a)
         return (acurr a)
 
+instance (Valueable VAssign v) => Assignable VAssign (Ptr Variable) v where
+    assign mv mr = mr >>= \r -> (mv >>= val) >>= \v -> updateM (chvar v) r >> return r where
+        chvar v var = var { vval = v }
+
+-- FIXME: define the undefined
 instance (Valueable VAssign x) => Assignable VAssign (Ptr (Array t x)) (Ptr (Array t x)) where
     assign mv mr = undefined
 
