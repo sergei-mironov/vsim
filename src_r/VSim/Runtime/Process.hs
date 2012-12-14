@@ -120,3 +120,9 @@ for (ma,dir,mb) body = do
         indexes Downto = [b..a]
     forM_ (indexes dir) body
 
+class Imageable m x t where
+    t_image :: m x -> t -> m String
+
+instance (MonadProc m) => Imageable m (Ptr Signal) Constraint where
+    t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< mr)))
+

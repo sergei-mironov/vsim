@@ -46,7 +46,7 @@ gen_pat x = HsPVar $ mkName x
 
 gen_type_ident :: IRTypeDescr -> HsExp
 gen_type_ident (ITDName p) = gen_ident p
-gen_type_ident t = perror "gen_type_ident: type names only, please (got %s)" (show t)
+gen_type_ident t = perror "%s\ngen_type_ident: name types with single idents, please" (show t)
 
 class AsInt x where
     gen_int :: x -> HsExp
@@ -95,16 +95,20 @@ gen_expr_unit = unit_con
 
 gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
 
+type_name_is pat n = gen_ident pat == gen_type_ident n
+
 gen_assign_or_aggregate f e@(IEAggregate _ ass) = gen_appl "aggregate" [
     gen_list $ others ass ++ aggr ass] where
         others (IEAOthers loc e:as) = (gen_appl "all" [gen_assign_or_aggregate f e]) : others as
         others (_:as) = others as
         others [] = []
 
-        aggr (IEAExprIndex loc i e:as) = (gen_appl "setidx" [f i, gen_assign_or_aggregate f e]) : (aggr as)
+        aggr (IEAExprIndex loc i e:as) = (gen_appl "setidx" [f i, gaa f e]) : (aggr as)
         aggr (IEAOthers _ _:as) = aggr as
         aggr [] = []
         aggr a = perror "gen_assign_or_aggregate: index or others, please (got %s)" (show a)
+
+        gaa = gen_assign_or_aggregate
 
 gen_assign_or_aggregate f e = gen_appl "assign" [f e]
 
@@ -119,8 +123,10 @@ gen_elab ts = [
     , HsFunBind [HsMatch noLoc (HsIdent "elab") [] (HsUnGuardedRhs body) []]
     ] where
 
+    name_of_integer = "integer"
+
     body = HsDo $ concat [
-          [gen_function "integer" "alloc_unranged_type" []]
+          [gen_function name_of_integer "alloc_unranged_type" []]
         , gen_elab_constants ts
         , gen_elab_decls ts
         , [gen_return unit_con]
@@ -141,7 +147,7 @@ gen_elab ts = [
         let (a,b) = gen_array_constr c in [
           gen_function (unHierPath p) "alloc_array_type" [
               gen_elab_expr a, gen_elab_expr b
-            , gen_ident "integer"
+            , gen_ident name_of_integer
             ]
         ]
     gen_alloc_type _ = []
@@ -219,8 +225,10 @@ gen_elab ts = [
         gen_stmt (ISSignalAssign _ n _ [IRAfter e t]) = [
               gen_function [] "(.<=.)" [
                   gen_name gen_expr n
-                , gen_pair [maybe (gen_ident "next") (gen_expr) t
-                    , gen_expr e]
+                , gen_pair [
+                      maybe (gen_ident "next") (gen_expr) t
+                    , gen_assign_or_aggregate gen_expr e
+                    ]
                 ]
             ]
         gen_stmt (ISNop loc) = [gen_function [] "return" [unit_con]]
@@ -252,7 +260,12 @@ gen_elab ts = [
         gen_expr (IERelOp loc IGreaterEqual _ e1 e2) =
             gen_appl "greater_eq" [gen_expr e1, gen_expr e2]
         gen_expr (IEPhysical val un) = gen_appl un [gen_int val]
-        gen_expr e = error $ "gen_expr: unsupported expr " ++ show e
+        -- FIXME: only signals can be imaged, but noone prevents user from
+        -- imaging arrays or records
+        gen_expr (IETypeValueAttr loc T_image e t)
+            | type_name_is name_of_integer t = gen_appl "t_image" [gen_expr e, gen_type_ident t]
+            | otherwise = perror "%s\ngen_expr: image integers only, please" (show t)
+        gen_expr e = perror "%s\ngen_expr: unsupported expr" (show e)
 
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing
 

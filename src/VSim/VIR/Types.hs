@@ -130,6 +130,7 @@ data IRTypeValueAttr
     | T_pred
     | T_val
     | T_pos
+    | T_image
     deriving (Show, Data, Typeable)
 
 data IRArrayAttr

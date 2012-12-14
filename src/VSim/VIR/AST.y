@@ -207,7 +207,7 @@ import VSim.Data.TInt
     "T_high"          { L.THigh }
     "T_low"           { L.TLow }
     "T_ascending"     { L.TAscending }
-    "t_image"         { L.TImage }
+    "T_image"         { L.TImage }
     "t_value"         { L.TValue }
     "T_pos"           { L.TPos }
     "T_val"           { L.TVal }
@@ -559,6 +559,7 @@ expr :: {  IRExpr  }
     | '(' "T_pred" loc type_descr expr ')' { IETypeValueAttr $3 T_pred $5 $4 }
     | '(' "T_val" loc type_descr expr ')' { IETypeValueAttr $3 T_val $5 $4 }
     | '(' "T_pos" loc type_descr expr ')' { IETypeValueAttr $3 T_pos $5 $4 }
+    | '(' "T_image" loc type_descr expr ')' { IETypeValueAttr $3 T_image $5 $4 }
 
 
     | '(' "A_left" loc expr expr_name ')' { IEArrayAttr $3 A_left $4 $5 }
