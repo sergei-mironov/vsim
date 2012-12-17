@@ -71,7 +71,7 @@ runaldec() { (
 	(
 	echo vlib -global work
 	echo set worklib work
-	echo vcom `ospath $CWD/IEEE/std_logic_1164.vhdl` `ospath $VHD`
+	echo vcom `ospath $CWD/vhdl/IEEE/std_logic_1164.vhdl` `ospath $VHD`
 	echo vsim work.$ENTITY
 	echo trace -verbose '*'
 	echo run 9999ms
