@@ -5,3 +5,6 @@ dist/*
 *swp
 *hi
 *o
+tags
+Autogen.hs
+tr/bin/*
