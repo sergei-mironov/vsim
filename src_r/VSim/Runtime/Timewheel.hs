@@ -18,6 +18,7 @@ import VSim.Runtime.Monad
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
 import VSim.Runtime.Process
+import VSim.Runtime.Ptr
 
 data ES = ES [(Ptr Signal, Waveform)] [Ptr Process]
     deriving(Show)

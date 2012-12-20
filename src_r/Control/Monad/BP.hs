@@ -3,6 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 
+-- to write MonadState instance
+{-# LANGUAGE UndecidableInstances #-}
+
 module Control.Monad.BP (
       BP(..)
     , MonadBP(..)
@@ -61,6 +64,10 @@ instance (Functor m, Monad m) => Functor (BP e m) where
 instance (Monad m, Functor m) => Applicative (BP e m) where
     pure = return
     mf <*> a = mf `ap` a
+
+instance (MonadState s m) => MonadState s (BP e m) where
+    get = lift $ get
+    put = lift . put
 
 -- | Pauses execution with reason e
 pauseBP :: (Monad m) => e -> BP e m ()

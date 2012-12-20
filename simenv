@@ -163,3 +163,10 @@ runtr() { (
 	echo `ospath $VIRFILE`
 ) }
 
+# Searches for VHDL test for a given manual chapter
+ftest() { (
+	cd vhdl_ct || die "Run from project root, please"
+	local ch=`echo $1 | sed 's@\\.@\\\\\\.@g'`
+	grep -e "--.* $ch" *vhd | awk -F : '{print $1}' | sort -u | xargs_ vim -p 
+)
+}

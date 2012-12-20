@@ -17,8 +17,10 @@ import Control.Monad
 import Text.Printf
 
 import VSim.Runtime.Monad
+import VSim.Runtime.Class
 import VSim.Runtime.Time
 import VSim.Runtime.Waveform
+import VSim.Runtime.Ptr
 
 class (Monad m) => Valueable m x where
     val :: x -> m Int
@@ -37,12 +39,6 @@ class (Monad m) => Appendable m x where
 
 instance (Monad m, Monoid x) => Appendable m x where
     (.++.) ms1 ms2 = mappend `liftM` ms1 `ap` ms2
-
-printSignalM :: (MonadIO m) => Memory -> Ptr Signal -> m String
-printSignalM m r = deref m r >>= return . printSignal
-
-printSignal :: Signal -> String
-printSignal s = printf "signal %s wave %s" (sname s) (printWaveform (swave s))
 
 ms :: (MonadProc m) => Int -> m NextTime
 ms t = ticked <$> now <*> (pure $ t * milliSecond)
@@ -124,9 +120,12 @@ for (ma,dir,mb) body = do
         indexes Downto = [b..a]
     forM_ (indexes dir) body
 
-class Imageable m x t where
-    t_image :: m x -> t -> m String
-
-instance (MonadProc m) => Imageable m (Ptr Signal) Constraint where
+instance (MonadProc m) => Imageable m (Ptr Signal) PrimitiveT where
     t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< mr)))
+
+instance (MonadProc m) => Imageable m (Ptr Variable) PrimitiveT where
+    t_image mr _ = show <$> (vval <$> (derefM =<< mr))
+
+instance (MonadProc m) => Imageable m Int PrimitiveT where
+    t_image mr _ = show <$> mr
 

@@ -3,115 +3,77 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module VSim.Runtime.Monad where
 
+import Control.Applicative
 import Control.Monad.BP
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Monad.Trans
-import Control.Applicative
 import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Data.List
-import Data.IORef
 import Text.Printf
-import System.IO
-import System.IO.Unsafe
 
+import VSim.Runtime.Class
 import VSim.Runtime.Time
+import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
-
--- | Pointer type used in the simulator
-type Ptr x = IORef x
 
 class (MonadIO m, Applicative m) => MonadMem m where
     get_mem :: m Memory
     put_mem :: Memory -> m ()
-    -- | Embed a simple state action into the monad.
-    state_mem :: (Memory -> (a, Memory)) -> m a
-    state_mem f = do
-      s <- get_mem
-      let ~(a, s') = f s
-      put_mem s'
-      return a
 
 instance (MonadMem m) => MonadMem (ReaderT s m) where
     get_mem = lift $ get_mem
     put_mem = lift . put_mem
 
+instance (MonadMem m) => MonadMem (BP e m) where
+    get_mem = lift $ get_mem
+    put_mem = lift . put_mem
+
+instance (MonadMem m) => MonadMem (StateT s m) where
+    get_mem = lift $ get_mem
+    put_mem = lift . put_mem
+
 modify_mem :: MonadMem m => (Memory -> Memory) -> m ()
-modify_mem f = state_mem (\s -> ((), f s))
+modify_mem f = get_mem >>= \m -> put_mem (f m)
 
-alloc :: (MonadIO m) => mem -> a -> m (mem, Ptr a)
-alloc mem a = liftIO (newIORef a) >>= \r -> return (mem,r)
-
-write :: (MonadIO m) => mem -> Ptr a -> a -> m mem
-write mem ptr a = liftIO (writeIORef ptr a) >> return mem
-
-deref :: (MonadIO m) => mem -> Ptr a -> m a
-deref mem ptr = liftIO $ readIORef ptr
-
-update :: (MonadIO m) => mem -> (a->a) -> Ptr a -> m mem
-update mem f ptr = deref mem ptr >>= write mem ptr . f
-
-withPtr :: (MonadIO m) => mem -> (a->(a,b)) -> Ptr a -> m (mem, b)
-withPtr mem f ptr = deref mem ptr >>= \a -> do
-    let (a',b) = f a in write mem ptr a' >>= \mem' -> return (mem',b)
-
-writeM :: (MonadMem m) => Ptr a -> a -> m ()
-writeM ptr a = get_mem >>= \m -> write m ptr a >>= \m' -> put_mem m'
-
-derefM :: (MonadMem m) => Ptr a -> m a
-derefM r = get_mem >>= \m -> deref m r
-
-derefM' :: (MonadMem m) => Ptr a -> m (Ptr a, a)
-derefM' r = derefM r >>= \v -> return (r,v)
-
-allocM :: (MonadMem m) => a -> m (Ptr a)
-allocM x = get_mem >>= \m -> alloc m x >>= \(m',x) -> put_mem m' >> return x
-
-updateM :: (MonadMem m) => (a->a) -> Ptr a -> m ()
-updateM f r = get_mem >>= \m -> update m f r >>= \m' -> put_mem m'
-
-withPtrM :: (MonadMem m) => (a->(a,b)) -> Ptr a -> m b
-withPtrM f ptr = get_mem >>= \m -> withPtr m f ptr >>= \(m',b) -> put_mem m' >> return b
-
-instance (Show x) => Show (IORef x) where
-    show x = "@(" ++ show (unsafePerformIO $ deref undefined x) ++ ")"
-
--- | VHDL constrained type
-data Constraint = Constraint {
+-- | VHDL primitive type can are described with it's upper and lower bounds. Use
+-- of Ints is a limitation of a current implementation.
+data PrimitiveT = PrimitiveT {
       lower :: Int
     , upper :: Int
     } deriving(Show)
 
-ranged a b = Constraint a b
-unranged = Constraint minBound maxBound
+ranged a b = PrimitiveT a b
+unranged = PrimitiveT minBound maxBound
 
-class Constrained x where
-    within :: x -> Bool
-
-instance Constrained (Int, Constraint) where
-    within (v,(Constraint l u)) = v >= l && v <= u
+instance Constrained (Int, PrimitiveT) where
+    within (v,(PrimitiveT l u)) = v >= l && v <= u
 
 -- | VHDL variable
 data Variable = Variable {
       vname :: String
     , vval :: Int
-    , vconstr :: Constraint
+    , vconstr :: PrimitiveT
     } deriving(Show)
 
 instance Constrained Variable where
     within v = within (vval v, vconstr v)
 
--- | VHDL signal
+instance (MonadPtr m) => Cloneable m (Ptr a) where
+    clone r = derefM r >>= allocM 
+
+-- | VHDL primitive signal
 data Signal = Signal {
       sname :: String
     , swave :: Waveform
     , oldvalue :: Int
-    , sconstr :: Constraint
+    , sconstr :: PrimitiveT
     , sproc :: [Ptr Process]
     } deriving(Show)
 
@@ -148,7 +110,7 @@ data Array t a = Array {
     , cconstr :: ArrayT t
     } deriving(Show)
 
-index :: (MonadMem m) => m Int -> m (Ptr (Array t a)) -> m a
+index :: (MonadPtr m) => m Int -> m (Ptr (Array t a)) -> m a
 index mi c = do
     mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
     maybe (fail "index: out of range") return mb
@@ -168,10 +130,10 @@ data Record a = Record {
     , rtuple :: a
     } deriving(Show)
 
-field :: (MonadMem m) => (x -> y) -> m (Ptr (Record x)) -> m y
+field :: (MonadPtr m) => (x -> y) -> m (Ptr (Record x)) -> m y
 field fsel mr = (fsel . rtuple) <$> (derefM =<< mr)
 
--- | Process State
+-- | State of a VHDL process
 data PS = PS {
       ptime :: Time
     , passignments :: [Assignment]
@@ -218,10 +180,6 @@ data Memory = Memory {
 emptyMem :: Memory
 emptyMem = Memory [] []
 
-instance MonadMem (StateT Memory IO) where
-    get_mem = get
-    put_mem = put
-
 -- | Simulation event
 newtype SimStep = SimStep [Ptr Process]
     deriving(Show)
@@ -244,17 +202,14 @@ type VState = (Memory, [Int])
 -- | Main simulation monad. Supports breakpoints and IO. [Int] is a list of
 -- active breakpoint identifiers
 newtype VSim a = VSim { unVSim :: BP Pause (StateT VState IO) a }
-    deriving(Monad, MonadIO, Functor, Applicative)
+    deriving(Monad, MonadIO, Functor, Applicative, MonadBP Pause, 
+        MonadState VState, MonadPtr)
 
-class (Applicative m, MonadMem m, MonadBP Pause m) => MonadSim m
-
-instance MonadBP Pause VSim where
-    pause = VSim . pause
-    halt = VSim . halt
+class (MonadPtr m, MonadBP Pause m) => MonadSim m
 
 instance MonadMem VSim where
-    get_mem = VSim $ lift $ get >>= \ (m,_) -> return m
-    put_mem m = VSim $ lift $ modify (\(_,b) -> (m,b))
+    get_mem = get >>= \ (m,_) -> return m
+    put_mem m = modify (\(_,b) -> (m,b))
 
 instance MonadSim VSim
 
@@ -271,9 +226,9 @@ data ProcPause = PP [Ptr Signal] (Maybe NextTime)
 
 -- | Monad for process execution.
 newtype VProc a = VProc { unProc :: BP (ProcPause,PS) (StateT PS VSim) a }
-    deriving (Monad, MonadIO, Functor, Applicative)
+    deriving (Monad, MonadIO, MonadPtr, Functor, Applicative, MonadState PS)
 
-class (MonadMem m, MonadState PS m) => MonadProc m
+class (MonadPtr m, MonadState PS m) => MonadProc m
 
 instance MonadProc VProc
 
@@ -285,17 +240,13 @@ instance MonadBP Pause VProc where
     pause = VProc . lift . lift . pause
     halt =  VProc . lift . lift . halt
 
-instance MonadState PS VProc where
-    get = VProc $ lift $ get
-    put = VProc . lift . put
-
-instance MonadMem VProc where
-    get_mem = VProc $ lift $ lift $ get_mem
-    put_mem = VProc . lift . lift . put_mem
-
 instance MonadWait VProc where
     wait_until nt = get >>= \s -> VProc (pause (PP [] (Just nt),s))
     wait_on ss = get >>= \s -> VProc (pause (PP ss Nothing,s))
+
+instance MonadMem VProc where
+    get_mem = undefined
+    put_mem = undefined
 
 runVProc :: VProc () -> PS -> VSim ((ProcPause,PS),VProc ())
 runVProc (VProc r) s = do
@@ -321,10 +272,14 @@ breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
 
 class (MonadMem m) => MonadElab m
 
-newtype Elab a = Elab { unElab :: (StateT Memory IO) a }
-    deriving(Monad, MonadMem, Applicative, Functor, MonadIO)
+newtype Elab m a = Elab { unElab :: (StateT Memory m) a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr)
 
-instance MonadElab Elab
+instance (MonadPtr m) => MonadMem (Elab m) where
+    get_mem = Elab $ get
+    put_mem = Elab . put
+
+instance (MonadPtr m) => MonadElab (Elab m)
 
 runElab e = runStateT (unElab e) emptyMem
 
@@ -340,8 +295,8 @@ class (MonadProc m, MonadReader NextTime m) => MonadAssign m
 
 -- | Monad for conducting assignments from within process body
 newtype VAssign a = VAssign { unAssign :: ReaderT NextTime VProc a }
-    deriving(MonadMem, Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
-        MonadState PS)
+    deriving(Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
+        MonadState PS, MonadPtr, MonadMem)
 
 instance MonadProc VAssign
 instance MonadAssign VAssign
@@ -349,25 +304,23 @@ instance MonadAssign VAssign
 runVAssign :: NextTime -> VAssign a -> VProc ()
 runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 
--- | States that a value can be assigned to a container in a specific monad.
--- For example, Ints could be assigned to Signals, x can be assigned to the
--- arrays of x
-class (Monad m) => Assignable m c v where
-    assign :: m v -> m c -> m c
-
-type Assigner m c = m c -> m c
-
-aggregate :: (MonadMem m) => [a -> m a] -> m a -> m a
+aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
 aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
 
-setfld :: (MonadMem m) => (z -> x) -> Assigner m x -> Ptr (Record z) -> m (Ptr (Record z))
+setfld :: (MonadPtr m) => (z -> x) -> Assigner m x -> Ptr (Record z) -> m (Ptr (Record z))
 setfld fs f r = f (field fs (pure r)) >> return r
 
-setidx :: (MonadMem m) => m Int -> Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
+setidx :: (MonadPtr m) => m Int -> Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
 setidx mi f r = f (index mi (pure r)) >> return r
 
-all :: (MonadMem m) => Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
+all :: (MonadPtr m) => Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
 all f r = do
     mapM_ (\(k,r) -> f (pure r)) =<< (IntMap.toList <$> (csignals <$> derefM r))
     return r
+
+type FElab = Elab VProc (VProc ())
+data Function = Function {
+      fname :: String
+    , felab :: FElab
+    }
 

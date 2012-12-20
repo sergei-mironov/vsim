@@ -3,7 +3,7 @@ module Main where
 
 import VSim.Runtime
 
-elab :: Elab ()
+elab :: Elab IO ()
 elab = do
     integer <- alloc_unranged_type
 

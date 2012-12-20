@@ -7,7 +7,6 @@ module VSim.Runtime.Waveform (
     , valueAt
     , valueAt1
     , concatAt
-    , printWaveform
     , nullPW
     , unPW
     ) where
@@ -116,12 +115,6 @@ future t (Waveform []) = []
 future t (Waveform (c@(Change t' v'):cs))
     | t' <= t = future t (Waveform cs)
     | t' > t = c:(future t (Waveform cs))
-
-printWaveform :: Waveform -> String
-printWaveform (Waveform cs) = concat $ map pc cs where
-    pc (Change t c)
-        | t < maxBound = printf "< %d until %d >" c ((watch t) - 1)
-        | otherwise = printf "< %d until inf >" c
 
 -- | forall t . t >  psince => (valueAt t PW) == (valueAt t pwave)
 --              t <= psince => (valueAt t PW) == undefined

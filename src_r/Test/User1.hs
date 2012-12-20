@@ -3,7 +3,7 @@ module Main where
 
 import VSim.Runtime
 
-elab :: Elab ()
+elab :: Elab IO ()
 elab = do
     t_int <- alloc_unranged_type
     t_0_5 <- alloc_ranged_type (int 0) (int 5)

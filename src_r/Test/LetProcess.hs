@@ -2,7 +2,7 @@ module Main where
 
 import VSim.Runtime
 
-elab :: Elab ()
+elab :: Elab IO ()
 elab = do
     t_int <- alloc_unranged_type
     clk <- alloc_signal "clk" t_int (assign (int 0))
