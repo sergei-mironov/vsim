@@ -9,6 +9,7 @@ elab = do
     t_0_5 <- alloc_ranged_type (int 0) (int 5)
 
     s1 <- alloc_signal "s1" t_int (assign (int 0))
+    s2 <- alloc_signal "s2" t_int (assign (pure s1))
     clk <- alloc_signal "clk" t_int (assign (int 0))
     v <- alloc_variable "v" t_0_5 (assign (int 0))
 

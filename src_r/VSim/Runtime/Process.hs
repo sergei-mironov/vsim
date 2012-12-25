@@ -22,18 +22,6 @@ import VSim.Runtime.Time
 import VSim.Runtime.Waveform
 import VSim.Runtime.Ptr
 
-class (Monad m) => Valueable m x where
-    val :: x -> m Int
-
-instance (Monad m) => Valueable m Int where
-    val r = return r
-
-instance (MonadMem m) => Valueable m (Ptr Variable) where
-    val r = vval `liftM` derefM r
-
-instance (MonadProc m) => Valueable m (Ptr Signal) where
-    val r = valueAt1 <$> now <*> (swave `liftM` derefM r)
-
 class (Monad m) => Appendable m x where
     (.++.) :: m x -> m x -> m x
 
@@ -61,28 +49,42 @@ next = fs 1
 wait :: (MonadWait m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
-instance (Valueable VAssign v) => Assignable VAssign (Ptr Signal) v where
+instance (Valueable VAssign v) => Assignable VAssign (PrimitiveT,Ptr Signal) v where
     assign mv mr = do
         a <- Assignment <$> mr <*> (PW <$> ask <*> (wconst <$> (val =<< mv)))
         modify (add_assignment a)
         return (acurr a)
 
-instance (Valueable VAssign v) => Assignable VAssign (Ptr Variable) v where
-    assign mv mr = mr >>= \r -> (mv >>= val) >>= \v -> updateM (chvar v) r >> return r where
-        chvar v var = var { vval = v }
+instance (Valueable VAssign v)
+    => Assignable VAssign (PrimitiveT, Ptr Variable) v where
+    assign mv mr = do
+        v <- (mv >>= val)
+        (t,r) <- mr
+        when (not $ within (t,v)) $ do
+            fail ("assign: constraint failure")
+        updateM (\var -> var { vval = v }) r
+        return (t,r)
 
 -- FIXME: define the undefined
-instance (Valueable VAssign x) => Assignable VAssign (Ptr (Array t x)) (Ptr (Array t x)) where
+instance (Valueable VAssign x)
+    => Assignable VAssign (Array t x) (Array t x) where
+    assign mv mr = undefined
+
+-- FIXME: define the undefined
+instance (Valueable VAssign x)
+    => Assignable VAssign (Record t x) (Record t x) where
     assign mv mr = undefined
 
 (.<=.) :: VProc x -> (VProc NextTime, Assigner VAssign x) -> VProc ()
 (.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
 
 -- | Assigns new value to the variable
-(.=.) :: (MonadProc m) => m (Ptr Variable) -> m Int -> m ()
-(.=.) mv ma = do
-    v' <- ma
-    updateM (\(Variable n v c) -> Variable n v' c) =<< mv
+-- FIXME: constraints???
+-- (.=.) :: (MonadProc m) => m (PrimitiveT, Ptr Variable) -> m Int -> m ()
+-- (.=.) mv ma = do
+--     v' <- ma
+--     (_, v) <- mv
+--     updateM (\(Variable n v) -> Variable n v') v
 
 add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 add ma mb = (+) <$> (val =<< ma) <*> (val =<< mb)
@@ -128,4 +130,9 @@ instance (MonadProc m) => Imageable m (Ptr Variable) PrimitiveT where
 
 instance (MonadProc m) => Imageable m Int PrimitiveT where
     t_image mr _ = show <$> mr
+
+call :: Elab VProc (VProc ()) -> VProc ()
+call mfn = do
+    (h,m) <- runElab mfn
+    h
 

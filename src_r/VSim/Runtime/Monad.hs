@@ -52,18 +52,17 @@ data PrimitiveT = PrimitiveT {
 ranged a b = PrimitiveT a b
 unranged = PrimitiveT minBound maxBound
 
-instance Constrained (Int, PrimitiveT) where
-    within (v,(PrimitiveT l u)) = v >= l && v <= u
+instance Constrained (PrimitiveT, Int) where
+    within ((PrimitiveT l u), v) = v >= l && v <= u
 
 -- | VHDL variable
 data Variable = Variable {
       vname :: String
     , vval :: Int
-    , vconstr :: PrimitiveT
     } deriving(Show)
 
-instance Constrained Variable where
-    within v = within (vval v, vconstr v)
+instance Constrained (PrimitiveT, Variable) where
+    within (c,v) = within (c, vval v)
 
 instance (MonadPtr m) => Cloneable m (Ptr a) where
     clone r = derefM r >>= allocM 
@@ -73,20 +72,19 @@ data Signal = Signal {
       sname :: String
     , swave :: Waveform
     , oldvalue :: Int
-    , sconstr :: PrimitiveT
     , sproc :: [Ptr Process]
     } deriving(Show)
 
-instance Constrained Signal where
-    within s = and $ map f $ wchanges $ swave s where
-        f (Change _ v) = within (v, sconstr s)
+instance Constrained (PrimitiveT, Signal) where
+    within (c,s) = and $ map f $ wchanges $ swave s where
+        f (Change _ v) = within (c,v)
 
 sigassign1 :: (MonadSim m) => Assignment -> m (Either String ())
-sigassign1 (Assignment r pw) = do
+sigassign1 (Assignment (c,r) pw) = do
     s <- derefM r
     let w' = unPW (swave s) pw
     let s' = s { swave = w' }
-    case (within s') of
+    case (within (c,s')) of
         False -> return (Left (sname s))
         True -> writeM r s' >> return (Right ())
 
@@ -103,35 +101,37 @@ data ArrayT t = ArrayT {
     , aend :: Int
     } deriving(Show)
 
--- VHDL arrays
-data Array t a = Array {
+-- VHDL arrays runtime part
+data ArrayR a = ArrayR {
       cname :: String
     , csignals :: IntMap.IntMap a
-    , cconstr :: ArrayT t
     } deriving(Show)
 
-index :: (MonadPtr m) => m Int -> m (Ptr (Array t a)) -> m a
-index mi c = do
-    mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM =<< c))
-    maybe (fail "index: out of range") return mb
+-- | VHDL array entity
+type Array t e = (ArrayT t, Ptr (ArrayR e))
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
-      acurr :: Ptr Signal
+      acurr :: (PrimitiveT, Ptr Signal)
     , anext :: ProjectedWaveform
     } deriving(Show)
 
 add_assignment :: Assignment -> PS -> PS
 add_assignment a ps = ps { passignments = a:(passignments ps) }
 
+-- | VHDL record type
+newtype RecordT x = RecordT x
+    deriving(Show)
+
 -- | VHDL records
-data Record a = Record {
+data RecordR a = RecordR {
       rname :: String
     , rtuple :: a
     } deriving(Show)
 
-field :: (MonadPtr m) => (x -> y) -> m (Ptr (Record x)) -> m y
-field fsel mr = (fsel . rtuple) <$> (derefM =<< mr)
+type Accessor r f = (r -> f)
+
+type Record t x = (RecordT t, Ptr (RecordR x))
 
 -- | State of a VHDL process
 data PS = PS {
@@ -307,13 +307,7 @@ runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
 aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
 
-setfld :: (MonadPtr m) => (z -> x) -> Assigner m x -> Ptr (Record z) -> m (Ptr (Record z))
-setfld fs f r = f (field fs (pure r)) >> return r
-
-setidx :: (MonadPtr m) => m Int -> Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
-setidx mi f r = f (index mi (pure r)) >> return r
-
-all :: (MonadPtr m) => Assigner m x -> Ptr (Array t x) -> m (Ptr (Array t x))
+all :: (MonadPtr m) => Assigner m x -> Ptr (ArrayR x) -> m (Ptr (ArrayR x))
 all f r = do
     mapM_ (\(k,r) -> f (pure r)) =<< (IntMap.toList <$> (csignals <$> derefM r))
     return r
@@ -323,4 +317,9 @@ data Function = Function {
       fname :: String
     , felab :: FElab
     }
+
+-- instance Signalable (Ptr Signal)
+-- instance Signalable x => Signalable (Ptr (ArrayR x))
+-- signal :: (Monad m, Signalable x) => x -> m x
+-- signal = return
 

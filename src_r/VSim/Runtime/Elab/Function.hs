@@ -42,7 +42,7 @@ instance (MonadProc m, Arglike m x, Arglike m y) => Arglike m (x :-: y) where
 
 -- fn (In x :-: Out y :-: In z) = return (x + y + z)
 
-call :: (MonadProc m, Arglike m x) => UA m x -> (x -> m r) -> m r
-call x f = arg f x
+-- call :: (MonadProc m, Arglike m x) => UA m x -> (x -> m r) -> m r
+-- call x f = arg f x
 
 

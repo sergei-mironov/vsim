@@ -13,6 +13,7 @@ module VSim.Runtime.Elab (
     , alloc_process
     , alloc_process_let
     , alloc_function
+    , associate
     ) where
 
 import Control.Monad.Trans
@@ -36,35 +37,53 @@ import VSim.Runtime.Elab.Function
 
 -- | Registers process in the memory. Updates list of signal's reactions
 alloc_process :: (MonadElab m)
-    => String -> [Ptr Signal] -> ProcessHandler -> m (Ptr Process)
+    => String -> [(t, Ptr Signal)] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
     let encycle [] = forever h
-        encycle xs = forever (h >> wait_on xs)
+        encycle xs = forever (h >> wait_on (Prelude.map snd xs))
     p <- allocM (Process n (encycle ss) Nothing [])
     modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
 
 alloc_process_let :: (MonadElab m)
-    => String -> [Ptr Signal] -> m ProcessHandler -> m (Ptr Process)
+    => String -> [(t, Ptr Signal)] -> m ProcessHandler -> m (Ptr Process)
 alloc_process_let n ss lh = lh >>= alloc_process n ss
 
 alloc_constant :: (MonadElab m) => String -> m Int -> m Int
 alloc_constant _ v = v
 
-instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) (Ptr Signal) v where
+instance (MonadPtr m, Valueable (Elab m) v)
+    => Assignable (Elab m) (PrimitiveT, Ptr Signal) v where
     assign mv mr = do
         v <- (mv >>= val)
-        r <- mr
+        (t,r) <- mr
+        when (not $ within (t,v)) $ do
+            fail ("assign: constraint failure")
         updateM (\s -> s{ swave = wconst v }) r
-        return r 
+        return (t,r) 
 
-instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) (Ptr Variable) v where
+instance (MonadPtr m, Valueable (Elab m) v)
+    => Assignable (Elab m) (PrimitiveT, Ptr Variable) v where
     assign mv mr = do
         v <- (mv >>= val)
-        r <- mr
+        (t,r) <- mr
+        when (not $ within (t,v)) $ do
+            fail ("assign: constraint failure")
         updateM (\var -> var{ vval = v }) r
-        return r 
+        return (t,r) 
 
-alloc_function :: (MonadPtr m) => String -> FElab -> m Function
+instance (MonadPtr m)
+    => Assignable (Elab m) (Array t x) (Array t x) where
+    assign = undefined
+
+instance (MonadPtr m)
+    => Assignable (Elab m) (Record t x) (Record t x) where
+    assign = undefined
+
+alloc_function :: (MonadElab m) => String -> FElab -> m Function
 alloc_function n h = Function <$> (pure n) <*> (pure h)
+
+-- FIXME: check types, throw errors if they are not compatible
+associate :: (MonadElab m) => t -> m (t,x) -> m (t,x)
+associate t' mx = mx >>= \(t,x) -> return (t',x)
 

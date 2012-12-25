@@ -15,39 +15,38 @@ import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Prim
 
-
 -- | ArrayT of IntType generates Arrays of this type
-instance (MonadElab m) => Createable m (ArrayT PrimitiveT) where
-    type SR (ArrayT PrimitiveT) = Ptr (Array PrimitiveT (Ptr Signal))
-    type VR (ArrayT PrimitiveT) = Ptr (Array PrimitiveT (Ptr Variable))
-    alloc_signal = alloc_array_signal
-    alloc_variable = alloc_array_variable
+instance (MonadElab m, Createable m x) => Createable m (ArrayT x) where
+    type SR (ArrayT x) = Ptr (ArrayR (SR x))
+    type VR (ArrayT x) = Ptr (ArrayR (VR x))
 
--- | ArrayT of ArrayT generates Array of Arrays
-instance (MonadElab m, Createable m (ArrayT t)) => Createable m (ArrayT (ArrayT t)) where
-    type SR (ArrayT (ArrayT t)) = Ptr (Array (ArrayT t) (SR (ArrayT t)))
-    type VR (ArrayT (ArrayT t)) = Ptr (Array (ArrayT t) (VR (ArrayT t)))
-    alloc_signal = alloc_array_signal
-    alloc_variable = alloc_array_variable
+    alloc_signal n t f = do
+        let indexes = [(abegin t) .. (aend t)]
+        pairs <- forM indexes (\i -> do
+            let sn = n ++ (printf "[%d]" i)
+            (_,r) <- alloc_signal sn (aconstr t) id
+            return (i,r))
+        f $ pairM (pure t) (allocM (ArrayR n (IntMap.fromList pairs)))
+
+    alloc_variable n t f = do
+        let indexes = [(abegin t) .. (aend t)]
+        pairs <- forM indexes (\i -> do
+            let sn = n ++ (printf "[%d]" i)
+            (_,r) <- alloc_variable sn (aconstr t) id
+            return (i,r))
+        f $ pairM (pure t) (allocM (ArrayR n (IntMap.fromList pairs)))
 
 alloc_array_type :: (MonadElab m) => m Int -> m Int -> t -> m (ArrayT t)
 alloc_array_type mb me t = ArrayT <$> (pure t) <*> mb <*> me
 
--- | Allocates array of signals from the memory
-alloc_array_signal n a f = do
-    let indexes = [(abegin a) .. (aend a)]
-    pairs <- forM indexes (\i -> do
-        let sn = n ++ (printf "[%d]" i)
-        s <- alloc_signal sn (aconstr a) id
-        return (i,s))
-    f $ allocM (Array n (IntMap.fromList pairs) a)
+index :: (MonadPtr m) => m Int -> m (Array t a) -> m (t,a)
+index mi mc = do
+    (ta, ra) <- mc
+    mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM ra))
+    case mb of
+        Nothing -> fail "index: out of range"
+        (Just x) -> return (aconstr ta, x)
 
--- | Allocates array of variables
-alloc_array_variable n a f = do
-    let indexes = [(abegin a) .. (aend a)]
-    pairs <- forM indexes (\i -> do
-        let sn = n ++ (printf "[%d]" i)
-        s <- alloc_variable sn (aconstr a) id
-        return (i,s))
-    f $ allocM (Array n (IntMap.fromList pairs) a)
+setidx :: (MonadPtr m) => m Int -> Assigner m (t,x) -> (Array t x) -> m (Array t x)
+setidx mi f r = f (index mi (pure r)) >> return r
 
