@@ -132,7 +132,5 @@ instance (MonadProc m) => Imageable m Int PrimitiveT where
     t_image mr _ = show <$> mr
 
 call :: Elab VProc (VProc ()) -> VProc ()
-call mfn = do
-    (h,m) <- runElab mfn
-    h
+call mfn = runElab mfn >>= fst
 

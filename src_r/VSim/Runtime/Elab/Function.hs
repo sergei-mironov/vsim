@@ -17,6 +17,7 @@ import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Prim
 
+{-
 data In x = In x
 data Out x = Out x
 data InOut x = InOut x
@@ -39,10 +40,10 @@ instance (MonadProc m, Arglike m x, Arglike m y) => Arglike m (x :-: y) where
         fx ax = arg fy y where
             fy ay = f (ax :-: ay)
 
+-}
 
--- fn (In x :-: Out y :-: In z) = return (x + y + z)
-
--- call :: (MonadProc m, Arglike m x) => UA m x -> (x -> m r) -> m r
--- call x f = arg f x
+(<<) :: Monad m => (a -> m b) -> m a -> m b
+(<<) = (=<<)
+infixl 1 <<
 
 
