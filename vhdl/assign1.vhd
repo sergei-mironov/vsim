@@ -4,11 +4,13 @@ end entity ENT00001_Test_Bench;
 architecture arch of ENT00001_Test_Bench is
 	constant CYCLES : integer := 1000;
 	signal clk : integer := 0;
+    signal s : integer;
 begin
     main: process(clk)
-		variable a : bit;
+		variable a : integer;
 	begin
-		a := '1';
+		a := 1;
+        s <= 1;
     end process;
 
 	terminator : process(clk)

@@ -47,7 +47,20 @@ instance (MonadPtr m) => Valueable m (t, Ptr Variable) where
 instance Valueable VAssign (t, Ptr Signal) where
     val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
 
+instance Valueable VProc (t, Ptr Signal) where
+    val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
+
 -- FIXME: I am not sure that it is ok to ask minBound in Elab monad
 instance (MonadPtr m) => Valueable (Elab m) (t, Ptr Signal) where
     val (_,r) = valueAt <$> (pure minBound) <*> (swave <$> derefM r)
+
+
+instance (MonadProc m) => Imageable m (PrimitiveT, Ptr Signal) PrimitiveT where
+    t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< (snd <$> mr))))
+
+instance (MonadProc m) => Imageable m (PrimitiveT, Ptr Variable) PrimitiveT where
+    t_image mr _ = show <$> (vval <$> (derefM =<< (snd <$> mr)))
+
+instance (MonadProc m) => Imageable m Int PrimitiveT where
+    t_image mr _ = show <$> mr
 

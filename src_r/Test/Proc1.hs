@@ -4,11 +4,6 @@ import VSim.Runtime
 import VSim.Runtime.Ptr
 import Control.Monad.Trans
 
--- add2 (In x :-: In y) = ((pure x) .+. (pure y))
-
--- fix :: Elab VProc ()
--- fix = return ()
-
 elab :: Elab IO ()
 elab = do
     t_int <- alloc_unranged_type

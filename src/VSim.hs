@@ -123,7 +123,10 @@ gen_name f (IRName n _) = gen_name' n where
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
       HsTypeSig noLoc [HsIdent "elab"] (HsQualType [] (
-        HsTyApp (HsTyCon $ UnQual $ HsIdent "Elab") (HsTyCon $ Special $ HsUnitCon)))
+        HsTyApp (HsTyApp (HsTyCon $ UnQual $ HsIdent "Elab")
+            (HsTyCon $ UnQual $ HsIdent "IO"))
+                (HsTyCon $ Special $ HsUnitCon)))
+
     , HsFunBind [HsMatch noLoc (HsIdent "elab") [] (HsUnGuardedRhs body) []]
     ] where
 
@@ -186,15 +189,13 @@ gen_elab ts = [
     gen_alloc_variable (IRVariable p t (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_variable" [
               gen_str $ unHierPath p
-            , gen_elab_expr e
             , gen_type_ident t
+            , gen_assign_or_aggregate gen_elab_expr e
             ]
         ]
     gen_alloc_variable (IRVariable p t (IOENothing _)) = [
           gen_function (unHierPath p) "alloc_variable" [
-              gen_str $ unHierPath p
-            , gen_int (0 :: Int)
-            , gen_type_ident t
+              gen_str $ unHierPath p, gen_type_ident t, gen_ident "id"
             ]
         ]
 
@@ -220,9 +221,9 @@ gen_elab ts = [
 
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
         gen_stmt (ISAssign _ n _ e) = [
-              gen_function [] "vassign" [
+              gen_function [] "(.:=.)" [
                   gen_name gen_expr n
-                , gen_expr e
+                , gen_assign_or_aggregate gen_expr e
                 ]
             ]
         gen_stmt (ISSignalAssign _ n _ []) = error "gen_stmt: no afters"

@@ -55,15 +55,15 @@ instance (Valueable VAssign v) => Assignable VAssign (PrimitiveT,Ptr Signal) v w
         modify (add_assignment a)
         return (acurr a)
 
-instance (Valueable VAssign v)
-    => Assignable VAssign (PrimitiveT, Ptr Variable) v where
-    assign mv mr = do
-        v <- (mv >>= val)
-        (t,r) <- mr
-        when (not $ within (t,v)) $ do
-            fail ("assign: constraint failure")
-        updateM (\var -> var { vval = v }) r
-        return (t,r)
+-- instance (Valueable m v)
+--     => Assignable VProc (PrimitiveT, Ptr Variable) v where
+--     assign mv mr = do
+--         v <- (mv >>= val)
+--         (t,r) <- mr
+--         when (not $ within (t,v)) $ do
+--             fail ("assign: constraint failure")
+--         updateM (\var -> var { vval = v }) r
+--         return (t,r)
 
 -- FIXME: define the undefined
 instance (Valueable VAssign x)
@@ -78,13 +78,10 @@ instance (Valueable VAssign x)
 (.<=.) :: VProc x -> (VProc NextTime, Assigner VAssign x) -> VProc ()
 (.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
 
--- | Assigns new value to the variable
--- FIXME: constraints???
--- (.=.) :: (MonadProc m) => m (PrimitiveT, Ptr Variable) -> m Int -> m ()
--- (.=.) mv ma = do
---     v' <- ma
---     (_, v) <- mv
---     updateM (\(Variable n v) -> Variable n v') v
+type Var = (PrimitiveT, Ptr Variable)
+
+(.:=.) :: VProc Var -> (Assigner VProc Var) -> VProc ()
+(.:=.) mr ma = ma mr >> return ()
 
 add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 add ma mb = (+) <$> (val =<< ma) <*> (val =<< mb)
@@ -121,15 +118,6 @@ for (ma,dir,mb) body = do
     let indexes To = [a..b]
         indexes Downto = [b..a]
     forM_ (indexes dir) body
-
-instance (MonadProc m) => Imageable m (Ptr Signal) PrimitiveT where
-    t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< mr)))
-
-instance (MonadProc m) => Imageable m (Ptr Variable) PrimitiveT where
-    t_image mr _ = show <$> (vval <$> (derefM =<< mr))
-
-instance (MonadProc m) => Imageable m Int PrimitiveT where
-    t_image mr _ = show <$> mr
 
 call :: Elab VProc (VProc ()) -> VProc ()
 call mfn = runElab mfn >>= fst
