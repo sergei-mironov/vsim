@@ -1,7 +1,5 @@
 #!/bin/sh
 
-EIDE=$HOME/proj/eide20
-
 die() {
 	local p=$1 ; shift ;
 	echo "$@" >&2 ; exit 1 ;
@@ -43,8 +41,8 @@ vircheck() {
 	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck | vimless_ -c "set ft=haskell"
 }
 
-vsim() {
-  runtr "$@" | xargs_ dist/build/VSim/VSim
+runsim() {
+  runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
 }
 
 viewtr() {
