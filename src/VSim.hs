@@ -44,6 +44,9 @@ gen_ident x = HsVar $ UnQual $ mkName x
 gen_pat :: (AsIdent x) => x -> HsPat
 gen_pat x = HsPVar $ mkName x
 
+mangle' :: (AsIdent x) => x -> String
+mangle' x = let HsIdent i = mkName x in (i++"'")
+
 gen_type_ident :: IRTypeDescr -> HsExp
 gen_type_ident (ITDName p) = gen_ident p
 gen_type_ident t = perror "%s\ngen_type_ident: name types with single idents, please" (show t)
@@ -124,6 +127,13 @@ gen_name f (IRName n _) = gen_name' n where
     gen_name' (INIdent p) = gen_appl "pure" [gen_ident p]
     gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [gen_name' p, f e]
 
+build_alloc_variable p t x =
+    gen_function p "alloc_variable" [
+          gen_str p
+        , gen_type_ident t
+        , x
+        ]
+
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
       HsTypeSig noLoc [HsIdent "elab"] (HsQualType [] (
@@ -196,18 +206,10 @@ gen_elab ts = [
             ]
         ]
 
-    gen_alloc_variable (IRVariable p t (IOEJustExpr _ e)) = [
-          gen_function (unHierPath p) "alloc_variable" [
-              gen_str $ unHierPath p
-            , gen_type_ident t
-            , gen_assign_or_aggregate gen_elab_expr e
-            ]
-        ]
-    gen_alloc_variable (IRVariable p t (IOENothing _)) = [
-          gen_function (unHierPath p) "alloc_variable" [
-              gen_str $ unHierPath p, gen_type_ident t, gen_ident "id"
-            ]
-        ]
+    gen_alloc_variable (IRVariable p t (IOEJustExpr _ e)) =
+        [ build_alloc_variable (unHierPath p) t (gen_assign_or_aggregate gen_elab_expr e) ]
+    gen_alloc_variable (IRVariable p t (IOENothing _)) =
+        [ build_alloc_variable (unHierPath p) t (gen_ident "id") ]
 
     gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
     gen_elab_expr (IEName loc n) = gen_name gen_elab_expr n
@@ -217,7 +219,7 @@ gen_elab ts = [
           gen_function (unHierPath p) "alloc_process_let" [
               gen_str $ unHierPath p
             , gen_list $ map scan_sens ns
-            , gen_lets lets (gen_process s)
+            , gen_lets lets (gen_seq s)
             ]
         ]
         where
@@ -231,21 +233,24 @@ gen_elab ts = [
         HsLetStmt [HsFunBind [HsMatch noLoc n pats body []]] where
             body = HsUnGuardedRhs $ stmts
 
-    gen_let ls ss = HsParen $ HsDo $
-            (concat $ map map_let ls) ++ [gen_return (gen_process ss)] where
-        map_let (ILDConstant c) = gen_alloc_constant c
-        map_let (ILDVariable v) = gen_alloc_variable v
-        map_let e = perror "%s\ngen_let: only variables or constants, please" (show e)
-        
     gen_alloc_procedure (IRProcedure p as (ISLet ldecls stmts)) = [
-          gen_let_func (mkName $ unHierPath p) (args' as) (gen_let ldecls stmts)
-        ]
-        where
-            args' [] = []
-            args' (IRArg n _ _ AMInout:as) = (gen_pat n : args' as)
-            args' a = perror "%s\ngen_alloc_procedure: inout arguments only, please" (show a)
+          gen_let_func (mkName $ unHierPath p) (map arg' as) (gen_let ldecls stmts) ] where
 
-    gen_process ss = HsParen $ HsDo $ gen_stmt ss where
+        arg' (IRArg n _ _ _) = gen_pat (mangle' n)
+
+        gen_arg (IRArg n t _ _) = []
+            -- build_alloc_variable n t (gen_assign_or_aggregate gen_elab_expr )]
+
+        gen_let ls ss = HsParen $ HsDo $
+                (concat $ map gen_arg as) ++
+                (concat $ map map_let ls) ++
+                [gen_return (gen_seq ss)] where
+            map_let (ILDConstant c) = gen_alloc_constant c
+            map_let (ILDVariable v) = gen_alloc_variable v
+            map_let e = perror "%s\ngen_let: only variables or constants, please" (show e)
+        
+
+    gen_seq ss = HsParen $ HsDo $ gen_stmt ss where
 
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
         gen_stmt (ISAssign _ n _ e) = [
