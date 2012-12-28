@@ -34,19 +34,21 @@ stime() {
 }
 
 vimless_() {
-	vim -R "$@" -
+	vim -R -
 }
 
 vircheck() {
-	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck | vimless_ -c "set ft=haskell"
+	f=`mktemp`
+	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck > $f
+	vim -c "set ft=haskell" `ospath $f`
 }
 
 runsim() {
-  runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
+	runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
 }
 
 viewtr() {
-  local f=`runtr "$@"`&& vim $f -c "set ft=lisp"
+	local f=`runtr "$@"`&& vim $f -c "set ft=lisp"
 }
 
 runaldec() { (
