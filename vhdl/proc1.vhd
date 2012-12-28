@@ -3,7 +3,8 @@ end entity test;
 
 architecture test_arch of test is
 	
-	procedure p1(variable f1 : in integer := 0; variable f2 : out integer) is
+	procedure p1(variable f1 : inout integer := 0; variable f2 : inout integer) is
+        variable l1 : integer := 0;
 	begin
 		f2 := f1;
 	end procedure;

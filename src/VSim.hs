@@ -83,6 +83,10 @@ gen_op :: String -> HsExp -> HsExp -> HsExp
 gen_op n e1 e2 = HsParen $ HsInfixApp e1 qn e2 where
     qn = HsQVarOp $ UnQual $ HsSymbol n
 
+gen_op_chain op es = goc $ reverse es where
+    goc (e1:e2:[]) = gen_op op e2 e1
+    goc (e1:es)    = gen_op op (goc es) e1
+
 gen_function :: (AsIdent n) => String -> n -> [HsExp] -> HsStmt
 gen_function [] n [] = HsQualifier (gen_ident n)
 gen_function [] n as = HsQualifier (gen_appl' n (reverse as))
@@ -135,14 +139,20 @@ gen_elab ts = [
     body = HsDo $ concat [
           [gen_function name_of_integer "alloc_unranged_type" []]
         , gen_elab_constants ts
+        , gen_elab_proc ts
         , gen_elab_decls ts
         , [gen_return unit_con]
         ]
 
-    -- move all th constants to the top
+    -- HACK: move all th constants to the top
     gen_elab_constants [] = []
     gen_elab_constants ((IRTConstant c):ts) = (gen_alloc_constant c) ++ (gen_elab_constants ts)
     gen_elab_constants (t:ts) = gen_elab_constants ts
+
+    -- HACK: move all procedures closer to the top
+    gen_elab_proc [] = []
+    gen_elab_proc ((IRTProcedure p):ts) = (gen_alloc_procedure p) ++ (gen_elab_proc ts)
+    gen_elab_proc (t:ts) = gen_elab_proc ts
 
     gen_elab_decls [] = []
     gen_elab_decls ((IRTType t):ts) = (gen_alloc_type t) ++ (gen_elab_decls ts)
@@ -217,11 +227,29 @@ gen_elab ts = [
             gen_lets' (ILDConstant c) = gen_alloc_constant c
             gen_lets' (ILDVariable v) = gen_alloc_variable v
 
+    gen_let_func n pats stmts =
+        HsLetStmt [HsFunBind [HsMatch noLoc n pats body []]] where
+            body = HsUnGuardedRhs $ stmts
+
+    gen_let ls ss = HsParen $ HsDo $
+            (concat $ map map_let ls) ++ [gen_return (gen_process ss)] where
+        map_let (ILDConstant c) = gen_alloc_constant c
+        map_let (ILDVariable v) = gen_alloc_variable v
+        map_let e = perror "%s\ngen_let: only variables or constants, please" (show e)
+        
+    gen_alloc_procedure (IRProcedure p as (ISLet ldecls stmts)) = [
+          gen_let_func (mkName $ unHierPath p) (args' as) (gen_let ldecls stmts)
+        ]
+        where
+            args' [] = []
+            args' (IRArg n _ _ AMInout:as) = (gen_pat n : args' as)
+            args' a = perror "%s\ngen_alloc_procedure: inout arguments only, please" (show a)
+
     gen_process ss = HsParen $ HsDo $ gen_stmt ss where
 
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
         gen_stmt (ISAssign _ n _ e) = [
-              gen_function [] "(.:=.)" [
+              gen_function [] "(.=.)" [
                   gen_name gen_expr n
                 , gen_assign_or_aggregate gen_expr e
                 ]
@@ -249,6 +277,9 @@ gen_elab ts = [
         gen_stmt (ISReport loc e1 e2) = [gen_function [] "report" [gen_expr e1]]
         gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function [] "wait" [gen_expr e]]
         gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
+        gen_stmt (ISProcCall n args loc) = [gen_function [] "call" [
+            gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
+            ]]
         gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
 
         gen_for (IRDRange loc e1 dir e2) ei s = [

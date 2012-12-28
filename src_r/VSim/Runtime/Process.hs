@@ -55,15 +55,14 @@ instance (Valueable VAssign v) => Assignable VAssign (PrimitiveT,Ptr Signal) v w
         modify (add_assignment a)
         return (acurr a)
 
--- instance (Valueable m v)
---     => Assignable VProc (PrimitiveT, Ptr Variable) v where
---     assign mv mr = do
---         v <- (mv >>= val)
---         (t,r) <- mr
---         when (not $ within (t,v)) $ do
---             fail ("assign: constraint failure")
---         updateM (\var -> var { vval = v }) r
---         return (t,r)
+instance (Valueable VProc v) => Assignable VProc (PrimitiveT, Ptr Variable) v where
+    assign mv mr = do
+        v <- (mv >>= val)
+        (t,r) <- mr
+        when (not $ within (t,v)) $ do
+            fail ("assign: constraint failure")
+        updateM (\var -> var{ vval = v }) r
+        return (t,r) 
 
 -- FIXME: define the undefined
 instance (Valueable VAssign x)
@@ -80,8 +79,8 @@ instance (Valueable VAssign x)
 
 type Var = (PrimitiveT, Ptr Variable)
 
-(.:=.) :: VProc Var -> (Assigner VProc Var) -> VProc ()
-(.:=.) mr ma = ma mr >> return ()
+(.=.) :: VProc Var -> (Assigner VProc Var) -> VProc ()
+(.=.) mr ma = ma mr >> return ()
 
 add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 add ma mb = (+) <$> (val =<< ma) <*> (val =<< mb)

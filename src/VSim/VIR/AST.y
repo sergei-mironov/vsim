@@ -410,7 +410,7 @@ statement :: { IRStat }
 statement_no_let :: { IRStat }
     : '(' loc return ')' { ISReturn $2 }
     | '(' loc return expr ')' { ISReturnExpr $2 $4 }
-    | '(' withloc_hier_name exprs loc ')' { ISProcCall $2 $3 $4 }
+    | '(' withloc_hier_name_wpath exprs loc ')' { ISProcCall $2 $3 $4 }
     | '(' loc if expr '(' statements ')' '(' statements ')' ')'
       { ISIf $2 $4 $6 $9 }
     | '(' loc ":=" assignment_name loc expr ')' { ISAssign $2 $4 $5 $6 }

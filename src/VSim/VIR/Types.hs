@@ -223,7 +223,7 @@ type LoopLabel = Ident
 data IRStat
     = ISReturn Loc
     | ISReturnExpr Loc IRExpr
-    | ISProcCall (WithLoc Ident) IREGList Loc
+    | ISProcCall WLHierNameWPath IREGList Loc
     | ISIf Loc IRExpr IRStat IRStat
     | ISLet [IRLetDecl] IRStat
     | ISAssign Loc IRName Loc IRExpr
