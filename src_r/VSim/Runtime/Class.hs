@@ -26,6 +26,12 @@ constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
 pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
 pairM mt my = (\t y -> (t,y)) <$> mt <*> my
 
+class Subtypeable m t where
+    -- | Subtype Modifier
+    type SM t :: *
+    -- | Allocate a subtype for a type t
+    alloc_subtype :: m (SM t) -> t -> m t
+
 -- | States that a value can be assigned to a container in a specific monad.
 -- For etample, Ints could be assigned to Signals, x can be assigned to the
 -- arrays of x

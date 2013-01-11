@@ -7,14 +7,18 @@ elab :: Elab IO ()
 elab = do
     integer <- alloc_unranged_type
 
-    array <- alloc_array_type (pure 1) (pure 5) integer
+    array <- alloc_array_type (alloc_range (pure 0) (pure 5)) integer
 
     clk <- alloc_signal "clk" integer (assign (int 0))
 
-    a1 <- alloc_signal "a1" array (aggregate [setidx (pure 1) (assign (int 1))])
+    a1 <- alloc_signal "a1" array (aggregate [
+          setall (assign (int 0))
+        , setidx (pure 1) (assign (int 1))
+        , setidx (pure 2) (assign (int 2))
+        ])
     a2 <- alloc_signal "a2" array id
 
-    array' <- alloc_array_type (pure 1) (pure 5) array
+    array' <- alloc_array_type (alloc_range (pure 1) (pure 5)) array
     aa1 <- alloc_signal "aa1" array' id
 
     proc1 <- alloc_process "main" [] $ do

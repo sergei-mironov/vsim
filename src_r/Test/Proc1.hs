@@ -9,7 +9,7 @@ elab = do
     t_int <- alloc_unranged_type
     t_0_5 <- alloc_ranged_type (int 0) (int 5)
 
-    array <- alloc_array_type (pure 1) (pure 5) t_int
+    array <- alloc_array_type (alloc_range (pure 1) (pure 5)) t_int
 
     aa1 <- alloc_signal "a1" array id
 
@@ -18,7 +18,8 @@ elab = do
     v1 <- alloc_variable "v1" t_int (assign (int 11))
     v2 <- alloc_variable "v2" t_int (assign (int 22))
 
-    v3 <- alloc_variable "v3" t_int (associate t_0_5 . assign (int 22))
+    -- FIXME: why not working?
+    -- v3 <- alloc_variable "v3" t_int (cast t_0_5 . assign (int 22))
 
     let fn2 a1' a2' = do
         l1 <- alloc_variable "l1" t_0_5 (assign (pure a1'))

@@ -20,7 +20,7 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Ptr
 
-data ES = ES [(Ptr Signal, Waveform)] [Ptr Process]
+data ES = ES [(Ptr SigR, Waveform)] [Ptr Process]
     deriving(Show)
 
 instance Monoid ES where
@@ -30,7 +30,7 @@ instance Monoid ES where
 class Eventable x where
     next_event :: (MonadIO m, Applicative m, MonadMem m) => x -> m (NextTime, ES)
 
-instance Eventable (Ptr Signal) where
+instance Eventable (Ptr SigR) where
     next_event r = do
         (t,w) <- event <$> swave <$> derefM r
         let es = ES [(r,w)] []

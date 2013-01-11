@@ -55,27 +55,33 @@ unranged = PrimitiveT minBound maxBound
 instance Constrained (PrimitiveT, Int) where
     within ((PrimitiveT l u), v) = v >= l && v <= u
 
--- | VHDL variable
-data Variable = Variable {
+-- | VHDL variable (runtime representation)
+data VarR = VarR {
       vname :: String
     , vval :: Int
     } deriving(Show)
 
-instance Constrained (PrimitiveT, Variable) where
+instance Constrained (PrimitiveT, VarR) where
     within (c,v) = within (c, vval v)
 
 instance (MonadPtr m) => Cloneable m (Ptr a) where
     clone r = derefM r >>= allocM 
 
+type Variable = (PrimitiveT, Ptr VarR)
+
+-- updateVar :: (Valueable m a) => a -> (PrimitiveT, Ptr VarR) -> m ()
+
 -- | VHDL primitive signal
-data Signal = Signal {
+data SigR = SigR {
       sname :: String
     , swave :: Waveform
     , oldvalue :: Int
     , sproc :: [Ptr Process]
     } deriving(Show)
 
-instance Constrained (PrimitiveT, Signal) where
+type Signal = (PrimitiveT, Ptr SigR)
+
+instance Constrained (PrimitiveT, SigR) where
     within (c,s) = and $ map f $ wchanges $ swave s where
         f (Change _ v) = within (c,v)
 
@@ -88,17 +94,25 @@ sigassign1 (Assignment (c,r) pw) = do
         False -> return (Left (sname s))
         True -> writeM r s' >> return (Right ())
 
-sigassign2 :: (MonadSim m) => Ptr Signal -> Waveform -> m [Ptr Process]
+sigassign2 :: (MonadSim m) => Ptr SigR -> Waveform -> m [Ptr Process]
 sigassign2 r w = do
     s <- derefM r
     writeM r s{swave = w}
     return (sproc s)
 
+-- | VHDL Range type
+data RangeT = RangeT {
+      rbegin :: Int
+    , rend :: Int
+    } | UnconstrT
+    deriving(Show)
+
 -- | VHDL array type
 data ArrayT t = ArrayT {
+      -- | Type of elements
       aconstr :: t
-    , abegin :: Int
-    , aend :: Int
+      -- | The range
+    , arange :: RangeT
     } deriving(Show)
 
 -- VHDL arrays runtime part
@@ -112,7 +126,7 @@ type Array t e = (ArrayT t, Ptr (ArrayR e))
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
-      acurr :: (PrimitiveT, Ptr Signal)
+      acurr :: Signal
     , anext :: ProjectedWaveform
     } deriving(Show)
 
@@ -151,13 +165,13 @@ data Process = Process {
     , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
     , pawake :: Maybe NextTime
-    , psignals :: [Ptr Signal]
+    , psignals :: [Ptr SigR]
     }
 
 instance Show Process where
     show p = printf "Process { pname = \"%s\" }" (pname p)
 
-relink :: (MonadSim m) => Ptr Process -> [Ptr Signal] -> m ()
+relink :: (MonadSim m) => Ptr Process -> [Ptr SigR] -> m ()
 relink r ss = do
     p <- derefM r
     mapM_ (updateM (rmproc r)) (psignals p)
@@ -173,7 +187,7 @@ rewind r h nt = do
     writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
-      msignals :: [Ptr Signal]
+      msignals :: [Ptr SigR]
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
@@ -221,7 +235,7 @@ runVSim sim st = do
         Left (p,bp) -> return (Left (p, m, VSim bp))
         Right a -> return (Right a)
 
-data ProcPause = PP [Ptr Signal] (Maybe NextTime)
+data ProcPause = PP [Ptr SigR] (Maybe NextTime)
     deriving (Show)
 
 -- | Monad for process execution.
@@ -234,7 +248,7 @@ instance MonadProc VProc
 
 class (MonadProc m, MonadBP Pause m) => MonadWait m where
     wait_until :: NextTime -> m ()
-    wait_on :: [Ptr Signal] -> m ()
+    wait_on :: [Ptr SigR] -> m ()
 
 instance MonadBP Pause VProc where
     pause = VProc . lift . lift . pause
@@ -306,11 +320,6 @@ runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 
 aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
 aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
-
-all :: (MonadPtr m) => Assigner m x -> Ptr (ArrayR x) -> m (Ptr (ArrayR x))
-all f r = do
-    mapM_ (\(k,r) -> f (pure r)) =<< (IntMap.toList <$> (csignals <$> derefM r))
-    return r
 
 type FElab = Elab VProc (VProc ())
 data Function = Function {

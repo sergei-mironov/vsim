@@ -1,3 +1,5 @@
+-- Innermost procedure
+
 entity test is
 end entity test;
 
@@ -14,13 +16,14 @@ architecture test_arch of test is
 
 	begin
 		p2(x1);
+        report "a1 = " & integer'image(a1);
 	end procedure p1;
 
 begin
 
 	main: process
 	begin
-		p1(1);
+		p1(33);
 		assert false report "end of simulation" severity failure;
 	end process;
 

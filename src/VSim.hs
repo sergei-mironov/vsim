@@ -72,8 +72,6 @@ unHierPath :: WLHierNameWPath -> String
 unHierPath (WithLoc _ (_,(s:_))) = BS.unpack s
 unHierPath p = error "unHierPath: unsupported " ++ (show p)
 
-gen_return x = gen_function [] "return" [x]
-
 gen_appl' :: (AsIdent n) => n -> [HsExp] -> HsExp
 gen_appl' n [] = error "gen_appl': no args"
 gen_appl' n [a] = HsApp (gen_ident n) a
@@ -90,17 +88,28 @@ gen_op_chain op es = goc $ reverse es where
     goc (e1:e2:[]) = gen_op op e2 e1
     goc (e1:es)    = gen_op op (goc es) e1
 
-gen_function :: (AsIdent n) => String -> n -> [HsExp] -> HsStmt
-gen_function [] n [] = HsQualifier (gen_ident n)
-gen_function [] n as = HsQualifier (gen_appl' n (reverse as))
-gen_function r n [] = HsGenerator noLoc (HsPVar $ HsIdent r) (gen_ident n)
-gen_function r n as = HsGenerator noLoc (HsPVar $ HsIdent r) (gen_appl' n (reverse as))
+-- | Generate monadic statement like `n args'
+gen_function_ :: (AsIdent n) => n -> [HsExp] -> HsStmt
+gen_function_ n [] = HsQualifier (gen_ident n)
+gen_function_ n as = HsQualifier (gen_appl' n (reverse as))
+
+-- | Generate monadic statement like `x <- n args'
+gen_function :: (AsIdent n, AsIdent p) => p -> n -> [HsExp] -> HsStmt
+gen_function r n [] = HsGenerator noLoc (gen_pat r) (gen_ident n)
+gen_function r n as = HsGenerator noLoc (gen_pat r) (gen_appl' n (reverse as))
+
+-- Return wrappers
+gen_return p x = gen_function p "return" [x]
+gen_return_ x = gen_function_ "return" [x]
+
 
 gen_list es = HsList es
 
 gen_pair es = HsTuple es
 
-gen_str s = HsLit $ HsString s
+gen_str s = HsLit $ HsString $ unI $ mkName s where
+    unI (HsIdent x) = x
+    unI (HsSymbol x) = x
 
 gen_expr_unit = unit_con
 
@@ -108,24 +117,33 @@ gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
 
 type_name_is pat n = gen_ident pat == gen_type_ident n
 
-gen_assign_or_aggregate f e@(IEAggregate _ ass) = gen_appl "aggregate" [
-    gen_list $ others ass ++ aggr ass] where
-        others (IEAOthers loc e:as) = (gen_appl "all" [gen_assign_or_aggregate f e]) : others as
-        others (_:as) = others as
-        others [] = []
+gen_assign x = gen_appl "assign" x
 
-        aggr (IEAExprIndex loc i e:as) = (gen_appl "setidx" [f i, gaa f e]) : (aggr as)
-        aggr (IEAOthers _ _:as) = aggr as
-        aggr [] = []
-        aggr a = perror "gen_assign_or_aggregate: index or others, please (got %s)" (show a)
+gen_assign_or_aggregate f e = build (expr_to_aggr e) where
+    expr_to_aggr (IEAggregate _ ass) = Just ass
+    expr_to_aggr (IEName _ (IRName (INAggregate _ ass _) _)) = Just ass
+    expr_to_aggr _ = Nothing
 
-        gaa = gen_assign_or_aggregate
+    build (Just ass) = gen_appl "aggregate" [
+        gen_list $ others ass ++ aggr ass] where
+            others (IEAOthers loc e:as) =
+                (gen_appl "setall" [gen_assign_or_aggregate f e]) : others as
+            others (_:as) = others as
+            others [] = []
 
-gen_assign_or_aggregate f e = gen_appl "assign" [f e]
+            aggr (IEAExprIndex loc i e:as) = (gen_appl "setidx" [f i, gaa f e]) : (aggr as)
+            aggr (IEAOthers _ _:as) = aggr as
+            aggr [] = []
+            aggr a = perror "gen_assign_or_aggregate: index or others, please (got %s)" (show a)
+
+            gaa = gen_assign_or_aggregate
+
+    build Nothing = gen_assign [f e]
 
 gen_name f (IRName n _) = gen_name' n where
     gen_name' (INIdent p) = gen_appl "pure" [gen_ident p]
-    gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [gen_name' p, f e]
+    gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [f e, gen_name' p]
+    gen_name' n = perror "%s\ngen_name: ident or index please" (PP.ppShow n)
 
 build_alloc_variable p t x =
     gen_function p "alloc_variable" [
@@ -149,38 +167,64 @@ gen_elab ts = [
     body = HsDo $ concat [
           [gen_function name_of_integer "alloc_unranged_type" []]
         , gen_elab_constants ts
+        , gen_elab_types ts
         , gen_elab_proc ts
         , gen_elab_decls ts
-        , [gen_return unit_con]
+        , [gen_return_ unit_con]
         ]
 
-    -- HACK: move all th constants to the top
+    -- HACK: lift all the constants
     gen_elab_constants [] = []
     gen_elab_constants ((IRTConstant c):ts) = (gen_alloc_constant c) ++ (gen_elab_constants ts)
     gen_elab_constants (t:ts) = gen_elab_constants ts
 
-    -- HACK: move all procedures closer to the top
+    -- HACK: lift all the types
+    gen_elab_types [] = []
+    gen_elab_types ((IRTType t):ts) = (gen_alloc_type t) ++ (gen_elab_types ts)
+    gen_elab_types (t:ts) = gen_elab_types ts
+
+    -- HACK: lift all the procedures
     gen_elab_proc [] = []
     gen_elab_proc ((IRTProcedure p):ts) = (gen_alloc_procedure p) ++ (gen_elab_proc ts)
     gen_elab_proc (t:ts) = gen_elab_proc ts
 
     gen_elab_decls [] = []
-    gen_elab_decls ((IRTType t):ts) = (gen_alloc_type t) ++ (gen_elab_decls ts)
     gen_elab_decls ((IRTSignal s):ts) = (gen_alloc_signal s) ++ (gen_elab_decls ts)
     gen_elab_decls ((IRTProcess p):ts) = (gen_alloc_process p) ++ (gen_elab_decls ts)
     gen_elab_decls (t:ts) = gen_elab_decls ts
 
-    gen_alloc_type (IRType p (ITDArray [c] _)) =
-        let (a,b) = gen_array_constr c in [
-          gen_function (unHierPath p) "alloc_array_type" [
-              gen_elab_expr a, gen_elab_expr b
-            , gen_ident name_of_integer
-            ]
-        ]
-    gen_alloc_type _ = []
+    gen_elab_letdecls ls = concat $ map map_let ls where
+        map_let (ILDConstant c) = gen_alloc_constant c
+        map_let (ILDVariable v) = gen_alloc_variable v
+        map_let (ILDProcedure p) = gen_alloc_procedure p
+        map_let e = perror "%s\ngen_let: only variables, constants or procedures, please"
+            (show e)
 
-    gen_array_constr (Constrained _ (IRARDConstrained loc tn (IRDRange loc2 a DirTo b))) = (a,b)
-    gen_array_constr _ = error "gen_array_constr: simple integer 1-dim arrays, please"
+    gen_range_c (Constrained _ c) = gen_range c
+    gen_range_c (Unconstrained c) = gen_range c
+
+    gen_range (IRARDConstrained loc tn (IRDRange loc2 a DirTo b)) = 
+        gen_appl "alloc_range" [gen_elab_expr a, gen_elab_expr b]
+    gen_range (IRARDTypeMark loc t) =
+        gen_ident "alloc_urange"
+    gen_range (IRARDRange (IRDRange _ a DirTo b)) =
+        gen_appl "alloc_range" [gen_elab_expr a, gen_elab_expr b]
+    gen_range s = perror
+        "%s\ngen_array_constr: a-to-b ranges or <>, please" (PP.ppShow s)
+
+    gen_alloc_type (IRType p (ITDArray [c] _)) = [
+          gen_function (unHierPath p) "alloc_array_type" [
+              gen_range_c c
+            , gen_ident name_of_integer
+            ] ]
+
+    gen_alloc_type (IRType p (ITDConstraint _ t [c])) = [
+        gen_function (unHierPath p) "alloc_subtype" [
+              gen_range c
+            , gen_type_ident t
+            ] ]
+
+    gen_alloc_type (IRType p t) = [] -- perror "%s\ngen_alloc_type: ITDArray only, please" (show t)
 
     gen_alloc_signal (IRSignal p t (IOEJustExpr _ e)) = [
           gen_function (unHierPath p) "alloc_signal" [
@@ -219,49 +263,54 @@ gen_elab ts = [
           gen_function (unHierPath p) "alloc_process_let" [
               gen_str $ unHierPath p
             , gen_list $ map scan_sens ns
-            , gen_lets lets (gen_seq s)
+            , HsParen $ HsDo $
+                (gen_elab_letdecls lets) ++
+                [gen_return_ (gen_seq s)]
             ]
         ]
         where
             scan_sens (INIdent hp) = gen_ident hp
-            scan_sens _ = error "scan_sens: use idents, please"
-            gen_lets ls s = HsParen $ HsDo $ (concat $ map gen_lets' ls) ++ [gen_return s]
-            gen_lets' (ILDConstant c) = gen_alloc_constant c
-            gen_lets' (ILDVariable v) = gen_alloc_variable v
+            scan_sens s = perror "%s\nscan_sens: use idents, please" (show s)
 
     gen_let_func n pats stmts =
         HsLetStmt [HsFunBind [HsMatch noLoc n pats body []]] where
             body = HsUnGuardedRhs $ stmts
 
-    gen_alloc_procedure (IRProcedure p as (ISLet ldecls stmts)) = [
-          gen_let_func (mkName $ unHierPath p) (map arg' as) (gen_let ldecls stmts) ] where
+    -- Generates a procedure declaration
+    gen_alloc_procedure (IRProcedure p as stmt) = [
+          gen_let_func (mkName $ unHierPath p) (map arg' as) (gen_let stmt) ] where
 
         arg' (IRArg n _ _ _) = gen_pat (mangle' n)
 
-        gen_arg (IRArg n t _ _) = []
-            -- build_alloc_variable n t (gen_assign_or_aggregate gen_elab_expr )]
+        gen_arg (IRArg n t _ AMIn) = [
+              build_alloc_variable n t
+                (gen_assign [gen_appl "pure" [gen_ident $ mangle' n]])
+            ]
+        gen_arg (IRArg n t _ _) = [ 
+              gen_function n "cast" [gen_type_ident t, (gen_ident (mangle' n))]
+            ]
 
-        gen_let ls ss = HsParen $ HsDo $
-                (concat $ map gen_arg as) ++
-                (concat $ map map_let ls) ++
-                [gen_return (gen_seq ss)] where
-            map_let (ILDConstant c) = gen_alloc_constant c
-            map_let (ILDVariable v) = gen_alloc_variable v
-            map_let e = perror "%s\ngen_let: only variables or constants, please" (show e)
-        
+        gen_let (ISLet ldecls ss) = HsParen $ HsDo $
+            (concat $ map gen_arg as) ++
+            (gen_elab_letdecls ldecls) ++
+            [gen_return_ (gen_seq ss)]
+        gen_let ss = HsParen $ HsDo $
+            (concat $ map gen_arg as) ++
+            [gen_return_ (gen_seq ss)]
 
+    -- Generate sequentional statements in a do-wrapper
     gen_seq ss = HsParen $ HsDo $ gen_stmt ss where
 
         gen_stmt (ISSeq a b) = gen_stmt a ++ gen_stmt b
         gen_stmt (ISAssign _ n _ e) = [
-              gen_function [] "(.=.)" [
+              gen_function_ "(.=.)" [
                   gen_name gen_expr n
                 , gen_assign_or_aggregate gen_expr e
                 ]
             ]
         gen_stmt (ISSignalAssign _ n _ []) = error "gen_stmt: no afters"
         gen_stmt (ISSignalAssign _ n _ [IRAfter e t]) = [
-              gen_function [] "(.<=.)" [
+              gen_function_ "(.<=.)" [
                   gen_name gen_expr n
                 , gen_pair [
                       maybe (gen_ident "next") (gen_expr) t
@@ -269,26 +318,26 @@ gen_elab ts = [
                     ]
                 ]
             ]
-        gen_stmt (ISNop loc) = [gen_function [] "return" [unit_con]]
-        gen_stmt (ISNil) = [gen_function [] "return" [unit_con]]
+        gen_stmt (ISNop loc) = [gen_function_ "return" [unit_con]]
+        gen_stmt (ISNil) = [gen_function_ "return" [unit_con]]
         gen_stmt (ISIf loc e s1 s2) = [
-              gen_function [] "iF" [
+              gen_function_ "iF" [
                   gen_expr e
                 , HsParen $ HsDo $ gen_stmt s1
                 , HsParen $ HsDo $ gen_stmt s2
                 ]
             ]
-        gen_stmt (ISAssert loc e1 e2 e3) = [gen_function [] "assert" []]
-        gen_stmt (ISReport loc e1 e2) = [gen_function [] "report" [gen_expr e1]]
-        gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function [] "wait" [gen_expr e]]
+        gen_stmt (ISAssert loc e1 e2 e3) = [gen_function_ "assert" []]
+        gen_stmt (ISReport loc e1 e2) = [gen_function_ "report" [gen_expr e1]]
+        gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function_ "wait" [gen_expr e]]
         gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
-        gen_stmt (ISProcCall n args loc) = [gen_function [] "call" [
+        gen_stmt (ISProcCall n args loc) = [gen_function_ "call" [
             gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
             ]]
         gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
 
         gen_for (IRDRange loc e1 dir e2) ei s = [
-              gen_function [] "for" [
+              gen_function_ "for" [
                   gen_pair [gen_expr e1, gen_ident "To", gen_expr e2]
                 , gen_lambda ei (gen_stmt s) 
                 ]
@@ -312,7 +361,7 @@ gen_elab ts = [
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing
 
 gen_main = (:[]) $ HsFunBind [HsMatch noLoc (HsIdent "main") [] (HsUnGuardedRhs body) []] where
-    body = HsDo [gen_function [] "sim" [gen_ident "maxBound", gen_ident "elab" ]]
+    body = HsDo [gen_function_ "sim" [gen_ident "maxBound", gen_ident "elab" ]]
 
 gen_module :: [IRTop] -> HsModule
 gen_module ts = HsModule noLoc (Module "Main") Nothing imports body where

@@ -49,21 +49,6 @@ next = fs 1
 wait :: (MonadWait m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
-instance (Valueable VAssign v) => Assignable VAssign (PrimitiveT,Ptr Signal) v where
-    assign mv mr = do
-        a <- Assignment <$> mr <*> (PW <$> ask <*> (wconst <$> (val =<< mv)))
-        modify (add_assignment a)
-        return (acurr a)
-
-instance (Valueable VProc v) => Assignable VProc (PrimitiveT, Ptr Variable) v where
-    assign mv mr = do
-        v <- (mv >>= val)
-        (t,r) <- mr
-        when (not $ within (t,v)) $ do
-            fail ("assign: constraint failure")
-        updateM (\var -> var{ vval = v }) r
-        return (t,r) 
-
 -- FIXME: define the undefined
 instance (Valueable VAssign x)
     => Assignable VAssign (Array t x) (Array t x) where
@@ -77,9 +62,7 @@ instance (Valueable VAssign x)
 (.<=.) :: VProc x -> (VProc NextTime, Assigner VAssign x) -> VProc ()
 (.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
 
-type Var = (PrimitiveT, Ptr Variable)
-
-(.=.) :: VProc Var -> (Assigner VProc Var) -> VProc ()
+(.=.) :: VProc Variable -> (Assigner VProc Variable) -> VProc ()
 (.=.) mr ma = ma mr >> return ()
 
 add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int

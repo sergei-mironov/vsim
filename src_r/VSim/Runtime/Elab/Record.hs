@@ -73,3 +73,6 @@ field fsel mx = (fsel . rtuple) <$> (derefM =<< (snd <$> mx))
 setfld :: (MonadPtr m) => Accessor r f -> Assigner m f -> (Record x r) -> m (Record x r)
 setfld fs f r = f (field fs (pure r)) >> return r
 
+instance (MonadPtr m) => Assignable (Elab m) (Record t x) (Record t x) where
+    assign = undefined
+
