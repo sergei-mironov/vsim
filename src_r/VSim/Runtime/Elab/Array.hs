@@ -25,20 +25,10 @@ instance (MonadElab m, Createable m x) => Createable m (ArrayT x) where
     type VR (ArrayT x) = Ptr (ArrayR (VR x))
 
     alloc_signal n t f = do
-        indexes <- unpack_range (arange t)
-        pairs <- forM indexes (\i -> do
-            let sn = n ++ (printf "[%d]" i)
-            (_,r) <- alloc_signal sn (aconstr t) id
-            return (i,r))
-        f $ pairM (pure t) (allocM (ArrayR n (IntMap.fromList pairs)))
+        f $ pairM (pure t) (allocM (ArrayR n (IntMap.empty)))
 
     alloc_variable n t f = do
-        indexes <- unpack_range (arange t)
-        pairs <- forM indexes (\i -> do
-            let sn = n ++ (printf "[%d]" i)
-            (_,r) <- alloc_variable sn (aconstr t) id
-            return (i,r))
-        f $ pairM (pure t) (allocM (ArrayR n (IntMap.fromList pairs)))
+        f $ pairM (pure t) (allocM (ArrayR n (IntMap.empty)))
 
 alloc_urange :: (MonadElab m) => m RangeT
 alloc_urange = pure UnconstrT
@@ -68,9 +58,23 @@ setall f a@(ArrayT te _,r) = do
 instance (MonadPtr m) => Assignable (Elab m) (Array t x) (Array t x) where
     assign = undefined
 
-instance (MonadPtr m) => Subtypeable m (ArrayT t) where
+instance (Subtypeable t) => Subtypeable (ArrayT t) where
     type SM (ArrayT t) = RangeT
-    alloc_subtype mr a = mr >>= \ r -> return $ a { arange = r } 
+    build_subtype r a = a { arange = r } 
+    valid_subtype_of (ArrayT t1 r1) (ArrayT t2 r2) =
+        (t1 `valid_subtype_of` t2) && (r1 `inner_range` r2)
 
--- instance Constrained (ArrayT t, ArrayR x)
+-- instance (MonadPtr m, Show t, Show x, Constrained m (t,x)) => Constrained m (Array t x) where
+--     ccheck (ArrayT t (RangeT l h), r) = do
+--         (ArrayR n u) <- derefM r
+--         let keys = IntMap.keys u
+--         when ((head keys) < l) $ fail "array range check: lower bound failed"
+--         when ((last keys) > h) $ fail "array range check: upper bound failed"
+--         forM_ (IntMap.toList u) $ \(_,v) -> ccheck (t,v)
+
+--     ccheck (ArrayT t UnconstrT, r) = do
+--         (ArrayR n u) <- derefM r
+--         forM_ (IntMap.toList u) $ \(_,v) -> ccheck (t,v)
+        
+
 

@@ -19,18 +19,23 @@ class Createable m t where
     type VR t :: *
     alloc_variable :: String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
 
-
 constrM :: (Monad m, Applicative m) => t -> m y -> m (t,y)
 constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
 
 pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
 pairM mt my = (\t y -> (t,y)) <$> mt <*> my
 
-class Subtypeable m t where
+-- | States that t is a runtime-type
+class Runtimeable t where
+    type RT t :: *
+    initial :: t -> (RT t)
+
+class Subtypeable t where
     -- | Subtype Modifier
     type SM t :: *
-    -- | Allocate a subtype for a type t
-    alloc_subtype :: m (SM t) -> t -> m t
+    build_subtype :: SM t -> t -> t
+    -- | is first a valid subtype of second?
+    valid_subtype_of :: t -> t -> Bool
 
 -- | States that a value can be assigned to a container in a specific monad.
 -- For etample, Ints could be assigned to Signals, x can be assigned to the
@@ -40,11 +45,17 @@ class (Monad m) => Assignable m c v where
 
 type Assigner m c = m c -> m c
 
-class Cloneable m x where
-    clone :: x -> m x
+-- class Cloneable m x where
+--     clone :: x -> m x
 
-class Constrained x where
-    within :: x -> Bool
+-- instance (Monad m, Applicative m, Cloneable m a, Cloneable m b) => Cloneable m (a,b) where
+--     clone (a,b) = (\a b -> (a,b)) <$> clone a <*> clone b
+
+class (Monad m, Show x) => Constrained m x where
+    ccheck :: x -> m ()
+
+ccfail_ifnot :: (Show x, Monad m) => x -> Bool -> m ()
+ccfail_ifnot x ok = when (not ok) $ fail $ "constrained failed: " ++ (show x)
 
 class Imageable m x t where
     t_image :: m x -> t -> m String

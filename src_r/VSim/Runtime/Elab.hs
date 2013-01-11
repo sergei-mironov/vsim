@@ -13,7 +13,8 @@ module VSim.Runtime.Elab (
     , alloc_process
     , alloc_process_let
     , alloc_function
-    , cast
+    , alloc_subtype
+    , subtype_of
     ) where
 
 import Control.Monad.Trans
@@ -55,10 +56,12 @@ alloc_constant _ v = v
 alloc_function :: (MonadElab m) => String -> FElab -> m Function
 alloc_function n h = Function <$> (pure n) <*> (pure h)
 
-cast :: (MonadElab m, Constrained (t',x)) => t' -> (t, Ptr x) -> m (t', Ptr x)
-cast t' (_,r) = do
-    v <- derefM r
-    when (not $ within (t',v)) $ do
-        fail ("cast: constraint failure")
-    return (t',r)
+-- | Allocate a subtype for a type t
+alloc_subtype :: (Subtypeable t, MonadElab m) => m (SM t) -> t -> m t
+alloc_subtype mm t = mm >>= \m -> return (build_subtype m t)
 
+subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
+subtype_of t' (t,r) = do
+    when (not $ t' `valid_subtype_of` t) (fail $
+        printf "type convertion from %s to %s failed" (show t) (show t'))
+    return (t,r)

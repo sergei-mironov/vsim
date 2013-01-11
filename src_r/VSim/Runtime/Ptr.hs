@@ -1,3 +1,7 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module VSim.Runtime.Ptr where
 
@@ -10,6 +14,7 @@ import Data.IORef
 import Text.Printf
 import System.IO
 import System.IO.Unsafe
+import VSim.Runtime.Class
 
 -- | Pointer type used everywhere in the simulator
 type Ptr x = IORef x
@@ -41,4 +46,7 @@ withPtrM f ptr = derefM ptr >>= \a -> do
 
 instance (Show x) => Show (IORef x) where
     show x = "@(" ++ show (unsafePerformIO $ derefM x) ++ ")"
+
+-- instance (MonadPtr m, Cloneable m x) => Cloneable m (Ptr x) where
+--     clone r = derefM r >>= clone >>= allocM
 

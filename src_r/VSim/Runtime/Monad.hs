@@ -52,20 +52,14 @@ data PrimitiveT = PrimitiveT {
 ranged a b = PrimitiveT a b
 unranged = PrimitiveT minBound maxBound
 
-instance Constrained (PrimitiveT, Int) where
-    within ((PrimitiveT l u), v) = v >= l && v <= u
-
 -- | VHDL variable (runtime representation)
 data VarR = VarR {
       vname :: String
     , vval :: Int
     } deriving(Show)
 
-instance Constrained (PrimitiveT, VarR) where
-    within (c,v) = within (c, vval v)
-
-instance (MonadPtr m) => Cloneable m (Ptr a) where
-    clone r = derefM r >>= allocM 
+-- instance (MonadPtr m) => Cloneable m (Ptr a) where
+--     clone r = derefM r >>= allocM 
 
 type Variable = (PrimitiveT, Ptr VarR)
 
@@ -81,18 +75,24 @@ data SigR = SigR {
 
 type Signal = (PrimitiveT, Ptr SigR)
 
-instance Constrained (PrimitiveT, SigR) where
-    within (c,s) = and $ map f $ wchanges $ swave s where
-        f (Change _ v) = within (c,v)
+in_range :: PrimitiveT -> Int -> Bool
+in_range (PrimitiveT l u) v = v >= l && v <= u
 
-sigassign1 :: (MonadSim m) => Assignment -> m (Either String ())
+instance (MonadPtr m) => Constrained m Variable where
+    ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
+
+in_range_w :: PrimitiveT -> Waveform -> Bool
+in_range_w t w = and $ map f $ wchanges w where
+    f (Change _ v) = in_range t v
+
+instance (MonadPtr m) => Constrained m Signal where
+    ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+
+sigassign1 :: (MonadSim m) => Assignment -> m ()
 sigassign1 (Assignment (c,r) pw) = do
     s <- derefM r
-    let w' = unPW (swave s) pw
-    let s' = s { swave = w' }
-    case (within (c,s')) of
-        False -> return (Left (sname s))
-        True -> writeM r s' >> return (Right ())
+    writeM r s{ swave = unPW (swave s) pw }
+    ccheck (c,r)
 
 sigassign2 :: (MonadSim m) => Ptr SigR -> Waveform -> m [Ptr Process]
 sigassign2 r w = do
@@ -106,6 +106,10 @@ data RangeT = RangeT {
     , rend :: Int
     } | UnconstrT
     deriving(Show)
+
+inner_range _ UnconstrT = True
+inner_range UnconstrT _ = False
+inner_range (RangeT b1 e1) (RangeT b2 e2) = (b1 >= b2) && (e1 <= e2)
 
 -- | VHDL array type
 data ArrayT t = ArrayT {

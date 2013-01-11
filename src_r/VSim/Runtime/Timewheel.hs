@@ -73,15 +73,7 @@ timewheel (t, SimStep ps) = do
 
         -- FIXME: monitor multiple assignments, implement resolvers
         -- FIXME: for each signal, take only the last assignment into account
-        commit_assignments as = do
-            forM_ as $ \a -> do
-                ok <- sigassign1 a
-                case ok of
-                    Left sn -> do
-                        let err = printf "constraint check failed: signal %s" sn
-                        terminate t err
-                    Right () -> do
-                        return ()
+        commit_assignments = mapM_ sigassign1
 
         -- Calculates next event and updates the memory
         -- FIXME: inefficient, loops throw all signals and processes

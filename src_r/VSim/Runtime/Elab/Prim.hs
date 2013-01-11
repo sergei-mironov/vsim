@@ -43,6 +43,24 @@ alloc_ranged_type ma mb = ranged <$> ma <*> mb
 alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
+
+-- Type stuff
+
+instance Runtimeable PrimitiveT where
+    type RT PrimitiveT = Int
+    initial (PrimitiveT l r) = l
+
+instance Subtypeable PrimitiveT where
+    type SM PrimitiveT = RangeT
+    build_subtype (RangeT u l) p = (PrimitiveT u l)
+    build_subtype (UnconstrT) p = PrimitiveT minBound maxBound
+
+    valid_subtype_of (PrimitiveT b1 e1) (PrimitiveT b2 e2) =
+        ((RangeT b1 e1) `inner_range` (RangeT b2 e2))
+
+-- Constrained
+-- see VSim.Runtime.Monad
+
 -- Valueable
 
 instance (MonadPtr m) => Valueable m Variable where
@@ -72,23 +90,28 @@ instance (MonadProc m) => Imageable m Int PrimitiveT where
 
 -- Assignable
 
+basic_sig_update mv mr = do
+    v <- (mv >>= val)
+    x <- mr
+    updateM (\s -> s{ swave = wconst v }) (snd x)
+    ccheck x
+    return x
+
+basic_var_update mv mr = do
+    v <- (mv >>= val)
+    x <- mr
+    updateM (\var -> var{ vval = v }) (snd x)
+    ccheck x
+    return x
+
 instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Signal v where
-    assign mv mr = do
-        v <- (mv >>= val)
-        (t,r) <- mr
-        when (not $ within (t,v)) $ do
-            fail ("assign: constraint failure")
-        updateM (\s -> s{ swave = wconst v }) r
-        return (t,r)
+    assign = basic_sig_update
 
 instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Variable v where
-    assign mv mr = do
-        v <- (mv >>= val)
-        (t,r) <- mr
-        when (not $ within (t,v)) $ do
-            fail ("assign: constraint failure")
-        updateM (\var -> var{ vval = v }) r
-        return (t,r)
+    assign = basic_var_update
+
+instance (Valueable VProc v) => Assignable VProc Variable v where
+    assign = basic_var_update
 
 instance (Valueable VAssign v) => Assignable VAssign Signal v where
     assign mv mr = do
@@ -96,12 +119,8 @@ instance (Valueable VAssign v) => Assignable VAssign Signal v where
         modify (add_assignment a)
         return (acurr a)
 
-instance (Valueable VProc v) => Assignable VProc Variable v where
-    assign mv mr = do
-        v <- (mv >>= val)
-        (t,r) <- mr
-        when (not $ within (t,v)) $ do
-            fail ("assign: constraint failure")
-        updateM (\var -> var{ vval = v }) r
-        return (t,r)
+-- Cloneable
+
+-- instance (MonadElab m) => Cloneable m PrimitiveT where clone = return
+-- instance (MonadElab m) => Cloneable m VarR where clone = return
 
