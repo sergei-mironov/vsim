@@ -11,13 +11,13 @@ import Control.Monad
 -- | Createable types are those who can be created as signals or variables.
 -- Resulting entity is a pair which contains the type and runtime representation
 -- os signal or variable
-class Createable m t where
+class Representable t where
     -- | Signal representation
     type SR t :: *
-    alloc_signal :: String -> t -> (m (t,SR t) -> m (t,SR t)) -> m (t,SR t)
+    -- alloc_signal :: String -> t -> (m (t,SR t) -> m (t,SR t)) -> m (t,SR t)
     -- | Varaiable representation
     type VR t :: *
-    alloc_variable :: String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
+    -- alloc_variable :: String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
 
 constrM :: (Monad m, Applicative m) => t -> m y -> m (t,y)
 constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
@@ -26,9 +26,14 @@ pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
 pairM mt my = (\t y -> (t,y)) <$> mt <*> my
 
 -- | States that t is a runtime-type
-class Runtimeable t where
-    type RT t :: *
-    initial :: t -> (RT t)
+-- class Runtimeable t where
+--     type RT t :: *
+--     initial :: t -> (RT t)
+
+class Createable m t x where
+    alloc :: String -> t -> m x
+
+allocP n t = alloc n t >>= \r -> return (t,r)
 
 class Subtypeable t where
     -- | Subtype Modifier

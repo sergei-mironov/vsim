@@ -8,7 +8,9 @@ module VSim.Runtime.Elab.Array where
 import Control.Applicative
 import Control.Monad
 import Text.Printf
+import Data.Maybe
 import Data.IntMap as IntMap
+import Data.Array2 as Array2
 
 import VSim.Runtime.Monad
 import VSim.Runtime.Class
@@ -20,15 +22,12 @@ unpack_range (RangeT a b) = return [a .. b]
 unpack_range (UnconstrT) = fail "attempt to list inifinite range"
 
 -- | ArrayT of IntType generates Arrays of this type
-instance (MonadElab m, Createable m x) => Createable m (ArrayT x) where
-    type SR (ArrayT x) = Ptr (ArrayR (SR x))
-    type VR (ArrayT x) = Ptr (ArrayR (VR x))
+instance (Representable t) => Representable (ArrayT t) where
+    type SR (ArrayT t) = Ptr (ArrayR (SR t))
+    type VR (ArrayT t) = Ptr (ArrayR (VR t))
 
-    alloc_signal n t f = do
-        f $ pairM (pure t) (allocM (ArrayR n (IntMap.empty)))
-
-    alloc_variable n t f = do
-        f $ pairM (pure t) (allocM (ArrayR n (IntMap.empty)))
+instance (MonadPtr m, Createable m t r) => Createable m (ArrayT t) (Ptr (ArrayR r)) where
+    alloc n t = allocM (Array2.empty n)
 
 alloc_urange :: (MonadElab m) => m RangeT
 alloc_urange = pure UnconstrT
@@ -39,42 +38,46 @@ alloc_range a b = RangeT <$> a <*> b
 alloc_array_type :: (MonadElab m) => m RangeT -> t -> m (ArrayT t)
 alloc_array_type mr t = ArrayT <$> (pure t) <*> mr
 
-index :: (MonadPtr m) => m Int -> m (Array t a) -> m (t,a)
-index mi mc = do
-    (ta, ra) <- mc
-    mb <- IntMap.lookup <$> mi <*> (csignals <$> (derefM ra))
-    case mb of
-        Nothing -> fail "index: out of range"
-        (Just x) -> return (aconstr ta, x)
+lookupUpd idx def m = (fromMaybe def r, m') where 
+    (r,m') = IntMap.insertLookupWithKey (\_ a _ -> a) idx def m
 
-setidx :: (MonadPtr m) => m Int -> Assigner m (t,x) -> (Array t x) -> m (Array t x)
+index :: (MonadPtr m, Createable m t a)
+    => m Int -> m (Array t a) -> m (t,a)
+index mi mc = do
+    (ArrayT te rg, r) <- mc
+    idx <- mi
+    a2 <- derefM r
+    when (not (inrage idx rg)) $ do
+        fail "index: array index out of range"
+    (e,a2') <- readArrayDef a2 idx (\n -> alloc n te)
+    writeM r a2'
+    return (te, e)
+
+setidx :: (MonadPtr m, Createable m t a)
+    => m Int -> Assigner m (t,a) -> (Array t a) -> m (Array t a)
 setidx mi f r = f (index mi (pure r)) >> return r
 
-setall :: (MonadPtr m) => Assigner m (t,x) -> (Array t x) -> m (Array t x)
-setall f a@(ArrayT te _,r) = do
-    mapM_ (\(k,re) -> f (pure (te,re))) =<< (IntMap.toList <$> (csignals <$> derefM r))
+setall :: (MonadPtr m, Createable m t a)
+    => Assigner m (t,a) -> (Array t a) -> m (Array t a)
+setall f a@(ArrayT te (RangeT l u),r) = do
+    a2 <- derefM r
+    let iterate [] a2 = return a2
+        iterate (i:is) a2 = do
+            (_,a2') <- readArrayDef a2 i (\n -> alloc n te)
+            iterate is a2'
+    a2' <- iterate [l..u] a2
+    writeM r a2'
     return a
 
+setall f a@(ArrayT te (UnconstrT), r) = do
+    fail "setall: calling on unconstrained array"
+
 instance (MonadPtr m) => Assignable (Elab m) (Array t x) (Array t x) where
-    assign = undefined
+    assign = error "FIXME: define array assignments"
 
 instance (Subtypeable t) => Subtypeable (ArrayT t) where
     type SM (ArrayT t) = RangeT
     build_subtype r a = a { arange = r } 
     valid_subtype_of (ArrayT t1 r1) (ArrayT t2 r2) =
         (t1 `valid_subtype_of` t2) && (r1 `inner_range` r2)
-
--- instance (MonadPtr m, Show t, Show x, Constrained m (t,x)) => Constrained m (Array t x) where
---     ccheck (ArrayT t (RangeT l h), r) = do
---         (ArrayR n u) <- derefM r
---         let keys = IntMap.keys u
---         when ((head keys) < l) $ fail "array range check: lower bound failed"
---         when ((last keys) > h) $ fail "array range check: upper bound failed"
---         forM_ (IntMap.toList u) $ \(_,v) -> ccheck (t,v)
-
---     ccheck (ArrayT t UnconstrT, r) = do
---         (ArrayR n u) <- derefM r
---         forM_ (IntMap.toList u) $ \(_,v) -> ccheck (t,v)
-        
-
 

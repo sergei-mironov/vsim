@@ -9,6 +9,8 @@ module VSim.Runtime.Elab (
     , module VSim.Runtime.Elab.Array
     , module VSim.Runtime.Elab.Record
     , module VSim.Runtime.Elab.Function
+    , alloc_signal
+    , alloc_variable
     , alloc_constant
     , alloc_process
     , alloc_process_let
@@ -35,6 +37,14 @@ import VSim.Runtime.Elab.Prim
 import VSim.Runtime.Elab.Array
 import VSim.Runtime.Elab.Record
 import VSim.Runtime.Elab.Function
+
+alloc_signal :: (MonadElab m, Representable t, Createable m t (SR t))
+    => String -> t -> (m (t,SR t) -> m (t,SR t)) -> m (t,SR t)
+alloc_signal n t f = f $ allocP n t
+
+alloc_variable :: (MonadElab m, Representable t, Createable m t (VR t))
+    => String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
+alloc_variable n t f = f $ allocP n t
 
 -- | Registers process in the memory. Updates list of signal's reactions
 alloc_process :: (MonadElab m)
@@ -65,3 +75,4 @@ subtype_of t' (t,r) = do
     when (not $ t' `valid_subtype_of` t) (fail $
         printf "type convertion from %s to %s failed" (show t) (show t'))
     return (t,r)
+

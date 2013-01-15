@@ -16,6 +16,7 @@ import Control.Monad.Trans
 import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Data.List
+import Data.Array2
 import Text.Printf
 
 import VSim.Runtime.Class
@@ -107,9 +108,14 @@ data RangeT = RangeT {
     } | UnconstrT
     deriving(Show)
 
+inner_range UnconstrT UnconstrT = True
 inner_range _ UnconstrT = True
 inner_range UnconstrT _ = False
 inner_range (RangeT b1 e1) (RangeT b2 e2) = (b1 >= b2) && (e1 <= e2)
+
+inrage :: Int -> RangeT -> Bool
+inrage x (RangeT l r) = x >= l && x <= r
+inrage x (UnconstrT) = True
 
 -- | VHDL array type
 data ArrayT t = ArrayT {
@@ -120,10 +126,7 @@ data ArrayT t = ArrayT {
     } deriving(Show)
 
 -- VHDL arrays runtime part
-data ArrayR a = ArrayR {
-      cname :: String
-    , csignals :: IntMap.IntMap a
-    } deriving(Show)
+type ArrayR a = Array2 a
 
 -- | VHDL array entity
 type Array t e = (ArrayT t, Ptr (ArrayR e))

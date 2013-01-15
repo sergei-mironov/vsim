@@ -19,20 +19,18 @@ import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 
-instance (MonadElab m) => Createable m PrimitiveT where
+instance Representable PrimitiveT where
     type SR PrimitiveT = Ptr SigR
     type VR PrimitiveT = Ptr VarR
 
-    alloc_signal n t f = do
-        i <- rnd' t
-        r <- allocM (SigR n (wconst i) 0 [])
+instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
+    alloc n (PrimitiveT l r) = do
+        r <- allocM (SigR n (wconst l) 0 [])
         modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
-        f $ pure (t,r)
+        return r
 
-    alloc_variable n t f = do
-        i <- rnd' t
-        r <- allocM (VarR n i)
-        f $ pure (t,r)
+instance (MonadPtr m) => Createable m PrimitiveT (Ptr VarR) where
+    alloc n (PrimitiveT l r) = allocM (VarR n l)
 
 rnd' :: (MonadIO m) => PrimitiveT -> m Int
 rnd' c = liftIO $ randomRIO (lower c, upper c)
@@ -45,10 +43,6 @@ alloc_unranged_type = return unranged
 
 
 -- Type stuff
-
-instance Runtimeable PrimitiveT where
-    type RT PrimitiveT = Int
-    initial (PrimitiveT l r) = l
 
 instance Subtypeable PrimitiveT where
     type SM PrimitiveT = RangeT
@@ -118,9 +112,4 @@ instance (Valueable VAssign v) => Assignable VAssign Signal v where
         a <- Assignment <$> mr <*> (PW <$> ask <*> (wconst <$> (val =<< mv)))
         modify (add_assignment a)
         return (acurr a)
-
--- Cloneable
-
--- instance (MonadElab m) => Cloneable m PrimitiveT where clone = return
--- instance (MonadElab m) => Cloneable m VarR where clone = return
 
