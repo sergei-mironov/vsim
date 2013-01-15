@@ -46,7 +46,7 @@ alloc_variable :: (MonadElab m, Representable t, Createable m t (VR t))
     => String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
 alloc_variable n t f = f $ allocP n t
 
--- | Registers process in the memory. Updates list of signal's reactions
+-- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
     => String -> [(t, Ptr SigR)] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
@@ -70,8 +70,8 @@ alloc_function n h = Function <$> (pure n) <*> (pure h)
 alloc_subtype :: (Subtypeable t, MonadElab m) => m (SM t) -> t -> m t
 alloc_subtype mm t = mm >>= \m -> return (build_subtype m t)
 
-subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
-subtype_of t' (t,r) = do
+assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
+assume_subtype_of t' (t,r) = do
     when (not $ t' `valid_subtype_of` t) (fail $
         printf "type convertion from %s to %s failed" (show t) (show t'))
     return (t,r)

@@ -79,17 +79,11 @@ type Signal = (PrimitiveT, Ptr SigR)
 in_range :: PrimitiveT -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u
 
-instance (MonadPtr m) => Constrained m Variable where
-    ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
-
 in_range_w :: PrimitiveT -> Waveform -> Bool
 in_range_w t w = and $ map f $ wchanges w where
     f (Change _ v) = in_range t v
 
-instance (MonadPtr m) => Constrained m Signal where
-    ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
-
-sigassign1 :: (MonadSim m) => Assignment -> m ()
+sigassign1 :: (MonadSim m, Constrained m Signal) => Assignment -> m ()
 sigassign1 (Assignment (c,r) pw) = do
     s <- derefM r
     writeM r s{ swave = unPW (swave s) pw }

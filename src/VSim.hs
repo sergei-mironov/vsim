@@ -286,9 +286,8 @@ gen_elab ts = [
               build_alloc_variable n t
                 (gen_assign [gen_appl "pure" [gen_ident $ mangle' n]])
             ]
-        gen_arg (IRArg n t NIKVariable _) = error "gen_alloc_procedure: in variables, please"
         gen_arg (IRArg n t _ _) = [ 
-              gen_function n "subtype_of" [gen_type_ident t, (gen_ident (mangle' n))]
+              gen_function n "assume_subtype_of" [gen_type_ident t, (gen_ident (mangle' n))]
             ]
 
         gen_let (ISLet ldecls ss) = HsParen $ HsDo $

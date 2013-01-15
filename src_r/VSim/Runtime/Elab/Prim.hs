@@ -113,3 +113,11 @@ instance (Valueable VAssign v) => Assignable VAssign Signal v where
         modify (add_assignment a)
         return (acurr a)
 
+-- Constrained 
+
+instance (MonadPtr m) => Constrained m Signal where
+    ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+
+instance (MonadPtr m) => Constrained m Variable where
+    ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
+

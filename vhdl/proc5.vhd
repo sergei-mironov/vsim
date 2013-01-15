@@ -18,12 +18,14 @@ architecture test_arch of test is
 	begin
         a1(20) <= 1;
 	end procedure;
+
+    signal v : integer := 0;
 	
 begin
 
     main: process
 	begin
-		p1(a, 4);
+		p1(a, v);
 		assert false report "end of simulation" severity failure;
 	end process;
 

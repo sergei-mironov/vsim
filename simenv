@@ -82,7 +82,7 @@ runaldec() { (
 ) }
 
 aldecwave() {
-	avhdl.exe _aldec/wave.asdb
+	avhdl.exe .aldec/wave.asdb
 }
 
 
