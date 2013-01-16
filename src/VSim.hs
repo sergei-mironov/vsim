@@ -232,9 +232,8 @@ gen_elab ts = [
             ] ]
 
     gen_alloc_type (IRType p (ITDRangeDescr r)) = [
-        gen_function (unHierPath p) "alloc_type" [
+        gen_function (unHierPath p) "alloc_ranged_type" [
               gen_range r
-            , gen_type_ident t
             ] ]
 
     gen_alloc_type (IRType p t) = [] -- perror "%s\ngen_alloc_type: ITDArray only, please" (show t)

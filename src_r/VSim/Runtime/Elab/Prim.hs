@@ -19,6 +19,15 @@ import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 
+instance Primitive Int where
+    type RANGE Int = RangeT
+    make_range l u = RangeT l u
+
+instance PrimitiveRange RangeT where
+    type PRIM RangeT = PrimitiveT
+    make_ranged_type (RangeT l u) = PrimitiveT l u
+    make_ranged_type (UnconstrT) = PrimitiveT minBound maxBound
+
 instance Representable PrimitiveT where
     type SR PrimitiveT = Ptr SigR
     type VR PrimitiveT = Ptr VarR
@@ -31,16 +40,6 @@ instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
 
 instance (MonadPtr m) => Createable m PrimitiveT (Ptr VarR) where
     alloc n (PrimitiveT l r) = allocM (VarR n l)
-
-rnd' :: (MonadIO m) => PrimitiveT -> m Int
-rnd' c = liftIO $ randomRIO (lower c, upper c)
-
-alloc_ranged_type :: (MonadElab m) => m Int -> m Int -> m PrimitiveT
-alloc_ranged_type ma mb = ranged <$> ma <*> mb
-
-alloc_unranged_type :: (MonadElab m) => m PrimitiveT
-alloc_unranged_type = return unranged
-
 
 -- Type stuff
 

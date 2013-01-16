@@ -342,3 +342,12 @@ aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
 -- signal :: (Monad m, Signalable x) => x -> m x
 -- signal = return
 
+
+data EnumT = EnumT {
+      esize :: Int
+    }
+    deriving(Show)
+
+newtype EnumVal = EnumVal Int
+    deriving(Show)
+

@@ -9,8 +9,7 @@ import Control.Applicative
 import Control.Monad
 
 -- | Createable types are those who can be created as signals or variables.
--- Resulting entity is a pair which contains the type and runtime representation
--- os signal or variable
+-- To do so whe neeed to know their signal- and variable- representations.
 class Representable t where
     -- | Signal representation
     type SR t :: *
@@ -23,13 +22,16 @@ constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
 pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
 pairM mt my = (\t y -> (t,y)) <$> mt <*> my
 
+-- | Something that can be created in monad m, having type t
 class (Monad m) => Createable m t x where
     alloc :: String -> t -> m x
     fixup :: (t,x) -> m (t,x)
     fixup = return
 
+-- | Tuples newly-allocated value with type t
 allocP n t = alloc n t >>= \r -> return (t,r)
 
+-- | States that type t can be changed by applying the modifier (SM t)
 class Subtypeable t where
     -- | Subtype Modifier
     type SM t :: *
@@ -45,12 +47,17 @@ class (Monad m) => Assignable m c v where
 
 type Assigner m c = m c -> m c
 
+-- | Value x may be checked against some internal constraint. Ccheck should call
+-- monad's fail on checking failure
 class (Monad m, Show x) => Constrained m x where
     ccheck :: x -> m ()
 
+-- | Constraints checking helper
 ccfail_ifnot :: (Show x, Monad m) => x -> Bool -> m ()
 ccfail_ifnot x ok = when (not ok) $ fail $ "constrained failed: " ++ (show x)
 
+-- | States that a value @x can be converted to a string representation of type
+-- @t.
 class Imageable m x t where
     t_image :: m x -> t -> m String
 
@@ -59,4 +66,12 @@ class (Monad m) => Valueable m x where
 
 instance (Monad m) => Valueable m Int where
     val r = return r
+
+class Primitive t where
+    type RANGE t :: *
+    make_range :: t -> t -> RANGE t
+
+class PrimitiveRange t where
+    type PRIM t :: *
+    make_ranged_type :: t -> PRIM t
 

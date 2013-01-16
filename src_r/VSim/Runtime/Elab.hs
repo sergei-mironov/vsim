@@ -16,6 +16,9 @@ module VSim.Runtime.Elab (
     , alloc_process_let
     , alloc_subtype
     , assume_subtype_of
+    , alloc_ranged_type
+    , alloc_unranged_type
+    , alloc_enum
     ) where
 
 import Control.Monad.Trans
@@ -36,6 +39,15 @@ import VSim.Runtime.Elab.Prim
 import VSim.Runtime.Elab.Array
 import VSim.Runtime.Elab.Record
 import VSim.Runtime.Elab.Function
+
+alloc_range :: (MonadElab m, Primitive t) => m t -> m t -> m (RANGE t)
+alloc_range ml mu = make_range <$> ml <*> mu
+
+alloc_ranged_type :: (MonadElab m, PrimitiveRange r) => m r -> m (PRIM r)
+alloc_ranged_type mr = make_ranged_type <$> mr
+
+alloc_unranged_type :: (MonadElab m) => m PrimitiveT
+alloc_unranged_type = return unranged
 
 alloc_smth n t f = f $ allocP n t >>= fixup
 
@@ -73,4 +85,9 @@ assume_subtype_of t' (t,r) = do
     when (not $ t `valid_subtype_of` t') (fail $
         printf "type convertion from %s to %s failed" (show t) (show t'))
     return (t,r)
+
+alloc_enum :: (MonadElab m) => [String] -> m (EnumT, [EnumVal])
+alloc_enum vals = do
+    let len = (length vals)
+    return (EnumT len, Prelude.map EnumVal [0..len-1])
 
