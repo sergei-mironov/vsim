@@ -168,5 +168,25 @@ ftest() { (
 	cd vhdl_ct || die "Run from project root, please"
 	local ch=`echo $1 | sed 's@\\.@\\\\\\.@g'`
 	grep -e "--.* $ch" *vhd | awk -F : '{print $1}' | sort -u | xargs_ vim -p 
-)
+) }
+
+linesofcode() {
+	echo RUNTIME
+	find src_r -name '*\.hs' |
+		grep -v AST |
+		grep -v Lexer |
+		grep -v Paths_ |
+		grep -v Test |
+		grep -v CompareSignals.hs |
+			xargs wc -l
+
+	echo ALL
+	find -name '*\.hs' |
+		grep -v AST |
+		grep -v Lexer |
+		grep -v Paths_ |
+		grep -v Test |
+		grep -v CompareSignals.hs |
+			xargs wc -l
 }
+
