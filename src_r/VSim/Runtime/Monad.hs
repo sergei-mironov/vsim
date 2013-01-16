@@ -32,7 +32,7 @@ instance (MonadMem m) => MonadMem (ReaderT s m) where
     get_mem = lift $ get_mem
     put_mem = lift . put_mem
 
-instance (MonadMem m) => MonadMem (BP e m) where
+instance (MonadMem m) => MonadMem (BP l e m) where
     get_mem = lift $ get_mem
     put_mem = lift . put_mem
 
@@ -82,6 +82,12 @@ in_range (PrimitiveT l u) v = v >= l && v <= u
 in_range_w :: PrimitiveT -> Waveform -> Bool
 in_range_w t w = and $ map f $ wchanges w where
     f (Change _ v) = in_range t v
+
+instance (MonadPtr m) => Constrained m Signal where
+    ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+
+instance (MonadPtr m) => Constrained m Variable where
+    ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
 sigassign1 :: (MonadSim m, Constrained m Signal) => Assignment -> m ()
 sigassign1 (Assignment (c,r) pw) = do
@@ -154,10 +160,10 @@ data PS = PS {
     , passignments :: [Assignment]
     } deriving(Show)
 
-now :: (Functor m, MonadState PS m) => m Time
-now = ptime <$> get
+now :: (MonadState PS m) => m Time
+now = ptime `liftM` get
 
-type ProcessHandler = VProc ()
+type ProcessHandler = VProc () ()
 
 -- | Representation of VHDL's process
 data Process = Process {
@@ -216,7 +222,7 @@ type VState = (Memory, [Int])
 
 -- | Main simulation monad. Supports breakpoints and IO. [Int] is a list of
 -- active breakpoint identifiers
-newtype VSim a = VSim { unVSim :: BP Pause (StateT VState IO) a }
+newtype VSim a = VSim { unVSim :: BP () Pause (StateT VState IO) a }
     deriving(Monad, MonadIO, Functor, Applicative, MonadBP Pause, 
         MonadState VState, MonadPtr)
 
@@ -240,41 +246,44 @@ data ProcPause = PP [Ptr SigR] (Maybe NextTime)
     deriving (Show)
 
 -- | Monad for process execution.
-newtype VProc a = VProc { unProc :: BP (ProcPause,PS) (StateT PS VSim) a }
+newtype VProc l a = VProc { unProc :: BP l (ProcPause,PS) (StateT PS VSim) a }
     deriving (Monad, MonadIO, MonadPtr, Functor, Applicative, MonadState PS)
 
 class (MonadPtr m, MonadState PS m) => MonadProc m
 
-instance MonadProc VProc
+instance MonadProc (VProc l)
 
 class (MonadProc m, MonadBP Pause m) => MonadWait m where
     wait_until :: NextTime -> m ()
     wait_on :: [Ptr SigR] -> m ()
 
-instance MonadBP Pause VProc where
+instance MonadBP Pause (VProc l) where
     pause = VProc . lift . lift . pause
     halt =  VProc . lift . lift . halt
 
-instance MonadWait VProc where
+instance MonadWait (VProc l) where
     wait_until nt = get >>= \s -> VProc (pause (PP [] (Just nt),s))
     wait_on ss = get >>= \s -> VProc (pause (PP ss Nothing,s))
 
-instance MonadMem VProc where
-    get_mem = undefined
-    put_mem = undefined
+-- instance MonadMem (VProc l) where
+--     get_mem = error "get_mem: undefined in VProc"
+--     put_mem = error "put_mem: undefined in VProc"
 
-runVProc :: VProc () -> PS -> VSim ((ProcPause,PS),VProc ())
+runVProc :: VProc () () -> PS -> VSim ((ProcPause,PS),VProc () ())
 runVProc (VProc r) s = do
     (e,s') <- runStateT (runBP r) s
     case e of
         Left (x,k) -> return (x, VProc k)
         Right _ -> error "runVProc: some process has been terminated"
 
+catchEarlyV :: VProc l1 l1 -> VProc l2 l1
+catchEarlyV (VProc bp) = VProc (catchEarly bp)
+
 terminate :: (MonadBP Pause m) => Time -> String -> m ()
 terminate t s = halt $ Report t High s
 
 -- | Pauses process with the report
-report :: (MonadWait m) => m String -> m ()
+report :: (MonadBP Pause m, MonadWait m) => m String -> m ()
 report s = pause =<< (Report <$> now <*> pure Low <*> s)
 
 -- | Pauses process with the assertion
@@ -309,24 +318,24 @@ str = return
 class (MonadProc m, MonadReader NextTime m) => MonadAssign m
 
 -- | Monad for conducting assignments from within process body
-newtype VAssign a = VAssign { unAssign :: ReaderT NextTime VProc a }
+newtype VAssign l a = VAssign { unAssign :: ReaderT NextTime (VProc l) a }
     deriving(Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
-        MonadState PS, MonadPtr, MonadMem)
+        MonadState PS, MonadPtr)
 
-instance MonadProc VAssign
-instance MonadAssign VAssign
+instance MonadProc (VAssign l)
+instance MonadAssign (VAssign l)
 
-runVAssign :: NextTime -> VAssign a -> VProc ()
+runVAssign :: NextTime -> VAssign l a -> VProc l ()
 runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 
 aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
 aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
 
-type FElab = Elab VProc (VProc ())
-data Function = Function {
-      fname :: String
-    , felab :: FElab
-    }
+-- type FElab = Elab VProc (VProc l ())
+-- data Function = Function {
+--       fname :: String
+--     , felab :: FElab
+--     }
 
 -- instance Signalable (Ptr Signal)
 -- instance Signalable x => Signalable (Ptr (ArrayR x))

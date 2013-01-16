@@ -7,7 +7,7 @@ begin
     main: process
 		variable a : t_int1;
     begin
-        report "Process in the architecture of the entity.";
+		assert false report "end of simulation" severity failure;
         wait;
     end process;
 end;

@@ -60,10 +60,10 @@ instance Subtypeable PrimitiveT where
 instance (MonadPtr m) => Valueable m Variable where
     val (_,r) = vval <$> derefM r
 
-instance Valueable VAssign Signal where
+instance Valueable (VAssign l) Signal where
     val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
 
-instance Valueable VProc Signal where
+instance Valueable (VProc l) Signal where
     val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
 
 instance (MonadPtr m) => Valueable (Elab m) Signal where
@@ -104,10 +104,10 @@ instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Signal v wher
 instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Variable v where
     assign = basic_var_update
 
-instance (Valueable VProc v) => Assignable VProc Variable v where
+instance (Valueable (VProc l) v) => Assignable (VProc l) Variable v where
     assign = basic_var_update
 
-instance (Valueable VAssign v) => Assignable VAssign Signal v where
+instance (Valueable (VAssign l) v) => Assignable (VAssign l) Signal v where
     assign mv mr = do
         a <- Assignment <$> mr <*> (PW <$> ask <*> (wconst <$> (val =<< mv)))
         modify (add_assignment a)
@@ -115,9 +115,9 @@ instance (Valueable VAssign v) => Assignable VAssign Signal v where
 
 -- Constrained 
 
-instance (MonadPtr m) => Constrained m Signal where
-    ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+-- instance (MonadPtr m) => Constrained m Signal where
+--     ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
 
-instance (MonadPtr m) => Constrained m Variable where
-    ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
+-- instance (MonadPtr m) => Constrained m Variable where
+--     ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 

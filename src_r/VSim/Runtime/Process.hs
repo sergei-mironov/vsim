@@ -50,19 +50,19 @@ wait :: (MonadWait m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
 -- FIXME: define the undefined
-instance (Valueable VAssign x)
-    => Assignable VAssign (Array t x) (Array t x) where
+instance (Valueable (VAssign l) x)
+    => Assignable (VAssign l) (Array t x) (Array t x) where
     assign mv mr = undefined
 
 -- FIXME: define the undefined
-instance (Valueable VAssign x)
-    => Assignable VAssign (Record t x) (Record t x) where
+instance (Valueable (VAssign l) x)
+    => Assignable (VAssign l) (Record t x) (Record t x) where
     assign mv mr = undefined
 
-(.<=.) :: VProc x -> (VProc NextTime, Assigner VAssign x) -> VProc ()
+(.<=.) :: VProc l x -> (VProc l NextTime, Assigner (VAssign l) x) -> VProc l ()
 (.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
 
-(.=.) :: VProc Variable -> (Assigner VProc Variable) -> VProc ()
+(.=.) :: VProc l Variable -> (Assigner (VProc l) Variable) -> VProc l ()
 (.=.) mr ma = ma mr >> return ()
 
 add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
@@ -85,9 +85,13 @@ eq, (.==.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Boo
 eq ma mb = (==) <$> (val =<< ma) <*> (val =<< mb)
 (.==.) = eq
 
--- | Monadic if
+-- | if and else
 iF :: (MonadProc m) => m Bool -> m () -> m () -> m ()
 iF exp m1 m2 = exp >>= \ r -> if r then m1 else m2
+
+-- | if without else
+iF_ :: (MonadProc m) => m Bool -> m () -> m ()
+iF_ exp m1 = iF exp m1 (return ())
 
 data ForDirection = To | Downto
     deriving(Show)
@@ -101,6 +105,11 @@ for (ma,dir,mb) body = do
         indexes Downto = [b..a]
     forM_ (indexes dir) body
 
-call :: Elab VProc (VProc ()) -> VProc ()
-call mfn = runElab mfn >>= fst
+call :: Elab (VProc l2) (VProc l1 l1) -> VProc l2 l1
+call e = do
+    (p,_) <- runElab e
+    catchEarlyV p
+
+ret :: l -> VProc l ()
+ret l = VProc (earlyBP l)
 

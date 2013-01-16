@@ -30,6 +30,7 @@ elab = do
             (pure a1) .<=. (next, assign $ (pure a1) .+. (int 1))
             (index (int 1) (pure a2)) .<=. (next, assign $ (int 0))
             report $ (pure $ show l1)
+            ret ()
 
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint

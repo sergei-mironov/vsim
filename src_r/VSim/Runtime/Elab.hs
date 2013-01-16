@@ -14,9 +14,8 @@ module VSim.Runtime.Elab (
     , alloc_constant
     , alloc_process
     , alloc_process_let
-    , alloc_function
     , alloc_subtype
-    , subtype_of
+    , assume_subtype_of
     ) where
 
 import Control.Monad.Trans
@@ -38,13 +37,15 @@ import VSim.Runtime.Elab.Array
 import VSim.Runtime.Elab.Record
 import VSim.Runtime.Elab.Function
 
+alloc_smth n t f = f $ allocP n t >>= fixup
+
 alloc_signal :: (MonadElab m, Representable t, Createable m t (SR t))
-    => String -> t -> (m (t,SR t) -> m (t,SR t)) -> m (t,SR t)
-alloc_signal n t f = f $ allocP n t
+    => String -> t -> Assigner m (t,SR t) -> m (t,SR t)
+alloc_signal = alloc_smth
 
 alloc_variable :: (MonadElab m, Representable t, Createable m t (VR t))
-    => String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
-alloc_variable n t f = f $ allocP n t
+    => String -> t -> Assigner m (t,VR t) -> m (t,VR t)
+alloc_variable = alloc_smth
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
@@ -63,16 +64,13 @@ alloc_process_let n ss lh = lh >>= alloc_process n ss
 alloc_constant :: (MonadElab m) => String -> m Int -> m Int
 alloc_constant _ v = v
 
-alloc_function :: (MonadElab m) => String -> FElab -> m Function
-alloc_function n h = Function <$> (pure n) <*> (pure h)
-
 -- | Allocate a subtype for a type t
 alloc_subtype :: (Subtypeable t, MonadElab m) => m (SM t) -> t -> m t
 alloc_subtype mm t = mm >>= \m -> return (build_subtype m t)
 
 assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
 assume_subtype_of t' (t,r) = do
-    when (not $ t' `valid_subtype_of` t) (fail $
+    when (not $ t `valid_subtype_of` t') (fail $
         printf "type convertion from %s to %s failed" (show t) (show t'))
     return (t,r)
 

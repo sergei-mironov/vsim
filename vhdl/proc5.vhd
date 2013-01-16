@@ -16,10 +16,16 @@ architecture test_arch of test is
         signal a1 : inout integer_vector;
         signal a2 : in integer) is
 	begin
-        a1(20) <= 1;
+        a1(5) <= a2;
+        wait for 1 us;
+        if a1(5) >= 5 then
+            report "greater_eq_5";
+            return;
+        end if;
+        report "less_5";
 	end procedure;
 
-    signal v : integer := 0;
+    signal v : integer := 10;
 	
 begin
 

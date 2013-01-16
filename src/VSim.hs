@@ -200,17 +200,24 @@ gen_elab ts = [
         map_let e = perror "%s\ngen_let: only variables, constants or procedures, please"
             (show e)
 
-    gen_range_c (Constrained _ c) = gen_range c
-    gen_range_c (Unconstrained c) = gen_range c
+    gen_range_c (Constrained _ c) = gen_arr_range c
+    gen_range_c (Unconstrained c) = gen_arr_range c
 
-    gen_range (IRARDConstrained loc tn (IRDRange loc2 a DirTo b)) = 
+    gen_arr_range (IRARDConstrained loc tn (IRDRange loc2 a DirTo b)) = 
         gen_appl "alloc_range" [gen_elab_expr a, gen_elab_expr b]
-    gen_range (IRARDTypeMark loc t) =
+    gen_arr_range (IRARDTypeMark loc t) =
         gen_ident "alloc_urange"
-    gen_range (IRARDRange (IRDRange _ a DirTo b)) =
+    gen_arr_range (IRARDRange (IRDRange _ a DirTo b)) =
         gen_appl "alloc_range" [gen_elab_expr a, gen_elab_expr b]
+    gen_arr_range s = perror
+        "%s\ngen_arr_range: a-to-b ranges or <>, please" (PP.ppShow s)
+
+    gen_range (IRDRange loc a DirTo b) = 
+        gen_appl "alloc_range" [gen_elab_expr a, gen_elab_expr b]
+    -- gen_range (IRDARange loc exp name) = error "range undefined"
+    -- gen_range (IRDAReverseRange _ exp name) = error "range undefined"
     gen_range s = perror
-        "%s\ngen_array_constr: a-to-b ranges or <>, please" (PP.ppShow s)
+        "%s\ngen_range: a-to-b ranges or <>, please" (PP.ppShow s)
 
     gen_alloc_type (IRType p (ITDArray [c] _)) = [
           gen_function (unHierPath p) "alloc_array_type" [
@@ -220,7 +227,13 @@ gen_elab ts = [
 
     gen_alloc_type (IRType p (ITDConstraint _ t [c])) = [
         gen_function (unHierPath p) "alloc_subtype" [
-              gen_range c
+              gen_arr_range c
+            , gen_type_ident t
+            ] ]
+
+    gen_alloc_type (IRType p (ITDRangeDescr r)) = [
+        gen_function (unHierPath p) "alloc_type" [
+              gen_range r
             , gen_type_ident t
             ] ]
 
@@ -330,7 +343,9 @@ gen_elab ts = [
         gen_stmt (ISAssert loc e1 e2 e3) = [gen_function_ "assert" []]
         gen_stmt (ISReport loc e1 e2) = [gen_function_ "report" [gen_expr e1]]
         gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function_ "wait" [gen_expr e]]
+        gen_stmt (ISWait loc [] Nothing Nothing) = [gen_function_ "wait" [gen_ident "next"]]
         gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
+        gen_stmt (ISReturn loc) = [gen_function_ "ret" [unit_con]]
         gen_stmt (ISProcCall n args loc) = [gen_function_ "call" [
             gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
             ]]

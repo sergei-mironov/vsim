@@ -14,10 +14,8 @@ import Control.Monad
 class Representable t where
     -- | Signal representation
     type SR t :: *
-    -- alloc_signal :: String -> t -> (m (t,SR t) -> m (t,SR t)) -> m (t,SR t)
     -- | Varaiable representation
     type VR t :: *
-    -- alloc_variable :: String -> t -> (m (t,VR t) -> m (t,VR t)) -> m (t,VR t)
 
 constrM :: (Monad m, Applicative m) => t -> m y -> m (t,y)
 constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
@@ -25,13 +23,10 @@ constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
 pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
 pairM mt my = (\t y -> (t,y)) <$> mt <*> my
 
--- | States that t is a runtime-type
--- class Runtimeable t where
---     type RT t :: *
---     initial :: t -> (RT t)
-
-class Createable m t x where
+class (Monad m) => Createable m t x where
     alloc :: String -> t -> m x
+    fixup :: (t,x) -> m (t,x)
+    fixup = return
 
 allocP n t = alloc n t >>= \r -> return (t,r)
 
@@ -50,12 +45,6 @@ class (Monad m) => Assignable m c v where
 
 type Assigner m c = m c -> m c
 
--- class Cloneable m x where
---     clone :: x -> m x
-
--- instance (Monad m, Applicative m, Cloneable m a, Cloneable m b) => Cloneable m (a,b) where
---     clone (a,b) = (\a b -> (a,b)) <$> clone a <*> clone b
-
 class (Monad m, Show x) => Constrained m x where
     ccheck :: x -> m ()
 
@@ -70,9 +59,4 @@ class (Monad m) => Valueable m x where
 
 instance (Monad m) => Valueable m Int where
     val r = return r
-
--- class (Monad m) => Valueables m x
--- instance (Valueable m a, Valueable m b) => Valueables m (a,b)
--- instance (Valueable m a, Valueable m b, Valueable m c) => Valueables m (a,b,c)
--- class Signalable x
 

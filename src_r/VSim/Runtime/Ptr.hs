@@ -23,7 +23,7 @@ class (MonadIO m, Applicative m) => MonadPtr m
 instance MonadPtr IO
 instance MonadPtr m => MonadPtr (StateT s m)
 instance MonadPtr m => MonadPtr (ReaderT r m)
-instance MonadPtr m => MonadPtr (BP e m)
+instance MonadPtr m => MonadPtr (BP l e m)
 
 allocM :: (MonadIO m) => a -> m (Ptr a)
 allocM a = liftIO (newIORef a)
