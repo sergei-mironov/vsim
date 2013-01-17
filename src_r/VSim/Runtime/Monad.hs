@@ -328,9 +328,6 @@ instance MonadAssign (VAssign l)
 runVAssign :: NextTime -> VAssign l a -> VProc l ()
 runVAssign nt va = runReaderT (unAssign va) nt >> return ()
 
-aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
-aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
-
 -- type FElab = Elab VProc (VProc l ())
 -- data Function = Function {
 --       fname :: String

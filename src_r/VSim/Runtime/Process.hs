@@ -59,6 +59,9 @@ instance (Valueable (VAssign l) x)
     => Assignable (VAssign l) (Record t x) (Record t x) where
     assign mv mr = undefined
 
+aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
+aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
+
 (.<=.) :: VProc l x -> (VProc l NextTime, Assigner (VAssign l) x) -> VProc l ()
 (.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
 

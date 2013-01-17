@@ -97,6 +97,13 @@ basic_var_update mv mr = do
     ccheck x
     return x
 
+proc_sig_update mv mr = do
+    x <- mv
+    v <- val x
+    a <- Assignment <$> mr <*> (PW <$> ask <*> (pure $ wconst v))
+    modify (add_assignment a)
+    return (acurr a)
+
 instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Signal v where
     assign = basic_sig_update
 
@@ -107,10 +114,7 @@ instance (Valueable (VProc l) v) => Assignable (VProc l) Variable v where
     assign = basic_var_update
 
 instance (Valueable (VAssign l) v) => Assignable (VAssign l) Signal v where
-    assign mv mr = do
-        a <- Assignment <$> mr <*> (PW <$> ask <*> (wconst <$> (val =<< mv)))
-        modify (add_assignment a)
-        return (acurr a)
+    assign = proc_sig_update
 
 -- Constrained 
 

@@ -6,7 +6,7 @@ import VSim.Runtime
 elab :: Elab IO ()
 elab = do
     t_int <- alloc_unranged_type
-    t_0_5 <- alloc_ranged_type (int 0) (int 5)
+    t_0_5 <- alloc_ranged_type (alloc_range (int 0) (int 5))
 
     s1 <- alloc_signal "s1" t_int (assign (int 0))
     s2 <- alloc_signal "s2" t_int (assign (pure s1))

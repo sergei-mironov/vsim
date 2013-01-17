@@ -84,13 +84,6 @@ haltBP e = BP $ \_ cont -> cont (Left e) (haltBP e)
 earlyBP :: (Monad m) => l -> BP l e m ()
 earlyBP l = BP $ \_ cont -> cont (Right l) (earlyBP l)
 
--- ignoreEarly :: (Monad m) => BP l e m a -> BP x e m a
--- ignoreEarly bp = BP $ \done cont ->
---     let i_done a = done a
---         i_cont (Left e) k = cont (Left e) (ignoreEarly k)
---         i_cont (Right l) _ = error "got early"
---     in unBP bp i_done i_cont
-
 catchEarly :: (Monad m) => BP l e m l -> BP x e m l
 catchEarly bp = BP $ \done cont ->
     let i_done a = done a
