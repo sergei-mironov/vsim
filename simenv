@@ -170,23 +170,20 @@ ftest() { (
 	grep -e "--.* $ch" *vhd | awk -F : '{print $1}' | sort -u | xargs_ vim -p 
 ) }
 
-linesofcode() {
-	echo RUNTIME
-	find src_r -name '*\.hs' |
+countlines() {
+	find $1 -name '*\.hs' |
 		grep -v AST |
 		grep -v Lexer |
 		grep -v Paths_ |
 		grep -v Test |
 		grep -v CompareSignals.hs |
-			xargs wc -l
+		xargs_ wc -l |
+		tail -n 1 |
+		awk '{print $1}'
+}
 
-	echo ALL
-	find -name '*\.hs' |
-		grep -v AST |
-		grep -v Lexer |
-		grep -v Paths_ |
-		grep -v Test |
-		grep -v CompareSignals.hs |
-			xargs wc -l
+linesofcode() {
+	printf "runtime %s lines\n" `countlines src_r`
+	printf "all     %s lines\n" `countlines .`
 }
 
