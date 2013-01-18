@@ -5,6 +5,8 @@ die() {
 	echo "$@" >&2 ; exit 1 ;
 }
 
+inline_help() { return 0 ; }
+
 cpto() {
 	case $# in
 		1) local to=$1 ;;
@@ -14,7 +16,6 @@ cpto() {
 	test -f "$from" || die cpto "cpto: invalid source file read from stdin"
 	cp "$from" "$to" && echo "$to"
 }
-
 
 xargs_() {
 	local args=""
@@ -52,6 +53,8 @@ viewtr() {
 }
 
 runaldec() { (
+	inline_help "runaldec FILE.vhd - Run the aldec simulator"
+
 	CWD=`pwd`
 	case $1 in
 		/*vhd|/*vhdl) VHD=$1 ;;
@@ -186,4 +189,22 @@ linesofcode() {
 	printf "runtime %s lines\n" `countlines src_r`
 	printf "all     %s lines\n" `countlines .`
 }
+
+# help() {
+# 	declare -f $1 |
+# 	sed -n '/inline_help/,/^[\t ]*"/p' |
+# 	tail -n +2 |
+# 	head -n -1 |
+# 	sed 's/[\t ]# //'
+# }
+
+help_brief() {
+	declare -f | sed -n '/inline_help/p'
+}
+
+if ! echo $0 | grep -q sh ; then (
+	echo "You probably want to merge this file insted of running it."
+	echo "Type \`. ./simenv' in the shell prompt."
+	) >&2
+fi
 
