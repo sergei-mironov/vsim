@@ -8,6 +8,8 @@ module VSim.Runtime.Class where
 import Control.Applicative
 import Control.Monad
 
+import VSim.Runtime.Waveform
+
 -- | Createable types are those who can be created as signals or variables.
 -- To do so whe neeed to know their signal- and variable- representations.
 class Representable t where
@@ -38,14 +40,6 @@ class Subtypeable t where
     build_subtype :: SM t -> t -> t
     -- | is first a valid subtype of second?
     valid_subtype_of :: t -> t -> Bool
-
--- | States that a value can be assigned to a container in a specific monad.
--- For etample, Ints could be assigned to Signals, x can be assigned to the
--- arrays of x
-class (Monad m) => Assignable m c v where
-    assign :: m v -> m c -> m c
-
-type Assigner m c = m c -> m c
 
 -- | Value x may be checked against some internal constraint. Ccheck should call
 -- monad's fail on checking failure

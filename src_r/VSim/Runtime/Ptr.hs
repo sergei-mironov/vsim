@@ -26,7 +26,7 @@ instance MonadPtr m => MonadPtr (ReaderT r m)
 instance MonadPtr m => MonadPtr (BP l e m)
 
 allocM :: (MonadIO m) => a -> m (Ptr a)
-allocM a = liftIO (newIORef a)
+allocM a = liftIO $ newIORef a
 
 writeM :: (MonadIO m) => Ptr a -> a -> m ()
 writeM ptr a = liftIO (writeIORef ptr a)
@@ -46,7 +46,4 @@ withPtrM f ptr = derefM ptr >>= \a -> do
 
 instance (Show x) => Show (IORef x) where
     show x = "@(" ++ show (unsafePerformIO $ derefM x) ++ ")"
-
--- instance (MonadPtr m, Cloneable m x) => Cloneable m (Ptr x) where
---     clone r = derefM r >>= clone >>= allocM
 

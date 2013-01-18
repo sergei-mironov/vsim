@@ -13,10 +13,13 @@ import Data.Maybe
 import Data.IntMap as IntMap
 import Data.Array2 as Array2
 
+import VSim.Runtime.Waveform
+import VSim.Runtime.Time
 import VSim.Runtime.Monad
 import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Prim
+import VSim.Runtime.Elab.Class
 
 unpack_range :: (Monad m) => RangeT -> m [Int]
 unpack_range (RangeT a b) = return [a .. b]
@@ -35,7 +38,7 @@ instance (MonadPtr m, Createable m t r) => Createable m (ArrayT t) (Ptr (ArrayR 
         let (l,u) = scanRange a2
         let iterate [] a2 = return a2
             iterate (i:is) a2 = do
-                a2' <- allocHole a2 i (\n -> alloc n t)
+                a2' <- allocIfNull a2 i (\n -> alloc n t)
                 iterate is a2'
         a2' <- iterate [l..u] a2
         writeM r a2'
@@ -51,17 +54,16 @@ alloc_range a b = RangeT <$> a <*> b
 alloc_array_type :: (MonadElab m) => m RangeT -> t -> m (ArrayT t)
 alloc_array_type mr t = ArrayT <$> (pure t) <*> mr
 
-lookupUpd idx def m = (fromMaybe def r, m') where 
-    (r,m') = IntMap.insertLookupWithKey (\_ a _ -> a) idx def m
-
 index :: (MonadPtr m, Arrayable m a el) => m Int -> m a -> m el
-index mi ma = mi >>= \i -> ma >>= \a -> idx i a
+index mi ma = mi >>= \i -> ma >>= \a -> safeIdx i a
 
-setidx :: (MonadPtr m, Arrayable m a e) => m Int -> Assigner m e -> a -> m a
-setidx mi f r = f (index mi (pure r)) >> return r
+setidx :: (MonadPtr m, Arrayable m (Array t e) (t,e))
+    => m Int -> Assigner m (t,e) -> Array t e -> m Plan
+setidx mi f r = f (index mi (pure r))
 
-setall :: (MonadPtr m, Arrayable m a el) => Assigner m el -> a -> m a
-setall f a = iter f a >> return a
+setall :: (MonadPtr m, Arrayable m (Array t e) (t,e))
+    => Assigner m (t,e) -> Array t e -> m Plan
+setall f a = iter f a
 
 instance (MonadPtr m) => Assignable (Elab m) (Array t x) (Array t x) where
     assign = error "FIXME: define array assignments"
@@ -72,51 +74,57 @@ instance (Subtypeable t) => Subtypeable (ArrayT t) where
     valid_subtype_of (ArrayT t1 r1) (ArrayT t2 r2) =
         (t1 `valid_subtype_of` t2) && (r1 `inner_range` r2)
 
-idx_elab i (ArrayT te rg, r) = do
-    a2 <- derefM r
-    when (not (inrage i rg)) $ do
-        fail "index: array index out of range"
-    (e,a2') <- readArrayDef a2 i (\n -> alloc n te)
-    writeM r a2'
-    return (te, e)
-
-iter_elab f (ArrayT te UnconstrT, _) = do
-    fail "iterate in elab without ranges"
-iter_elab f (ArrayT te (RangeT l u), r) = do
-    let iterate [] a2 = return a2
-        iterate (i:is) a2 = do
-            (_,a2') <- readArrayDef a2 i (\n -> alloc n te)
-            iterate is a2'
-    derefM r >>= iterate [l..u] >>= writeM r
-
-idx_proc i (ArrayT te rg, r) = do
-    a2 <- derefM r
-    when (not (inrage i rg)) $ do
-        fail "index: array index out of range"
-    e <- readArray a2 i
-    return (te, e)
-
-iter_proc f (ArrayT te UnconstrT, _) = do
-    fail "iterate in vproc without ranges"
-iter_proc f (ArrayT te (RangeT l u), r) = do
-    a2 <- derefM r
-    forM_ [l..u] $ \i -> do
-        e <- readArray a2 i
-        f $ pure (te,e)
+iter :: (MonadPtr m, Arrayable m (Array t e) (t,e))
+    => Assigner m (t,e) -> Array t e -> m Plan
+iter f a@(ArrayT _ UnconstrT, _) = do
+    fail "iterate in without ranges"
+iter f a@(ArrayT te (RangeT l u), r) = do
+    concat <$> forM [l..u] (\i -> f (unsafeIdx i a))
 
 class (Monad m) => Arrayable m a el | a -> el where
-    idx :: Int -> a -> m el
-    iter :: Assigner m el -> a -> m ()
+    safeIdx :: Int -> a -> m el
+    unsafeIdx :: Int -> a -> m el
 
-instance (MonadPtr m, Createable (Elab m) t a) => Arrayable (Elab m) (Array t a) (t,a) where
-    idx = idx_elab
-    iter = iter_elab
+instance (MonadPtr m, Createable (Elab m) t a) =>
+         Arrayable (Elab m) (Array t a) (t,a) where
 
-instance Arrayable (VAssign l) (Array t a) (t,a) where
-    idx = idx_proc
-    iter = iter_proc
+    safeIdx i a@(ArrayT te rg@(UnconstrT), r) = do
+        unsafeIdx i a
+    safeIdx i a@(ArrayT te rg@(RangeT _ _), r) = do
+        when (not (inrage i rg)) $ do
+            fail "index: array index out of range"
+        unsafeIdx i a
+
+    unsafeIdx i a@(ArrayT te _, r) = do
+        a2 <- derefM r
+        (e,a2') <- readArrayDef a2 i (\n -> alloc n te)
+        writeM r a2'
+        return (te, e)
 
 instance Arrayable (VProc l) (Array t a) (t,a) where
-    idx = idx_proc
-    iter = iter_proc
+
+    safeIdx i a@(ArrayT te UnconstrT, r) = do
+        fail "idx_proc: can't deindex the unconstrained array"
+    safeIdx i a@(ArrayT te rg@(RangeT _ _), r) = do
+        when (not (inrage i rg)) $ do
+            fail "index: array index out of range"
+        unsafeIdx i a
+
+    unsafeIdx i (ArrayT te UnconstrT, r) = do
+        fail "idx_proc: can't deindex the unconstrained array"
+    unsafeIdx i (ArrayT te rg@(RangeT _ _), r) = do
+        a2 <- derefM r
+        e <- readArray a2 i
+        return (te, e)
+
+
+-- FIXME: define the undefined
+instance (Valueable (VProc l) x)
+    => Assignable (VProc l) (Array t x) (Array t x) where
+    assign mv mr = undefined
+
+-- FIXME: define the undefined
+instance (Valueable (VProc l) x)
+    => Assignable (VProc l) (Record t x) (Record t x) where
+    assign mv mr = undefined
 

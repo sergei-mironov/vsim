@@ -9,6 +9,7 @@ module VSim.Runtime.Elab (
     , module VSim.Runtime.Elab.Array
     , module VSim.Runtime.Elab.Record
     , module VSim.Runtime.Elab.Function
+    , module VSim.Runtime.Elab.Class
     , alloc_signal
     , alloc_variable
     , alloc_constant
@@ -19,6 +20,7 @@ module VSim.Runtime.Elab (
     , alloc_ranged_type
     , alloc_unranged_type
     , alloc_enum
+    , defval
     ) where
 
 import Control.Monad.Trans
@@ -39,6 +41,10 @@ import VSim.Runtime.Elab.Prim
 import VSim.Runtime.Elab.Array
 import VSim.Runtime.Elab.Record
 import VSim.Runtime.Elab.Function
+import VSim.Runtime.Elab.Class
+
+defval :: (Monad m) => x -> m Plan
+defval = const (return [])
 
 alloc_range :: (MonadElab m, Primitive t) => m t -> m t -> m (RANGE t)
 alloc_range ml mu = make_range <$> ml <*> mu
@@ -49,7 +55,7 @@ alloc_ranged_type mr = make_ranged_type <$> mr
 alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
-alloc_smth n t f = f $ allocP n t >>= fixup
+alloc_smth n t f = allocP n t >>= \v -> f (pure v) >> fixup v
 
 alloc_signal :: (MonadElab m, Representable t, Createable m t (SR t))
     => String -> t -> Assigner m (t,SR t) -> m (t,SR t)

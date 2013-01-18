@@ -16,10 +16,10 @@ elab = do
         , setidx (pure 1) (assign (int 1))
         , setidx (pure 2) (assign (int 2))
         ])
-    a2 <- alloc_signal "a2" array id
+    a2 <- alloc_signal "a2" array defval
 
     array' <- alloc_array_type (alloc_range (pure 1) (pure 5)) array
-    aa1 <- alloc_signal "aa1" array' id
+    aa1 <- alloc_signal "aa1" array' defval
 
     proc1 <- alloc_process "main" [] $ do
         breakpoint

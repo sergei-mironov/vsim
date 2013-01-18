@@ -265,10 +265,6 @@ instance MonadWait (VProc l) where
     wait_until nt = get >>= \s -> VProc (pause (PP [] (Just nt),s))
     wait_on ss = get >>= \s -> VProc (pause (PP ss Nothing,s))
 
--- instance MonadMem (VProc l) where
---     get_mem = error "get_mem: undefined in VProc"
---     put_mem = error "put_mem: undefined in VProc"
-
 runVProc :: VProc () () -> PS -> VSim ((ProcPause,PS),VProc () ())
 runVProc (VProc r) s = do
     (e,s') <- runStateT (runBP r) s
@@ -315,31 +311,6 @@ int = return
 str :: (Monad m) => String -> m String
 str = return
 
-class (MonadProc m, MonadReader NextTime m) => MonadAssign m
-
--- | Monad for conducting assignments from within process body
-newtype VAssign l a = VAssign { unAssign :: ReaderT NextTime (VProc l) a }
-    deriving(Monad, Functor, MonadIO, Applicative, MonadReader NextTime,
-        MonadState PS, MonadPtr)
-
-instance MonadProc (VAssign l)
-instance MonadAssign (VAssign l)
-
-runVAssign :: NextTime -> VAssign l a -> VProc l ()
-runVAssign nt va = runReaderT (unAssign va) nt >> return ()
-
--- type FElab = Elab VProc (VProc l ())
--- data Function = Function {
---       fname :: String
---     , felab :: FElab
---     }
-
--- instance Signalable (Ptr Signal)
--- instance Signalable x => Signalable (Ptr (ArrayR x))
--- signal :: (Monad m, Signalable x) => x -> m x
--- signal = return
-
-
 data EnumT = EnumT {
       esize :: Int
     }
@@ -347,4 +318,8 @@ data EnumT = EnumT {
 
 newtype EnumVal = EnumVal Int
     deriving(Show)
+
+type Plan = [(Signal, Int)]
+
+type Assigner m c = m c -> m Plan
 

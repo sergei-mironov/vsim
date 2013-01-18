@@ -41,8 +41,8 @@ readArray a2@(MapForm n l) i = do
         Just e -> return e
         Nothing -> error "readArray: element does not exist"
 
-allocHole :: (MonadIO m) => Array2 a -> Int -> (String -> m a) -> m (Array2 a)
-allocHole a2 i ma = snd `liftM` readArrayDef a2 i ma
+allocIfNull :: (MonadIO m) => Array2 a -> Int -> (String -> m a) -> m (Array2 a)
+allocIfNull a2 i ma = snd `liftM` readArrayDef a2 i ma
 
 scanRange a2@(MapForm n l) = (fst $ findMin l, fst $ findMax l)
 

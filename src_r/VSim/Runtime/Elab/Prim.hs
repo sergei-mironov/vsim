@@ -14,10 +14,12 @@ import Data.IntMap as IntMap
 import Text.Printf
 import System.Random
 
+import VSim.Runtime.Time
 import VSim.Runtime.Monad
 import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
+import VSim.Runtime.Elab.Class
 
 instance Primitive Int where
     type RANGE Int = RangeT
@@ -59,9 +61,6 @@ instance Subtypeable PrimitiveT where
 instance (MonadPtr m) => Valueable m Variable where
     val (_,r) = vval <$> derefM r
 
-instance Valueable (VAssign l) Signal where
-    val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
-
 instance Valueable (VProc l) Signal where
     val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
 
@@ -80,47 +79,39 @@ instance (MonadProc m) => Imageable m Variable PrimitiveT where
 instance (MonadProc m) => Imageable m Int PrimitiveT where
     t_image mr _ = show <$> mr
 
-
 -- Assignable
 
+-- | Update the signal inplace. For elaboration only.
 basic_sig_update mv mr = do
     v <- (mv >>= val)
     x <- mr
     updateM (\s -> s{ swave = wconst v }) (snd x)
     ccheck x
-    return x
+    return []
 
+-- | Update the variable inplace. For elaboration only.
 basic_var_update mv mr = do
     v <- (mv >>= val)
     x <- mr
     updateM (\var -> var{ vval = v }) (snd x)
     ccheck x
-    return x
+    return []
 
+-- | Generate request for signal's update for the process's monad.
 proc_sig_update mv mr = do
-    x <- mv
-    v <- val x
-    a <- Assignment <$> mr <*> (PW <$> ask <*> (pure $ wconst v))
-    modify (add_assignment a)
-    return (acurr a)
+    r <- mr
+    v <- (val =<< mv)
+    return [(r,v)]
 
+-- Elaboration
 instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Signal v where
     assign = basic_sig_update
-
 instance (MonadPtr m, Valueable (Elab m) v) => Assignable (Elab m) Variable v where
     assign = basic_var_update
 
+-- Process
+instance (Valueable (VProc l) v) => Assignable (VProc l) Signal v where
+    assign = proc_sig_update
 instance (Valueable (VProc l) v) => Assignable (VProc l) Variable v where
     assign = basic_var_update
-
-instance (Valueable (VAssign l) v) => Assignable (VAssign l) Signal v where
-    assign = proc_sig_update
-
--- Constrained 
-
--- instance (MonadPtr m) => Constrained m Signal where
---     ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
-
--- instance (MonadPtr m) => Constrained m Variable where
---     ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 

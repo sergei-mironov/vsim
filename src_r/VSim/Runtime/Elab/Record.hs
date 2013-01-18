@@ -12,10 +12,12 @@ import Text.Printf
 import Data.IntMap as IntMap
 import Data.NestedTuple
 
+import VSim.Runtime.Waveform
 import VSim.Runtime.Monad
 import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Prim
+import VSim.Runtime.Elab.Class
 
 instance (Representable x) => Representable (RecordT x) where
     type SR (RecordT x) = Ptr (RecordR (SR x))
@@ -67,9 +69,9 @@ alloc_record_type x = return (RecordT x, accessors) where
 field :: (MonadPtr m) => Accessor r f -> m (Record x r) -> m f
 field fsel mx = (fsel . rtuple) <$> (derefM =<< (snd <$> mx))
 
-setfld :: (MonadPtr m) => Accessor r f -> Assigner m f -> (Record x r) -> m (Record x r)
-setfld fs f r = f (field fs (pure r)) >> return r
+setfld :: (MonadPtr m) => Accessor r f -> Assigner m f -> (Record x r) -> m Plan
+setfld fs f r = f (field fs (pure r))
 
 instance (MonadPtr m) => Assignable (Elab m) (Record t x) (Record t x) where
-    assign = undefined
+    assign = error "record assignment is undefined still"
 

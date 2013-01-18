@@ -49,21 +49,15 @@ next = fs 1
 wait :: (MonadWait m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
--- FIXME: define the undefined
-instance (Valueable (VAssign l) x)
-    => Assignable (VAssign l) (Array t x) (Array t x) where
-    assign mv mr = undefined
+aggregate :: (MonadPtr m) => [a -> m Plan] -> m a -> m Plan
+aggregate fs mr = mr >>= \r -> concat <$> mapM (\f -> f r) fs
 
--- FIXME: define the undefined
-instance (Valueable (VAssign l) x)
-    => Assignable (VAssign l) (Record t x) (Record t x) where
-    assign mv mr = undefined
-
-aggregate :: (MonadPtr m) => [a -> m a] -> m a -> m a
-aggregate fs mr = mr >>= \r -> foldM (flip ($)) r fs
-
-(.<=.) :: VProc l x -> (VProc l NextTime, Assigner (VAssign l) x) -> VProc l ()
-(.<=.) mr (mt,ma) = mr >>= \r -> mt >>= \t -> runVAssign t (ma (return r))
+(.<=.) :: VProc l x -> (VProc l NextTime, Assigner (VProc l) x) -> VProc l ()
+(.<=.) mr (mt,ma) = do
+    time <- mt
+    plan <- ma mr
+    forM_ plan $ \(sig@(t,r),v) -> do
+        modify $ add_assignment (Assignment sig (PW time (wconst v)))
 
 (.=.) :: VProc l Variable -> (Assigner (VProc l) Variable) -> VProc l ()
 (.=.) mr ma = ma mr >> return ()
