@@ -11,9 +11,9 @@ import Control.Monad
 import VSim.Runtime.Monad
 import VSim.Runtime.Ptr
 
--- | States that a value can be assigned to a container in a specific monad.
--- For etample, Ints could be assigned to Signals, x can be assigned to the
--- arrays of x
+-- | States that @v value can be assigned to @c in the monad @m.
+-- Implementation has a choise: it can either perform inplace monadic
+-- actions or ask the runtime to perform signal update by returning a Plan.
 class (Monad m) => Assignable m c v where
     assign :: m v -> m c -> m Plan
 

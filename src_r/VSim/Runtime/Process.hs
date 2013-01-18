@@ -6,6 +6,7 @@
 -- | Module declares various process-level DSL combinators
 module VSim.Runtime.Process where
 
+import Data.List
 import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Control.Applicative
@@ -51,6 +52,33 @@ wait nt = nt >>= wait_until
 
 aggregate :: (MonadPtr m) => [a -> m Plan] -> m a -> m Plan
 aggregate fs mr = mr >>= \r -> concat <$> mapM (\f -> f r) fs
+
+plan'n'rsort :: (MonadPtr m) => m x -> [(m NextTime, Assigner m x)] -> m [(NextTime,Plan)]
+plan'n'rsort mr ls = do
+    r <- mr
+    ls' <- forM ls $ \(mt, f) -> do
+            t <- mt
+            p <- f (pure r)
+            return (t,p)
+    let tcomp (t1,_) (t2,_) = t1`compare`t2
+    return (reverse $ sortBy tcomp ls')
+
+makePW :: (MonadPtr m) => [(NextTime,Plan)] -> m [Assignment]
+makePW ls = do
+    let retlist = return . map snd . IntMap.toList
+    let execM e s = flip execStateT e s >>= retlist
+    let merge (Assignment s (PW t w)) (Assignment _ (PW t' w')) = 
+         Assignment s (PW t (concatAt t' w w'))
+    execM IntMap.empty $ do
+        forM_ ls $ \(time, plans) -> do
+            forM_ plans $ \(sig,v) -> do
+                sigid <- lift $ signalUniqIq sig
+                modify $ IntMap.insertWith merge sigid
+                    (Assignment sig $ PW time (wconst v))
+
+(.<<=.) :: (MonadProc m) => m x -> [(m NextTime, Assigner m x)] -> m ()
+(.<<=.) mr ls = do
+    plan'n'rsort mr ls >>= makePW >>= mapM_ (modify . add_assignment)
 
 (.<=.) :: VProc l x -> (VProc l NextTime, Assigner (VProc l) x) -> VProc l ()
 (.<=.) mr (mt,ma) = do

@@ -72,9 +72,13 @@ data SigR = SigR {
     , swave :: Waveform
     , oldvalue :: Int
     , sproc :: [Ptr Process]
+    , suniq :: Int
     } deriving(Show)
 
 type Signal = (PrimitiveT, Ptr SigR)
+
+signalUniqIq :: (MonadPtr m) => Signal -> m Int
+signalUniqIq s = suniq <$> derefM (snd s)
 
 in_range :: PrimitiveT -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u

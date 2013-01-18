@@ -11,6 +11,7 @@ import Control.Monad.Trans
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.IntMap as IntMap
+import Data.Unique
 import Text.Printf
 import System.Random
 
@@ -36,7 +37,8 @@ instance Representable PrimitiveT where
 
 instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
     alloc n (PrimitiveT l r) = do
-        r <- allocM (SigR n (wconst l) 0 [])
+        u <- liftIO newUnique
+        r <- allocM (SigR n (wconst l) 0 [] (hashUnique u))
         modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
         return r
 

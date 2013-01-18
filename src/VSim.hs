@@ -51,17 +51,21 @@ gen_type_ident :: IRTypeDescr -> HsExp
 gen_type_ident (ITDName p) = gen_ident p
 gen_type_ident t = perror "%s\ngen_type_ident: name types with single idents, please" (show t)
 
+paren_int i exp
+    | i < 0 = HsParen exp
+    | otherwise = exp
+
 class AsInt x where
     gen_int :: x -> HsExp
 
 instance AsInt TInt where
-    gen_int i = HsLit $ HsInt $ fromIntegral i
+    gen_int i = paren_int i $ HsLit $ HsInt $ fromIntegral i
     
 instance AsInt Int where
-    gen_int i = HsLit $ HsInt $ fromIntegral i
+    gen_int i = paren_int i $ HsLit $ HsInt $ fromIntegral i
 
 instance AsInt Int128 where
-    gen_int i = HsLit $ HsInt $ fromIntegral i
+    gen_int i = paren_int i $ HsLit $ HsInt $ fromIntegral i
     
 instance (AsInt a) => AsInt (WithLoc a) where
     gen_int (WithLoc _ i) = gen_int i
@@ -330,6 +334,18 @@ gen_elab ts = [
                     ]
                 ]
             ]
+        gen_stmt (ISSignalAssign _ n _ afters) = [
+              gen_function_ "(.<<=.)" [
+                  gen_name gen_expr n
+                , gen_list $ map gen_after afters
+                ]
+            ]
+            where
+                gen_after (IRAfter e t) = gen_pair [
+                      maybe (gen_ident "next") (gen_expr) t
+                    , gen_assign_or_aggregate gen_expr e
+                    ]
+
         gen_stmt (ISNop loc) = [gen_function_ "return" [unit_con]]
         gen_stmt (ISNil) = [gen_function_ "return" [unit_con]]
         gen_stmt (ISIf loc e s1 s2) = [

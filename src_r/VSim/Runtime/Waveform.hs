@@ -21,7 +21,7 @@ import Prelude hiding(until)
 
 import VSim.Runtime.Time
 
--- | Change is a part of a waveform. More or less formal definition is:
+-- | Change is a part of a waveform. It's semantic is:
 -- foreach t . t < until => (value `at_time` t) == cvalue
 --             t >= until => value is undefined
 data Change = Change {
@@ -93,7 +93,7 @@ earliest (Waveform ((Change t1 _):_)) (Waveform ((Change t2 _):_)) = compare t1 
 earliest (Waveform _) (Waveform _) = error "earliest: vmpty waveform"
 
 -- | Concats two waveforms together. Resulting value of a signal at
--- time t is a value of w1.
+-- time t is a value of w2.
 --
 -- w1_ _/- - - -
 -- w2- - -\_ _ _
@@ -116,8 +116,8 @@ future t (Waveform (c@(Change t' v'):cs))
     | t' <= t = future t (Waveform cs)
     | t' > t = c:(future t (Waveform cs))
 
--- | forall t . t >  psince => (valueAt t PW) == (valueAt t pwave)
---              t <= psince => (valueAt t PW) == undefined
+-- | forall t . t >=  psince => (valueAt t PW) == (valueAt t pwave)
+--              t < psince => (valueAt t PW) == undefined
 data ProjectedWaveform = PW {
       psince :: NextTime
     , pwave :: Waveform

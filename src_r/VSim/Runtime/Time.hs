@@ -1,6 +1,6 @@
 module VSim.Runtime.Time (
       Time
-    , NextTime
+    , NextTime(..) -- FIXME: hide constructors
     , TestTime(..)
     , Timeable(..)
     , move_time
