@@ -5,7 +5,7 @@ die() {
 	echo "$@" >&2 ; exit 1 ;
 }
 
-inline_help() { return 0 ; }
+comment() { return 0 ; }
 
 cpto() {
 	case $# in
@@ -34,26 +34,25 @@ stime() {
 	/usr/bin/time -f '%e' "$@"
 }
 
-vimless_() {
-	vim -R -
-}
-
 vircheck() {
+	comment "vircheck FILE.vhdl - Cnvert FILE.vhdl to FILE.vir and view it"
 	f=`mktemp`
 	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck > $f
 	vim -c "set ft=haskell" `ospath $f`
 }
 
 runsim() {
+	comment "runsim FILE.vhdl - Generate Haskell code for FILE.vhdl"
 	runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
 }
 
 viewtr() {
+	comment "runsim FILE.vhdl - Generate FILE.vir and view it"
 	local f=`runtr "$@"`&& vim $f -c "set ft=lisp"
 }
 
 runaldec() { (
-	inline_help "runaldec FILE.vhd - Run the aldec simulator"
+	comment "runaldec FILE.vhd - Run the aldec simulator"
 
 	CWD=`pwd`
 	case $1 in
@@ -85,11 +84,13 @@ runaldec() { (
 ) }
 
 aldecwave() {
+	comment "aldecwave  - view Aldec waveforms"
 	avhdl.exe .aldec/wave.asdb
 }
 
 
 runghdl() { (
+	comment "runghdl FILE.vhdl - Run ghdl simulator"
 	CWD=`pwd`
 	case $1 in
 		/*vhd|/*vhdl) VHD=$1 ;;
@@ -113,6 +114,7 @@ runghdl() { (
 ) }
 
 runtr() { (
+	comment "runtr FILE.vhdl - run java translator"
 	CWD=`pwd`
 	case $1 in
 		/*vhd|/*vhdl) VHD=$1 ;;
@@ -186,25 +188,22 @@ countlines() {
 }
 
 linesofcode() {
+	comment "linesofcode - Count the size of a project in lines of code"
 	printf "runtime %s lines\n" `countlines src_r`
 	printf "all     %s lines\n" `countlines .`
 }
 
-# help() {
-# 	declare -f $1 |
-# 	sed -n '/inline_help/,/^[\t ]*"/p' |
-# 	tail -n +2 |
-# 	head -n -1 |
-# 	sed 's/[\t ]# //'
-# }
-
-help_brief() {
-	declare -f | sed -n '/inline_help/p'
+help() {
+	declare -f | grep -v grep | sed -n 's@.*comment.*"\(.*\)".*@\1@g p' |
+		awk -F '-' '{ printf("%-20s - %s\n",$1,$2);}'
 }
 
 if ! echo $0 | grep -q sh ; then (
-	echo "You probably want to merge this file insted of running it."
-	echo "Type \`. ./simenv' in the shell prompt."
+	echo "You probably want to include this file insted of running it."
+	echo "Type \`. simenv' in the shell prompt."
 	) >&2
+else
+	echo "VSim runtime helper functions now enabled"
+	echo "Type \`help' to view list of commands"
 fi
 
