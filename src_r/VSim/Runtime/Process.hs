@@ -135,6 +135,10 @@ call e = do
     (p,_) <- runElab e
     catchEarlyV p
 
+(<<) :: Monad m => (a -> m b) -> m a -> m b
+(<<) = (=<<)
+infixl 1 <<
+
 ret :: l -> VProc l ()
 ret l = VProc (earlyBP l)
 

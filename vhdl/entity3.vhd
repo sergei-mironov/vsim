@@ -27,6 +27,7 @@ architecture main of main is
 	signal o1 : std_ulogic;
 	signal o2 : std_ulogic;
     signal o  : std_ulogic;
+    signal const_1 : std_ulogic := '1';
     signal i : std_ulogic_vector (0 to 1);
 begin
 
@@ -37,7 +38,7 @@ begin
 		end if;
 	end process;
 
-    u1:entity unit1(unit1) port map(inum=>(others=>'1'), oled=>o1);
+    u1:entity unit1(unit1) port map(inum=>(0=>'0', 1=>const_1), oled=>o1);
     u2:entity unit1(unit1) port map(inum=>i, oled=>o2);
 
     i <= (others => '0');

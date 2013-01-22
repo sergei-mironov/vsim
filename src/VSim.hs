@@ -31,10 +31,6 @@ instance AsIdent String where
 instance AsIdent Ident where
     mkName = mkName . BS.unpack
 
-instance AsIdent (Ident, [Ident]) where
-    mkName (_,x:_) = mkName x
-    mkName _ = error "mkName (hierPath): strange hierPath"
-
 instance (AsIdent a) => AsIdent (WithLoc a) where
     mkName (WithLoc _ a) = mkName a
 
@@ -46,10 +42,6 @@ gen_pat x = HsPVar $ mkName x
 
 mangle' :: (AsIdent x) => x -> String
 mangle' x = let HsIdent i = mkName x in (i++"'")
-
-gen_type_ident :: IRTypeDescr -> HsExp
-gen_type_ident (ITDName p) = gen_ident p
-gen_type_ident t = perror "%s\ngen_type_ident: name types with single idents, please" (show t)
 
 paren_int i exp
     | i < 0 = HsParen exp
@@ -119,8 +111,6 @@ gen_expr_unit = unit_con
 
 gen_lambda i s = HsParen $ HsLambda noLoc [gen_pat i] (HsParen $ HsDo $ s)
 
-type_name_is pat n = gen_ident pat == gen_type_ident n
-
 gen_assign x = gen_appl "assign" x
 
 gen_assign_or_aggregate f e = build (expr_to_aggr e) where
@@ -143,18 +133,6 @@ gen_assign_or_aggregate f e = build (expr_to_aggr e) where
             gaa = gen_assign_or_aggregate
 
     build Nothing = gen_assign [f e]
-
-gen_name f (IRName n _) = gen_name' n where
-    gen_name' (INIdent p) = gen_appl "pure" [gen_ident p]
-    gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [f e, gen_name' p]
-    gen_name' n = perror "%s\ngen_name: ident or index please" (PP.ppShow n)
-
-build_alloc_variable p t x =
-    gen_function p "alloc_variable" [
-          gen_str p
-        , gen_type_ident t
-        , x
-        ]
 
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
@@ -251,7 +229,7 @@ gen_elab ts = [
         ]
     gen_alloc_signal (IRSignal p (ITDName t) (IOENothing loc)) = [
           gen_function (unHierPath p) "alloc_signal" [
-              gen_str $ unHierPath p, gen_ident t, gen_ident "id"
+              gen_str $ unHierPath p, gen_ident $ unHierPath t, gen_ident "id"
             ]
         ]
     gen_alloc_signal _ = error $ concat [
@@ -265,6 +243,13 @@ gen_elab ts = [
             , gen_elab_expr e
             ]
         ]
+
+    build_alloc_variable p t x =
+        gen_function p "alloc_variable" [
+              gen_str p
+            , gen_type_ident t
+            , x
+            ]
 
     gen_alloc_variable (IRVariable p t (IOEJustExpr _ e)) =
         [ build_alloc_variable (unHierPath p) t (gen_assign_or_aggregate gen_elab_expr e) ]
@@ -285,7 +270,7 @@ gen_elab ts = [
             ]
         ]
         where
-            scan_sens (INIdent hp) = gen_ident hp
+            scan_sens (INIdent hp) = gen_ident $ unHierPath hp
             scan_sens s = perror "%s\nscan_sens: use idents, please" (show s)
 
     gen_let_func n pats stmts =
@@ -313,6 +298,18 @@ gen_elab ts = [
         gen_let ss = HsParen $ HsDo $
             (concat $ map gen_arg as) ++
             [gen_return_ (gen_seq ss)]
+
+    type_name_is pat n = gen_ident pat == gen_type_ident n
+
+    gen_type_ident :: IRTypeDescr -> HsExp
+    gen_type_ident (ITDName p) = gen_ident $ unHierPath p
+    gen_type_ident t = perror "%s\ngen_type_ident: name types with single idents, please"
+        (show t)
+
+    gen_name f (IRName n _) = gen_name' n where
+        gen_name' (INIdent p) = gen_appl "pure" [gen_ident $ unHierPath p]
+        gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [f e, gen_name' p]
+        gen_name' n = perror "%s\ngen_name: ident or index please" (PP.ppShow n)
 
     -- Generate sequentional statements in a do-wrapper
     gen_seq ss = HsParen $ HsDo $ gen_stmt ss where
@@ -362,7 +359,7 @@ gen_elab ts = [
         gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
         gen_stmt (ISReturn loc) = [gen_function_ "ret" [unit_con]]
         gen_stmt (ISProcCall n args loc) = [gen_function_ "call" [
-            gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
+            gen_op_chain "<<" (gen_ident (unHierPath n) : map (gen_expr . snd) args)
             ]]
         gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
 

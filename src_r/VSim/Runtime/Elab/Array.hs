@@ -29,6 +29,7 @@ unpack_range (UnconstrT) = fail "attempt to list inifinite range"
 instance (Representable t) => Representable (ArrayT t) where
     type SR (ArrayT t) = Ptr (ArrayR (SR t))
     type VR (ArrayT t) = Ptr (ArrayR (VR t))
+    type FR (ArrayT t) = ArrayR (FR t)
 
 instance (MonadPtr m, Createable m t r) => Createable m (ArrayT t) (Ptr (ArrayR r)) where
     alloc n (ArrayT t UnconstrT) = allocM (Array2.empty n)

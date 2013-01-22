@@ -70,7 +70,6 @@ type Variable = (PrimitiveT, Ptr VarR)
 data SigR = SigR {
       sname :: String
     , swave :: Waveform
-    , oldvalue :: Int
     , sproc :: [Ptr Process]
     , suniq :: Int
     } deriving(Show)

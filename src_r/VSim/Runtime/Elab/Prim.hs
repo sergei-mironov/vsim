@@ -34,11 +34,12 @@ instance PrimitiveRange RangeT where
 instance Representable PrimitiveT where
     type SR PrimitiveT = Ptr SigR
     type VR PrimitiveT = Ptr VarR
+    type FR PrimitiveT = Int
 
 instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
     alloc n (PrimitiveT l r) = do
         u <- liftIO newUnique
-        r <- allocM (SigR n (wconst l) 0 [] (hashUnique u))
+        r <- allocM (SigR n (wconst l) [] (hashUnique u))
         modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
         return r
 
@@ -81,7 +82,7 @@ instance (MonadProc m) => Imageable m Variable PrimitiveT where
 instance (MonadProc m) => Imageable m Int PrimitiveT where
     t_image mr _ = show <$> mr
 
--- Assignable
+{- Assignable -}
 
 -- | Update the signal inplace. For elaboration only.
 basic_sig_update mv mr = do
@@ -116,4 +117,5 @@ instance (Valueable (VProc l) v) => Assignable (VProc l) Signal v where
     assign = proc_sig_update
 instance (Valueable (VProc l) v) => Assignable (VProc l) Variable v where
     assign = basic_var_update
+
 

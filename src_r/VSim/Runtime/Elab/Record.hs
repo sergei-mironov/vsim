@@ -22,6 +22,7 @@ import VSim.Runtime.Elab.Class
 instance (Representable x) => Representable (RecordT x) where
     type SR (RecordT x) = Ptr (RecordR (SR x))
     type VR (RecordT x) = Ptr (RecordR (VR x))
+    type FR (RecordT x) = RecordR (FR x)
 
 instance (MonadElab m, Createable m t r) => Createable m (RecordT t) (Ptr (RecordR r)) where
     alloc n (RecordT t) = alloc n t >>= allocM . RecordR n
@@ -30,6 +31,7 @@ instance (Representable a, Representable b) =>
          Representable ((String, a) :-: b)  where
     type SR ((String, a) :-: b) = ((a, SR a), SR b)
     type VR ((String, a) :-: b) = ((a, VR a), VR b)
+    type FR ((String, a) :-: b) = ((a, FR a), FR b)
 
 instance (MonadElab m, Createable m t1 a, Createable m t2 b)
     => Createable m ((String, t1) :-: t2) ((t1,a), b) where
@@ -41,6 +43,7 @@ instance (MonadElab m, Createable m t1 a, Createable m t2 b)
 instance Representable ()  where
     type SR () = ()
     type VR () = ()
+    type FR () = ()
 
 instance (MonadElab m) => Createable m () () where
     alloc n () = return ()

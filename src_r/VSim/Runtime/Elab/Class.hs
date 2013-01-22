@@ -17,4 +17,3 @@ import VSim.Runtime.Ptr
 class (Monad m) => Assignable m c v where
     assign :: m v -> m c -> m Plan
 
-

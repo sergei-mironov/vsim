@@ -8,7 +8,6 @@ module VSim.Runtime.Elab (
       module VSim.Runtime.Elab.Prim
     , module VSim.Runtime.Elab.Array
     , module VSim.Runtime.Elab.Record
-    , module VSim.Runtime.Elab.Function
     , module VSim.Runtime.Elab.Class
     , alloc_signal
     , alloc_variable
@@ -40,7 +39,6 @@ import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Prim
 import VSim.Runtime.Elab.Array
 import VSim.Runtime.Elab.Record
-import VSim.Runtime.Elab.Function
 import VSim.Runtime.Elab.Class
 
 defval :: (Monad m) => x -> m Plan
@@ -96,4 +94,18 @@ alloc_enum :: (MonadElab m) => [String] -> m (EnumT, [EnumVal])
 alloc_enum vals = do
     let len = (length vals)
     return (EnumT len, Prelude.map EnumVal [0..len-1])
+
+
+{- Mappable -}
+
+-- instance (MonadPtr m) => Mappable (Elab m) PrimitiveT Signal where
+--     portmap t ms = ms >>= return
+
+-- instance (MonadPtr m) => Mappable (Elab m) PrimitiveT Int where
+--     portmap t mx = alloc_signal "tmp" t (assign mx)
+
+
+-- alloc_portmap :: (MonadElab m, Createable m t (SR t), Mappable m t x)
+--     => t -> m x -> m (SR t)
+-- alloc_portmap t mx = portmap (alloc_signal "")
 

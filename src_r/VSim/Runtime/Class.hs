@@ -17,6 +17,9 @@ class Representable t where
     type SR t :: *
     -- | Varaiable representation
     type VR t :: *
+    -- | Free-form representation. Used for carrying function returns and
+    -- constants
+    type FR t :: *
 
 constrM :: (Monad m, Applicative m) => t -> m y -> m (t,y)
 constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
@@ -32,6 +35,10 @@ class (Monad m) => Createable m t x where
 
 -- | Tuples newly-allocated value with type t
 allocP n t = alloc n t >>= \r -> return (t,r)
+
+-- | States that signal of type @t can be mapped from x
+class (Monad m, Representable t) => Mappable m t x where
+    portmap :: m (t, SR t) -> t -> m x -> m (t,SR t)
 
 -- | States that type t can be changed by applying the modifier (SM t)
 class Subtypeable t where
