@@ -5,14 +5,15 @@ end entity main;
 
 entity unit1 is
     port (
-       inum : in integer;
+       -- BUG: java translator doesn't allow default values in entity port
+       -- declarations, Aldec does.
+       inum : in integer := 1;
        oled : out integer);
 end entity unit1;
 
 architecture unit1_a of unit1 is
-    signal a : integer := 1;
 begin
-    oled <= inum + a;
+    oled <= inum;
 end architecture unit1_a;
 
 architecture main of main is
@@ -30,7 +31,7 @@ begin
 		end if;
 	end process;
 
-    u1:entity unit1(unit1_a) port map(inum=>clk, oled=>o1);
+    u1:entity unit1(unit1_a) port map(oled=>o1);
     u2:entity unit1(unit1_a) port map(inum=>clk, oled=>o2);
 
     clk <= clk + 1 after 1 us;

@@ -1,46 +1,49 @@
-entity test is
-end entity test;
+-- Simple entity test, array and indexed mappings
 
+library ieee;
+use ieee.std_logic_1164.all ;
 
-entity unit is
-    generic (n : integer := 100);
+entity main is
+end entity main;
+
+library ieee;
+use ieee.std_logic_1164.all ;
+
+entity unit1 is
     port (
-       inum : in integer;
-       oled : out integer);
-end entity unit;
-
-architecture unit_a of unit is
-    subtype  oneten is integer range 0 to 9 ;
-    signal a : oneten := 0;
+       inum : in std_ulogic_vector (0 to 1);
+       oled : out std_ulogic);
 begin
-    oled <= inum + a + n;
-end architecture unit_a;
+end;
 
+architecture unit1 of unit1 is
+begin
+    oled <= inum(0) and inum(1);
+end architecture unit1;
 
-architecture test_arch of test is
+architecture main of main is
     constant CYCLES : integer := 100;
     signal clk : integer := 0;
-    signal i : integer := 0;
-
-    type tarr is array (0 to 10) of integer;
-    signal os : tarr;
+	signal o1 : std_ulogic;
+	signal o2 : std_ulogic;
+    signal o  : std_ulogic;
+    signal i : std_ulogic_vector (0 to 1);
 begin
 
 	terminator : process(clk)
 	begin
 		if clk >= CYCLES then
 			assert false report "end of simulation" severity failure;
-		-- else
-		-- 	report "tick";
 		end if;
 	end process;
 
-    gen1: for x in 1 to 10 generate
-        u1:entity unit(unit_a)
-            generic map (n=>x)
-            port map(inum=>i, oled=>os(x));
-    end generate;
+    u1:entity unit1(unit1) port map(inum=>(others=>'1'), oled=>o1);
+    u2:entity unit1(unit1) port map(inum=>i, oled=>o2);
+
+    i <= (others => '0');
+	o <= o1 and o2;
 
     clk <= clk + 1 after 1 us;
 
-end architecture test_arch;
+end architecture main;
+

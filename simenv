@@ -71,9 +71,13 @@ runaldec() { (
 	echo "Using entity name $ENTITY" >&2
 
 	(
-	echo vlib -global work
+	echo vlib ieee
+	echo vcom -work ieee `ospath $CWD/vhdl/IEEE/std_logic_1164.vhdl`
+
+	echo vlib work
 	echo set worklib work
-	echo vcom `ospath $CWD/vhdl/IEEE/std_logic_1164.vhdl` `ospath $VHD`
+	echo vcom -work work `ospath $VHD`
+
 	echo vsim work.$ENTITY
 	echo trace -verbose '*'
 	echo run 9999ms
