@@ -17,14 +17,14 @@ printWaveform (Waveform cs) = concat $ map pc cs where
         | t < maxBound = printf "< %d until %d >" c ((watch t) - 1)
         | otherwise = printf "< %d until inf >" c
 
-printSignalM :: (MonadIO m) => Memory -> Ptr SigR -> m String
-printSignalM m r = derefM r >>= return . printSignal
+printSignalM :: (MonadIO m) => Signal -> m String
+printSignalM v = derefM (vr v) >>= return . printSignal (vn v)
 
-printSignal :: SigR -> String
-printSignal s = printf "signal %s wave %s" (sname s) (printWaveform (swave s))
+printSignal :: String -> SigR -> String
+printSignal n s = printf "signal %s wave %s" n (printWaveform (swave s))
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
-printSignalsM m = liftIO $ mapM (printSignalM m) >=> mapM_ putStrLn $ (msignals m)
+printSignalsM m = liftIO $ mapM printSignalM >=> mapM_ putStrLn $ (msignals m)
 
 printProcessesM :: (MonadIO m) => Memory -> m ()
 printProcessesM m = do

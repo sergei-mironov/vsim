@@ -84,13 +84,13 @@ makePW ls = do
 (.<=.) mr (mt,ma) = do
     time <- mt
     plan <- ma mr
-    forM_ plan $ \(sig@(t,r),v) -> do
+    forM_ plan $ \(sig@(Value t n r),v) -> do
         modify $ add_assignment (Assignment sig (PW time (wconst v)))
 
 (.=.) :: VProc l Variable -> (Assigner (VProc l) Variable) -> VProc l ()
 (.=.) mr ma = ma mr >> return ()
 
-add, (.+.) :: (MonadProc m, Valueable m x, Valueable m y) => m x -> m y -> m Int
+add, (.+.) :: (MonadPtr m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 add ma mb = (+) <$> (val =<< ma) <*> (val =<< mb)
 (.+.) = add
 

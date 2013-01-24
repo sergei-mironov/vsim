@@ -5,20 +5,23 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module VSim.Runtime.Elab (
-      module VSim.Runtime.Elab.Prim
+      module VSim.Runtime.Elab.Class
+    , module VSim.Runtime.Elab.Prim
     , module VSim.Runtime.Elab.Array
-    , module VSim.Runtime.Elab.Record
-    , module VSim.Runtime.Elab.Class
+    -- , module VSim.Runtime.Elab.Record
+    , alloc_signal_agg
     , alloc_signal
+    , alloc_variable_agg
     , alloc_variable
     , alloc_constant
     , alloc_process
     , alloc_process_let
-    , alloc_subtype
-    , assume_subtype_of
+    -- , alloc_subtype
+    -- , assume_subtype_of
     , alloc_ranged_type
     , alloc_unranged_type
-    , alloc_enum
+    , alloc_range
+    -- , alloc_enum
     , defval
     ) where
 
@@ -36,64 +39,79 @@ import VSim.Runtime.Process
 import VSim.Runtime.Monad
 import VSim.Runtime.Class
 import VSim.Runtime.Ptr
+import VSim.Runtime.Elab.Class
 import VSim.Runtime.Elab.Prim
 import VSim.Runtime.Elab.Array
-import VSim.Runtime.Elab.Record
-import VSim.Runtime.Elab.Class
+-- import VSim.Runtime.Elab.Record
 
-defval :: (Monad m) => x -> m Plan
-defval = const (return [])
+defval :: Monad m => m ()
+defval = return ()
 
-alloc_range :: (MonadElab m, Primitive t) => m t -> m t -> m (RANGE t)
-alloc_range ml mu = make_range <$> ml <*> mu
+alloc_urange :: (MonadElab m) => m RangeT
+alloc_urange = pure UnconstrT
 
-alloc_ranged_type :: (MonadElab m, PrimitiveRange r) => m r -> m (PRIM r)
-alloc_ranged_type mr = make_ranged_type <$> mr
+alloc_range :: (MonadElab m) => m Int -> m Int -> m RangeT
+alloc_range ml mu = RangeT <$> ml <*> mu
+
+alloc_ranged_type :: (MonadElab m) => m RangeT -> m PrimitiveT
+alloc_ranged_type mr = mkprim <$> mr where
+    mkprim (RangeT l u) = PrimitiveT l u
+    mkprim (UnconstrT) = PrimitiveT minBound maxBound
 
 alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
-alloc_smth n t f = allocP n t >>= \v -> f (pure v) >> fixup v
+alloc' n t mx = mx >>= \x -> unClone (alloc n t x)
 
-alloc_signal :: (MonadElab m, Representable t, Createable m t (SR t))
-    => String -> t -> Assigner m (t,SR t) -> m (t,SR t)
-alloc_signal = alloc_smth
+allocA' n t f = unClone (allocA n t f)
 
-alloc_variable :: (MonadElab m, Representable t, Createable m t (VR t))
-    => String -> t -> Assigner m (t,VR t) -> m (t,VR t)
-alloc_variable = alloc_smth
+alloc_signal :: (MonadPtr m, Createable (Clone m) (Value t (SR t)) src)
+    => String -> t -> m src -> m (Value t (SR t))
+alloc_signal = alloc'
+
+alloc_signal_agg :: (CreateableA (Clone m) (Value t (SR t)))
+    => String -> t ->  [Agg (Clone m) (Value t (SR t)) ()] -> m (Value t (SR t))
+alloc_signal_agg = allocA'
+
+alloc_variable :: (MonadPtr m, Createable (Clone m) (Value t (VR t)) src)
+    => String -> t -> m src -> m (Value t (VR t))
+alloc_variable = alloc'
+
+alloc_variable_agg :: (CreateableA (Clone m) (Value t (VR t)))
+    => String -> t ->  [Agg (Clone m) (Value t (VR t)) ()] -> m (Value t (VR t))
+alloc_variable_agg = allocA'
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
-    => String -> [(t, Ptr SigR)] -> ProcessHandler -> m (Ptr Process)
+    => String -> [Signal] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
     let encycle [] = forever h
-        encycle xs = forever (h >> wait_on (Prelude.map snd xs))
+        encycle xs = forever (h >> wait_on (Prelude.map vr xs))
     p <- allocM (Process n (encycle ss) Nothing [])
     modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
 
 alloc_process_let :: (MonadElab m)
-    => String -> [(t, Ptr SigR)] -> m ProcessHandler -> m (Ptr Process)
+    => String -> [Signal] -> m ProcessHandler -> m (Ptr Process)
 alloc_process_let n ss lh = lh >>= alloc_process n ss
 
 alloc_constant :: (MonadElab m) => String -> m Int -> m Int
 alloc_constant _ v = v
 
 -- | Allocate a subtype for a type t
-alloc_subtype :: (Subtypeable t, MonadElab m) => m (SM t) -> t -> m t
-alloc_subtype mm t = mm >>= \m -> return (build_subtype m t)
+-- alloc_subtype :: (Subtypeable t, MonadElab m) => m (SM t) -> t -> m t
+-- alloc_subtype mm t = mm >>= \m -> return (build_subtype m t)
 
-assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
-assume_subtype_of t' (t,r) = do
-    when (not $ t `valid_subtype_of` t') (fail $
-        printf "type convertion from %s to %s failed" (show t) (show t'))
-    return (t,r)
+-- assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
+-- assume_subtype_of t' (t,r) = do
+--     when (not $ t `valid_subtype_of` t') (fail $
+--         printf "type convertion from %s to %s failed" (show t) (show t'))
+--     return (t,r)
 
-alloc_enum :: (MonadElab m) => [String] -> m (EnumT, [EnumVal])
-alloc_enum vals = do
-    let len = (length vals)
-    return (EnumT len, Prelude.map EnumVal [0..len-1])
+-- alloc_enum :: (MonadElab m) => [String] -> m (EnumT, [EnumVal])
+-- alloc_enum vals = do
+--     let len = (length vals)
+--     return (EnumT len, Prelude.map EnumVal [0..len-1])
 
 
 {- Mappable -}

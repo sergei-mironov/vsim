@@ -24,9 +24,13 @@ import VSim.Runtime.Time
 import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 
-class (MonadIO m, Applicative m) => MonadMem m where
+class (MonadPtr m) => MonadMem m where
     get_mem :: m Memory
     put_mem :: Memory -> m ()
+
+instance (MonadPtr m) => MonadMem (StateT Memory m) where
+    get_mem = get
+    put_mem = put
 
 instance (MonadMem m) => MonadMem (ReaderT s m) where
     get_mem = lift $ get_mem
@@ -36,12 +40,15 @@ instance (MonadMem m) => MonadMem (BP l e m) where
     get_mem = lift $ get_mem
     put_mem = lift . put_mem
 
-instance (MonadMem m) => MonadMem (StateT s m) where
-    get_mem = lift $ get_mem
-    put_mem = lift . put_mem
-
 modify_mem :: MonadMem m => (Memory -> Memory) -> m ()
 modify_mem f = get_mem >>= \m -> put_mem (f m)
+
+
+data Value t x = Value {
+      vt :: t
+    , vn :: String
+    , vr :: x
+    } deriving(Show)
 
 -- | VHDL primitive type can are described with it's upper and lower bounds. Use
 -- of Ints is a limitation of a current implementation.
@@ -54,30 +61,24 @@ ranged a b = PrimitiveT a b
 unranged = PrimitiveT minBound maxBound
 
 -- | VHDL variable (runtime representation)
-data VarR = VarR {
-      vname :: String
-    , vval :: Int
-    } deriving(Show)
+newtype VarR = VarR { vval :: Int } deriving(Show)
 
 -- instance (MonadPtr m) => Cloneable m (Ptr a) where
 --     clone r = derefM r >>= allocM 
 
-type Variable = (PrimitiveT, Ptr VarR)
-
--- updateVar :: (Valueable m a) => a -> (PrimitiveT, Ptr VarR) -> m ()
+type Variable = Value PrimitiveT (Ptr VarR)
 
 -- | VHDL primitive signal
 data SigR = SigR {
-      sname :: String
-    , swave :: Waveform
+      swave :: Waveform
     , sproc :: [Ptr Process]
     , suniq :: Int
     } deriving(Show)
 
-type Signal = (PrimitiveT, Ptr SigR)
+type Signal = Value PrimitiveT (Ptr SigR)
 
 signalUniqIq :: (MonadPtr m) => Signal -> m Int
-signalUniqIq s = suniq <$> derefM (snd s)
+signalUniqIq s = suniq <$> derefM (vr s)
 
 in_range :: PrimitiveT -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u
@@ -86,17 +87,20 @@ in_range_w :: PrimitiveT -> Waveform -> Bool
 in_range_w t w = and $ map f $ wchanges w where
     f (Change _ v) = in_range t v
 
+subst_with UnconstrT (l,u) = RangeT l u
+subst_with rg@(RangeT _ _) _ = rg
+
 instance (MonadPtr m) => Constrained m Signal where
-    ccheck (t,r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+    ccheck (Value t _ r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
 
 instance (MonadPtr m) => Constrained m Variable where
-    ccheck (t,r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
+    ccheck (Value t _ r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
 sigassign1 :: (MonadSim m, Constrained m Signal) => Assignment -> m ()
-sigassign1 (Assignment (c,r) pw) = do
-    s <- derefM r
-    writeM r s{ swave = unPW (swave s) pw }
-    ccheck (c,r)
+sigassign1 (Assignment v pw) = do
+    s <- derefM (vr v)
+    writeM (vr v) s{ swave = unPW (swave s) pw }
+    ccheck v
 
 sigassign2 :: (MonadSim m) => Ptr SigR -> Waveform -> m [Ptr Process]
 sigassign2 r w = do
@@ -111,10 +115,9 @@ data RangeT = RangeT {
     } | UnconstrT
     deriving(Show)
 
-inner_range UnconstrT UnconstrT = True
-inner_range _ UnconstrT = True
-inner_range UnconstrT _ = False
-inner_range (RangeT b1 e1) (RangeT b2 e2) = (b1 >= b2) && (e1 <= e2)
+inner_of _ UnconstrT = True
+inner_of UnconstrT _ = False
+inner_of (RangeT b1 e1) (RangeT b2 e2) = (b1 >= b2) && (e1 <= e2)
 
 inrage :: Int -> RangeT -> Bool
 inrage x (RangeT l r) = x >= l && x <= r
@@ -132,7 +135,7 @@ data ArrayT t = ArrayT {
 type ArrayR a = Array2 a
 
 -- | VHDL array entity
-type Array t e = (ArrayT t, Ptr (ArrayR e))
+type Array t e = Value (ArrayT t) (Ptr (ArrayR e))
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
@@ -197,7 +200,7 @@ rewind r h nt = do
     writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
-      msignals :: [Ptr SigR]
+      msignals :: [Signal]
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
@@ -296,15 +299,12 @@ breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
 class (MonadMem m) => MonadElab m
 
 newtype Elab m a = Elab { unElab :: (StateT Memory m) a }
-    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr)
-
-instance (MonadPtr m) => MonadMem (Elab m) where
-    get_mem = Elab $ get
-    put_mem = Elab . put
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem)
 
 instance (MonadPtr m) => MonadElab (Elab m)
 
 runElab e = runStateT (unElab e) emptyMem
+
 
 -- | Type hint for ints
 int :: (Monad m) => Int -> m Int
@@ -325,4 +325,24 @@ newtype EnumVal = EnumVal Int
 type Plan = [(Signal, Int)]
 
 type Assigner m c = m c -> m Plan
+
+pfail x = fail . printf (x ++ "\n")
+
+
+newtype Link m a = Link { unLink :: m a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+
+instance MonadTrans Link where lift = Link
+
+
+newtype Clone m a = Clone { unClone :: m a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+
+instance MonadTrans Clone where lift = Clone
+
+
+newtype Access m a = Access { unAccess :: m a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+
+instance MonadTrans Access where lift = Access
 

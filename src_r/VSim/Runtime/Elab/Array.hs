@@ -2,12 +2,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
+-- {-# LANGUAGE FunctionalDependencies #-}
 
 module VSim.Runtime.Elab.Array where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans
 import Text.Printf
 import Data.Maybe
 import Data.IntMap as IntMap
@@ -25,36 +26,100 @@ unpack_range :: (Monad m) => RangeT -> m [Int]
 unpack_range (RangeT a b) = return [a .. b]
 unpack_range (UnconstrT) = fail "attempt to list inifinite range"
 
+alloc_array_type :: (MonadElab m) => m RangeT -> t -> m (ArrayT t)
+alloc_array_type mr t = ArrayT <$> (pure t) <*> mr
+
 -- | ArrayT of IntType generates Arrays of this type
 instance (Representable t) => Representable (ArrayT t) where
     type SR (ArrayT t) = Ptr (ArrayR (SR t))
     type VR (ArrayT t) = Ptr (ArrayR (VR t))
     type FR (ArrayT t) = ArrayR (FR t)
 
-instance (MonadPtr m, Createable m t r) => Createable m (ArrayT t) (Ptr (ArrayR r)) where
-    alloc n (ArrayT t UnconstrT) = allocM (Array2.empty n)
-    alloc n (ArrayT t (RangeT l u)) = allocDef n [l..u] (\n -> alloc n t) >>= allocM
-    fixup (ArrayT t UnconstrT, r) = do
-        a2 <- derefM r
-        let (l,u) = scanRange a2
-        let iterate [] a2 = return a2
-            iterate (i:is) a2 = do
-                a2' <- allocIfNull a2 i (\n -> alloc n t)
-                iterate is a2'
-        a2' <- iterate [l..u] a2
-        writeM r a2'
-        return (ArrayT t (RangeT l u), r)
-    fixup x = return x
+-- Fill unallocated array items with their default values
+fixup_array (Value (ArrayT t rg) n r) = do
+    lu <- scanRange <$> derefM r
+    let rg'@(RangeT l u) = rg`subst_with` lu
+    when (not (rg' `inner_of` rg)) $ fail "range failure"
+    withM r $ \a2 -> do
+        let flipFoldM a b f = foldM f a b
+        flipFoldM a2 [l..u] $ \a i -> do
+            allocIfNull i (vr <$> alloc0 [] t) a
+    return (Value (ArrayT t rg') n r)
 
-alloc_urange :: (MonadElab m) => m RangeT
-alloc_urange = pure UnconstrT
+alloc_empty_array n t@(ArrayT te rg) = do
+    Value t n `liftM` allocM Array2.empty
 
-alloc_range :: (MonadElab m) => m Int -> m Int -> m RangeT
-alloc_range a b = RangeT <$> a <*> b
+alloc_clone_array n t src = do
+    val <- alloc_empty_array n t
+    lift $ assign (pure src) (pure val)
+    fixup_array val
 
-alloc_array_type :: (MonadElab m) => m RangeT -> t -> m (ArrayT t)
-alloc_array_type mr t = ArrayT <$> (pure t) <*> mr
+instance (Createable0 m (Value t x))
+    => Createable0 m (Array t x) where
+        alloc0 n t = alloc_empty_array n t >>= fixup_array
 
+instance (Createable0 (Clone (Elab m)) (Value t x), MonadPtr m)
+    => Createable (Clone (Elab m)) (Array t x) (Array t x) where
+        alloc n t src = alloc_clone_array n t src
+
+instance (Createable0 (Link (Elab m)) (Value t x), MonadPtr m)
+    => Createable (Link (Elab m)) (Array t x) (Array t x) where
+        alloc n t src = return (Value t n (vr src))
+
+instance (Createable0 m (Value t x))
+    => Createable m (Array t x) () where
+        alloc n t () = alloc0 n t
+
+instance (Createable0 m (Value t x))
+    => CreateableA m (Array t x) where
+        allocA n t agg = do
+            val <- alloc0 n t 
+            forM_ agg (\f -> f val)
+            fixup_array val
+
+index mi mv = mi >>= \i -> mv >>= \v -> index' i v
+
+index' i (Value (ArrayT t UnconstrT) n _) =
+    pfail "not constraines: array %s" n
+index' i (Value (ArrayT et rg) n r) = do
+    let en = printf "%s[%d]" n i
+    er <- maybeDerefM (fail "index failure: item %s" en) (readArray i) r
+    return (Value et en er)
+
+access_elab i x (Value (ArrayT te rg) n r) = do
+    Value _ _ e <- alloc "<fixme>" te x
+    maybeUpdateM (fail "already alocated") (Array2.allocItem i e) r
+ 
+instance (Createable (Clone m) (Value t e) x) => Accessable (Clone m) (Array t e) x () where
+    access = access_elab
+
+instance (Createable (Link m) (Value t e) x) => Accessable (Link m) (Array t e) x () where
+    access = access_elab
+
+access_proc i x (Value (ArrayT et rg) n r) = do
+    let en = printf "%s[%d]" n i
+    er <- maybeDerefM (fail "access failure: item %s" en) (readArray i) r
+    ret <- lift $ assign (pure x) (pure $ Value et en er)
+    return ret
+    
+instance (Assignable (VProc l) (Value t e) x)
+    => Accessable (Access (VProc l)) (Array t e) x Plan where
+        access = access_proc
+
+setidx :: (Accessable (m m1) a x r, Monad m1, Monad (m m1), MonadTrans m)
+    => m1 Int -> m1 x -> a -> (m m1) r
+setidx mi mx a = do
+    i <- lift mi
+    x <- lift mx
+    access i x a
+
+instance Assignable (VProc l) (Array t x) (Array t x) where
+    assign mv mr = error "undefined: array assignments"
+
+instance (MonadPtr m) => Assignable (Elab m) (Array t x) (Array t x) where
+    assign mv mr = error "undefined: array assignments"
+
+{-
 index :: (MonadPtr m, Arrayable m a el) => m Int -> m a -> m el
 index mi ma = mi >>= \i -> ma >>= \a -> safeIdx i a
 
@@ -118,14 +183,6 @@ instance Arrayable (VProc l) (Array t a) (t,a) where
         e <- readArray a2 i
         return (te, e)
 
+-}
 
--- FIXME: define the undefined
-instance (Valueable (VProc l) x)
-    => Assignable (VProc l) (Array t x) (Array t x) where
-    assign mv mr = undefined
-
--- FIXME: define the undefined
-instance (Valueable (VProc l) x)
-    => Assignable (VProc l) (Record t x) (Record t x) where
-    assign mv mr = undefined
 

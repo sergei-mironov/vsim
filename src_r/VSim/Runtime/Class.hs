@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Contains some generic typeclsses, used by the Runtime
@@ -10,7 +11,7 @@ import Control.Monad
 
 import VSim.Runtime.Waveform
 
--- | Createable types are those who can be created as signals or variables.
+-- | Representable types are those who can be created as signals or variables.
 -- To do so whe neeed to know their signal- and variable- representations.
 class Representable t where
     -- | Signal representation
@@ -27,14 +28,14 @@ constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
 pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
 pairM mt my = (\t y -> (t,y)) <$> mt <*> my
 
--- | Something that can be created in monad m, having type t
-class (Monad m) => Createable m t x where
-    alloc :: String -> t -> m x
-    fixup :: (t,x) -> m (t,x)
-    fixup = return
+class (Monad m) => Valueable m x where
+    val :: x -> m Int
 
--- | Tuples newly-allocated value with type t
-allocP n t = alloc n t >>= \r -> return (t,r)
+instance (Monad m) => Valueable m Int where
+    val r = return r
+
+-- -- | Tuples newly-allocated value with type t
+-- allocP n t = alloc n t >>= \r -> return (t,r)
 
 -- | States that signal of type @t can be mapped from x
 class (Monad m, Representable t) => Mappable m t x where
@@ -61,12 +62,6 @@ ccfail_ifnot x ok = when (not ok) $ fail $ "constrained failed: " ++ (show x)
 -- @t.
 class Imageable m x t where
     t_image :: m x -> t -> m String
-
-class (Monad m) => Valueable m x where
-    val :: x -> m Int
-
-instance (Monad m) => Valueable m Int where
-    val r = return r
 
 class Primitive t where
     type RANGE t :: *

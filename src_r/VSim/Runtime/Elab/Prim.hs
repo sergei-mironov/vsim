@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
 
 module VSim.Runtime.Elab.Prim where
 
@@ -22,29 +23,71 @@ import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 import VSim.Runtime.Elab.Class
 
-instance Primitive Int where
-    type RANGE Int = RangeT
-    make_range l u = RangeT l u
-
-instance PrimitiveRange RangeT where
-    type PRIM RangeT = PrimitiveT
-    make_ranged_type (RangeT l u) = PrimitiveT l u
-    make_ranged_type (UnconstrT) = PrimitiveT minBound maxBound
-
 instance Representable PrimitiveT where
     type SR PrimitiveT = Ptr SigR
     type VR PrimitiveT = Ptr VarR
     type FR PrimitiveT = Int
 
-instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
-    alloc n (PrimitiveT l r) = do
-        u <- liftIO newUnique
-        r <- allocM (SigR n (wconst l) [] (hashUnique u))
-        modify_mem $ \(Memory rs ps) -> Memory (r:rs) ps
-        return r
+{- Createable -}
 
-instance (MonadPtr m) => Createable m PrimitiveT (Ptr VarR) where
-    alloc n (PrimitiveT l r) = allocM (VarR n l)
+typeval (PrimitiveT l _) = l
+
+alloc_signal_def n t = do
+    h <- hashUnique <$> liftIO newUnique
+    w <- pure $ wconst (typeval t)
+    r <- allocM (SigR w [] h)
+    return (Value t n r)
+
+
+-- Clone a signal
+alloc_signal_clone n t src = do
+    val <- alloc_signal_def n t
+    lift $ assign (pure src) (pure val)
+    return val
+
+-- Map a signal
+alloc_signal_link n t src = do
+    return (Value t n (vr src))
+
+instance (MonadElab m) => Createable0 m Signal where
+    alloc0 = alloc_signal_def
+instance (MonadPtr m) => Createable (Clone (Elab m)) Signal Signal where
+    alloc = alloc_signal_clone
+instance (MonadPtr m) => Createable (Link (Elab m)) Signal Signal where
+    alloc = alloc_signal_link
+instance (MonadPtr m) => Createable (Clone (Elab m)) Signal Variable where
+    alloc = alloc_signal_clone
+instance (MonadPtr m) => Createable (Clone (Elab m)) Signal Int where
+    alloc = alloc_signal_clone
+instance (MonadPtr m) => Createable (Clone (Elab m)) Signal () where
+    alloc n t () = alloc_signal_def n t
+instance (MonadPtr m) => CreateableA (Clone (Elab m)) Signal where
+    allocA n t agg = do
+        val <- alloc n t ()
+        forM_ agg $ \f -> do f val
+        return val
+
+-- Clone a variable
+alloc_var_def n t = do
+    r <- allocM (VarR (typeval t))
+    return (Value t n r)
+
+instance (MonadPtr m) => Createable0 (Clone (Elab m)) Variable where
+    alloc0 = alloc_var_def
+
+alloc_var_clone n t src = do
+    val <- alloc_var_def n t
+    lift $ assign (pure src) (pure val)
+    return val
+
+instance (MonadPtr m) => Createable (Clone (Elab m)) Variable Variable where
+    alloc = alloc_var_clone
+instance (MonadPtr m) => Createable (Clone (Elab m)) Variable Signal where
+    alloc = alloc_var_clone
+instance (MonadPtr m) => Createable (Clone (Elab m)) Variable Int where
+    alloc = alloc_var_clone
+instance (MonadPtr m) => Createable (Clone (Elab m)) Variable () where
+    alloc n t () = alloc_var_def n t
 
 -- Type stuff
 
@@ -54,30 +97,27 @@ instance Subtypeable PrimitiveT where
     build_subtype (UnconstrT) p = PrimitiveT minBound maxBound
 
     valid_subtype_of (PrimitiveT b1 e1) (PrimitiveT b2 e2) =
-        ((RangeT b1 e1) `inner_range` (RangeT b2 e2))
+        ((RangeT b1 e1) `inner_of` (RangeT b2 e2))
 
--- Constrained
--- see VSim.Runtime.Monad
-
--- Valueable
+{- Valueable -}
 
 instance (MonadPtr m) => Valueable m Variable where
-    val (_,r) = vval <$> derefM r
+    val v = vval <$> derefM (vr v)
 
 instance Valueable (VProc l) Signal where
-    val (_,r) = valueAt1 <$> now <*> (swave <$> derefM r)
+    val v = valueAt1 <$> now <*> (swave <$> derefM (vr v))
 
 instance (MonadPtr m) => Valueable (Elab m) Signal where
     -- FIXME: I am not sure that it is ok to ask minBound in Elab monad
-    val (_,r) = valueAt <$> (pure minBound) <*> (swave <$> derefM r)
+    val v = valueAt <$> (pure minBound) <*> (swave <$> derefM (vr v))
 
 -- Imageable
 
 instance (MonadProc m) => Imageable m Signal PrimitiveT where
-    t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< (snd <$> mr))))
+    t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< (vr <$> mr))))
 
 instance (MonadProc m) => Imageable m Variable PrimitiveT where
-    t_image mr _ = show <$> (vval <$> (derefM =<< (snd <$> mr)))
+    t_image mr _ = show <$> (vval <$> (derefM =<< (vr <$> mr)))
 
 instance (MonadProc m) => Imageable m Int PrimitiveT where
     t_image mr _ = show <$> mr
@@ -88,7 +128,7 @@ instance (MonadProc m) => Imageable m Int PrimitiveT where
 basic_sig_update mv mr = do
     v <- (mv >>= val)
     x <- mr
-    updateM (\s -> s{ swave = wconst v }) (snd x)
+    updateM (\s -> s{ swave = wconst v }) (vr x)
     ccheck x
     return []
 
@@ -96,7 +136,7 @@ basic_sig_update mv mr = do
 basic_var_update mv mr = do
     v <- (mv >>= val)
     x <- mr
-    updateM (\var -> var{ vval = v }) (snd x)
+    updateM (\var -> var{ vval = v }) (vr x)
     ccheck x
     return []
 

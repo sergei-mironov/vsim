@@ -78,7 +78,7 @@ timewheel (t, SimStep ps) = do
         -- Calculates next event and updates the memory
         -- FIXME: inefficient, loops throw all signals and processes
         update_signals = do
-            ss <- msignals <$> get_mem
+            ss <- map vr <$> msignals <$> get_mem
             ws <- mprocesses <$> get_mem
             (t', es@(ES ss' ps1)) <- (scan_event ss >=> scan_event ws) (maxBound, mempty)
             ps2 <- concat <$> mapM (\(r,w) -> sigassign2 r w) ss'
