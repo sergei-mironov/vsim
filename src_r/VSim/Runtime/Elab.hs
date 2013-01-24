@@ -7,11 +7,11 @@
 module VSim.Runtime.Elab (
       module VSim.Runtime.Elab.Class
     , module VSim.Runtime.Elab.Prim
-    , module VSim.Runtime.Elab.Array
+    -- , module VSim.Runtime.Elab.Array
     -- , module VSim.Runtime.Elab.Record
-    , alloc_signal_agg
+    -- , alloc_signal_agg
     , alloc_signal
-    , alloc_variable_agg
+    -- , alloc_variable_agg
     , alloc_variable
     , alloc_constant
     , alloc_process
@@ -23,6 +23,8 @@ module VSim.Runtime.Elab (
     , alloc_range
     -- , alloc_enum
     , defval
+    , aggregate
+    , set
     ) where
 
 import Control.Monad.Trans
@@ -41,11 +43,18 @@ import VSim.Runtime.Class
 import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Class
 import VSim.Runtime.Elab.Prim
-import VSim.Runtime.Elab.Array
+-- import VSim.Runtime.Elab.Array
 -- import VSim.Runtime.Elab.Record
 
-defval :: Monad m => m ()
-defval = return ()
+defval method x = return x
+
+-- aggregate = id
+
+aggregate :: (MonadPtr m) => [method -> a -> m a] -> method -> a -> m a
+-- aggregate fs mr = mr >>= \r -> concat <$> mapM (\f -> f r) fs
+aggregate fs method a = loopM a fs $ \a f -> f method a
+
+set mv method a = mv >>= \v -> assign v method a
 
 alloc_urange :: (MonadElab m) => m RangeT
 alloc_urange = pure UnconstrT
@@ -61,25 +70,13 @@ alloc_ranged_type mr = mkprim <$> mr where
 alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
-alloc' n t mx = mx >>= \x -> unClone (alloc n t x)
+alloc_signal :: (Createable m t Clone (Value t (SR t)))
+    => String -> t -> Agg m Clone (Value t (SR t)) -> m (Value t (SR t))
+alloc_signal n t f = alloc n t Clone f
 
-allocA' n t f = unClone (allocA n t f)
-
-alloc_signal :: (MonadPtr m, Createable (Clone m) (Value t (SR t)) src)
-    => String -> t -> m src -> m (Value t (SR t))
-alloc_signal = alloc'
-
-alloc_signal_agg :: (CreateableA (Clone m) (Value t (SR t)))
-    => String -> t ->  [Agg (Clone m) (Value t (SR t)) ()] -> m (Value t (SR t))
-alloc_signal_agg = allocA'
-
-alloc_variable :: (MonadPtr m, Createable (Clone m) (Value t (VR t)) src)
-    => String -> t -> m src -> m (Value t (VR t))
-alloc_variable = alloc'
-
-alloc_variable_agg :: (CreateableA (Clone m) (Value t (VR t)))
-    => String -> t ->  [Agg (Clone m) (Value t (VR t)) ()] -> m (Value t (VR t))
-alloc_variable_agg = allocA'
+alloc_variable :: (Createable m t Clone (Value t (VR t)))
+    => String -> t -> Agg m Clone (Value t (VR t)) -> m (Value t (VR t))
+alloc_variable n t f = alloc n t Clone f
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)

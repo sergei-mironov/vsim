@@ -324,25 +324,30 @@ newtype EnumVal = EnumVal Int
 
 type Plan = [(Signal, Int)]
 
-type Assigner m c = m c -> m Plan
+-- type Assigner m c = m c -> m Plan
+type Agg m method tgt = method -> tgt -> m tgt
+
+data Clone = Clone
+
+data Link = Link
 
 pfail x = fail . printf (x ++ "\n")
 
 
-newtype Link m a = Link { unLink :: m a }
-    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+-- newtype Link m a = Link { unLink :: m a }
+--     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
-instance MonadTrans Link where lift = Link
-
-
-newtype Clone m a = Clone { unClone :: m a }
-    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
-
-instance MonadTrans Clone where lift = Clone
+-- instance MonadTrans Link where lift = Link
 
 
-newtype Access m a = Access { unAccess :: m a }
-    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+-- newtype Clone m a = Clone { unClone :: m a }
+--     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
-instance MonadTrans Access where lift = Access
+-- instance MonadTrans Clone where lift = Clone
+
+
+-- newtype Access m a = Access { unAccess :: m a }
+--     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+
+-- instance MonadTrans Access where lift = Access
 

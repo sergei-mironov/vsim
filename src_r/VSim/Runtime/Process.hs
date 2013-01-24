@@ -50,15 +50,13 @@ next = fs 1
 wait :: (MonadWait m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
-aggregate :: (MonadPtr m) => [a -> m Plan] -> m a -> m Plan
-aggregate fs mr = mr >>= \r -> concat <$> mapM (\f -> f r) fs
-
-plan'n'rsort :: (MonadPtr m) => m x -> [(m NextTime, Assigner m x)] -> m [(NextTime,Plan)]
+plan'n'rsort :: (MonadPtr m)
+    => m x -> [(m NextTime, Agg m Clone (Plan,x))] -> m [(NextTime,Plan)]
 plan'n'rsort mr ls = do
     r <- mr
     ls' <- forM ls $ \(mt, f) -> do
             t <- mt
-            p <- f (pure r)
+            (p,_) <- f Clone ([],r)
             return (t,p)
     let tcomp (t1,_) (t2,_) = t1`compare`t2
     return (reverse $ sortBy tcomp ls')
@@ -76,19 +74,20 @@ makePW ls = do
                 modify $ IntMap.insertWith merge sigid
                     (Assignment sig $ PW time (wconst v))
 
-(.<<=.) :: (MonadProc m) => m x -> [(m NextTime, Assigner m x)] -> m ()
+(.<<=.) :: (MonadProc m) => m x -> [(m NextTime, Agg m Clone (Plan, x))] -> m ()
 (.<<=.) mr ls = do
     plan'n'rsort mr ls >>= makePW >>= mapM_ (modify . add_assignment)
 
-(.<=.) :: VProc l x -> (VProc l NextTime, Assigner (VProc l) x) -> VProc l ()
-(.<=.) mr (mt,ma) = do
+(.<=.) :: VProc l x -> (VProc l NextTime, Agg (VProc l) Clone (Plan, x)) -> VProc l ()
+(.<=.) mr (mt,f) = do
     time <- mt
-    plan <- ma mr
+    r <- mr
+    (plan, _) <- f Clone ([],r)
     forM_ plan $ \(sig@(Value t n r),v) -> do
         modify $ add_assignment (Assignment sig (PW time (wconst v)))
 
-(.=.) :: VProc l Variable -> (Assigner (VProc l) Variable) -> VProc l ()
-(.=.) mr ma = ma mr >> return ()
+(.=.) :: VProc l Variable -> (Agg (VProc l) Clone Variable) -> VProc l ()
+(.=.) mr f = mr >>= \r -> f Clone r >> return ()
 
 add, (.+.) :: (MonadPtr m, Valueable m x, Valueable m y) => m x -> m y -> m Int
 add ma mb = (+) <$> (val =<< ma) <*> (val =<< mb)
