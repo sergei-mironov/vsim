@@ -41,6 +41,7 @@ readArrayDef i me a2@(MapForm l) = do
 index :: Int -> Array2 a -> Maybe a
 index i a2@(MapForm l) = IntMap.lookup i l
 
+-- FIXME: revert to add
 update :: Int -> a -> Array2 a -> Array2 a
 update i a (MapForm l) = MapForm $ IntMap.insert i a l
 
