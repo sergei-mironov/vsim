@@ -12,9 +12,9 @@ elab = do
     clk <- alloc_signal "clk" integer (assign (int 0))
 
     a1 <- alloc_signal "a1" array (aggregate [
-          setall (assign (int 0))
-        , setidx (pure 1) (assign (int 1))
-        , setidx (pure 2) (assign (int 2))
+          access_all (assign (int 0))
+        , access (pure 1) (assign (int 1))
+        -- , setidx (pure 2) (assign (int 2))
         ])
     a2 <- alloc_signal "a2" array defval
 
@@ -25,8 +25,8 @@ elab = do
         breakpoint
         (pure clk) .<=. (next, assign ((pure clk) .+. (int 1)))
         (pure a1) .<=. (fs 2, aggregate [
-            setidx (int 1) (assign $ (index (int 1) (pure a1)) .+. (int 1)),
-            setidx (int 2) (assign $ int 3)])
+            access (int 1) (assign $ (index (int 1) (pure a1)) .+. (int 1)),
+            access (int 2) (assign $ int 3)])
         wait (fs 1)
         return ()
  

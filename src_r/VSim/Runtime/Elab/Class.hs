@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 -- | Contains some generic typeclsses, used by the Runtime
 module VSim.Runtime.Elab.Class where
@@ -14,15 +14,25 @@ import VSim.Runtime.Class
 import VSim.Runtime.Monad
 import VSim.Runtime.Ptr
 
+defval method x = return x
+
 -- | Something that can be created in monad m, having type t
-class Createable m t method tgt where
-    alloc :: String -> t -> method -> Agg m method tgt -> m tgt
+class (MonadPtr m) => Createable m t method x where
+    alloc :: String -> t -> method -> Agg m method (Value t x) -> m (Value t x)
 
 -- | States that @v value can be assigned to @c in the monad @m.
 -- Implementation has a choise: it can either perform inplace monadic
 -- actions or ask the runtime to perform signal update by returning a Plan.
-class (Monad m) => Assignable m v method tgt where
-    assign :: v -> method -> tgt -> m tgt
+class (MonadPtr m) => Assignable m v method target where
+    assign' :: v -> method -> target -> m target
+    assign :: m v -> method -> target -> m target 
+    assign mv m t = mv >>= \v -> assign' v m t
 
-loopM a b f = foldM f a b
+-- | Class of accessable containers
+class (MonadPtr m) => Accessable m container method item | container -> item where
+    access' :: Int -> (Agg m method item) -> method -> container -> m container
+    access :: m Int -> (Agg m method item) -> method -> container -> m container 
+    access mi a m c = mi >>= \i -> access' i a m c
+
+    access_all :: (Agg m method item) -> method -> container -> m container
 

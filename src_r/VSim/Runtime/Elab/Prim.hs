@@ -13,6 +13,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.IntMap as IntMap
 import Data.Unique
+import Data.Range
 import Text.Printf
 import System.Random
 
@@ -42,45 +43,41 @@ fixup_signal tgt@(Value t n r)
     | not (isNull r) = return tgt
     | otherwise = do
         u <- liftIO (hashUnique <$> newUnique)
-        p <- allocM $ SigR (wconst (typeval t)) [] u 
-        let tgt' = tgt{vr = p}
-        modify_mem (\m -> m{ msignals = (tgt':msignals m)})
-        return tgt'
+        p <- allocM $ SigR (wconst (typeval t)) [] u
+        return tgt{vr = p}
 
 fixup_variable tgt@(Value t n r)
     | not (isNull r) = return tgt
     | otherwise = do
         p <- allocM $ VarR (typeval t)
-        let tgt' = tgt{vr = p}
-        return tgt'
+        return tgt{vr = p}
 
-instance (MonadPtr m) => Createable (Elab m) PrimitiveT method Signal where
-    alloc n t m f = alloc_prim n t m f >>= fixup_signal
+instance (MonadPtr m) => Createable (Elab m) PrimitiveT method (Ptr SigR) where
+    alloc n t m f = alloc_prim n t m f >>= fixup_signal >>= addmem where
+        addmem sig = modify_mem (\m -> m{ msignals = (sig:msignals m)}) >> return sig
 
-instance (MonadPtr m) => Createable (Elab m) PrimitiveT method Variable where
+instance (MonadPtr m) => Createable (Elab m) PrimitiveT method (Ptr VarR) where
     alloc n t m f = alloc_prim n t m f >>= fixup_variable
 
 {- Assignable -}
 
 elab_sig_link (Value _ n r') _ tgt = do
     check_null tgt
-    let tgt' =  tgt{ vr = r' }
-    modify_mem (\m -> m{ msignals = (tgt':msignals m)})
-    return tgt'
+    return tgt{ vr = r' }
 
-elab_sig_update vv _ tgt_ = do
+elab_sig_clone vv _ tgt_ = do
     tgt <- fixup_signal tgt_
     v <- val vv
     p <- updateM (\s -> s { swave = (wconst v)}) (vr tgt)
     return tgt
 
-elab_var_update vv _ tgt_ = do
+elab_var_clone vv _ tgt_ = do
     tgt <- fixup_variable tgt_
     v <- val vv
     p <- updateM (\var -> var{ vval = v} ) (vr tgt)
     return tgt
 
--- | Generate request for signal's update for the process's monad.
+-- | Generate request for signal update in the process monad.
 proc_sig_update vv _ (plan,tgt) = do
     v <- val vv
     return ((tgt,v):plan, tgt)
@@ -92,30 +89,30 @@ proc_var_update vv _ tgt@(var) = do
     return tgt
 
 instance (MonadPtr m) => Assignable (Elab m) Signal Link Signal where
-        assign = elab_sig_link
+        assign' = elab_sig_link
 instance (MonadPtr m) => Assignable (Elab m) Variable Link Signal where
-        assign = elab_sig_update
+        assign' = elab_sig_clone
 instance (MonadPtr m) => Assignable (Elab m) Int Link Signal where
-        assign = elab_sig_update
+        assign' = elab_sig_clone
 
 instance (MonadPtr m) => Assignable (Elab m) Signal Clone Signal where
-        assign = elab_sig_update
+        assign' = elab_sig_clone
 instance (MonadPtr m) => Assignable (Elab m) Variable Clone Signal where
-        assign = elab_sig_update
+        assign' = elab_sig_clone
 instance (MonadPtr m) => Assignable (Elab m) Int Clone Signal where
-        assign = elab_sig_update
+        assign' = elab_sig_clone
 
 instance (MonadPtr m) => Assignable (Elab m) Signal Clone Variable where
-        assign = elab_var_update
+        assign' = elab_var_clone
 instance (MonadPtr m) => Assignable (Elab m) Variable Clone Variable where
-        assign = elab_var_update
+        assign' = elab_var_clone
 instance (MonadPtr m) => Assignable (Elab m) Int Clone Variable where
-        assign = elab_var_update
+        assign' = elab_var_clone
 
 instance (Valueable (VProc l) v) => Assignable (VProc l) v Clone (Plan,Signal) where
-        assign = proc_sig_update
+        assign' = proc_sig_update
 instance (Valueable (VProc l) v) => Assignable (VProc l) v Clone Variable where
-        assign = proc_var_update
+        assign' = proc_var_update
 
 {- Type stuff -}
 

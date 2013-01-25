@@ -13,6 +13,7 @@ import Text.Printf
 import Data.Maybe
 import Data.IntMap as IntMap
 import Data.Array2 as Array2
+import Data.Range as Range
 
 import VSim.Runtime.Waveform
 import VSim.Runtime.Time
@@ -31,158 +32,99 @@ alloc_array_type mr t = ArrayT <$> (pure t) <*> mr
 
 -- | ArrayT of IntType generates Arrays of this type
 instance (Representable t) => Representable (ArrayT t) where
-    type SR (ArrayT t) = Ptr (ArrayR (SR t))
-    type VR (ArrayT t) = Ptr (ArrayR (VR t))
+    type SR (ArrayT t) = ArrayR (String, SR t)
+    type VR (ArrayT t) = ArrayR (String, VR t)
     type FR (ArrayT t) = ArrayR (FR t)
 
--- Fill unallocated array items with their default values
-fixup_array (Value (ArrayT t rg) n r) = do
-    lu <- scanRange <$> derefM r
-    let rg'@(RangeT l u) = rg`subst_with` lu
-    when (not (rg' `inner_of` rg)) $ fail "range failure"
-    withM r $ \a2 -> do
-        let flipFoldM a b f = foldM f a b
-        flipFoldM a2 [l..u] $ \a i -> do
-            allocIfNull i (vr <$> alloc0 [] t) a
-    return (Value (ArrayT t rg') n r)
+replace_unconstr UnconstrT x = x
+replace_unconstr (RangeT l u) _ = RangeT l u
+replace_unconstr NullRangeT _ = NullRangeT
 
-alloc_empty_array n t@(ArrayT te rg) = do
-    Value t n `liftM` allocM Array2.empty
-
-alloc_clone_array n t src = do
-    val <- alloc_empty_array n t
-    lift $ assign (pure src) (pure val)
-    fixup_array val
-
-instance (Createable0 m (Value t x))
-    => Createable0 m (Array t x) where
-        alloc0 n t = alloc_empty_array n t >>= fixup_array
-
-instance (Createable0 (Clone (Elab m)) (Value t x), MonadPtr m)
-    => Createable (Clone (Elab m)) (Array t x) (Array t x) where
-        alloc n t src = alloc_clone_array n t src
-
-instance (Createable0 (Link (Elab m)) (Value t x), MonadPtr m)
-    => Createable (Link (Elab m)) (Array t x) (Array t x) where
-        alloc n t src = return (Value t n (vr src))
-
-instance (Createable0 m (Value t x))
-    => Createable m (Array t x) () where
-        alloc n t () = alloc0 n t
-
-instance (Createable0 m (Value t x))
-    => CreateableA m (Array t x) where
-        allocA n t agg = do
-            val <- alloc0 n t 
-            forM_ agg (\f -> f val)
-            fixup_array val
+item_name :: String -> Int -> String
+item_name n i = printf "%s[%d]" n i
 
 index mi mv = mi >>= \i -> mv >>= \v -> index' i v
 
-index' i (Value (ArrayT t UnconstrT) n _) =
-    pfail "not constraines: array %s" n
-index' i (Value (ArrayT et rg) n r) = do
-    let en = printf "%s[%d]" n i
-    er <- maybeDerefM (fail "index failure: item %s" en) (readArray i) r
+index' i (Value (ArrayT t UnconstrT) n _) = do
+        pfail "index: not constrained: array %s" n
+index' i (Value (ArrayT et rg) n a2) = do
+    (en, er) <- unMaybeM (Array2.index i a2) (
+        pfail "index: failure: array %s index %d" n i)
     return (Value et en er)
 
-access_elab i x (Value (ArrayT te rg) n r) = do
-    Value _ _ e <- alloc "<fixme>" te x
-    maybeUpdateM (fail "already alocated") (Array2.allocItem i e) r
- 
-instance (Createable (Clone m) (Value t e) x) => Accessable (Clone m) (Array t e) x () where
-    access = access_elab
+{- Createable -}
 
-instance (Createable (Link m) (Value t e) x) => Accessable (Link m) (Array t e) x () where
-    access = access_elab
+-- Fill unallocated array items with their default values
+fixup_array (Value (ArrayT t rg) n a2) = do
+    let rg' = rg `replace_unconstr` (scanRange a2)
+    when_not (rg' `inner_of` rg) (pfail "fixup_array: range failure: array %s" n)
+    a2' <- allocRangeM f rg' a2
+    return (Value (ArrayT t rg') n a2')
+    where
+        f i = do
+            item <- alloc (item_name n i) t Clone defval
+            return (vn item, vr item)
 
-access_proc i x (Value (ArrayT et rg) n r) = do
-    let en = printf "%s[%d]" n i
-    er <- maybeDerefM (fail "access failure: item %s" en) (readArray i) r
-    ret <- lift $ assign (pure x) (pure $ Value et en er)
-    return ret
-    
-instance (Assignable (VProc l) (Value t e) x)
-    => Accessable (Access (VProc l)) (Array t e) x Plan where
-        access = access_proc
+instance (Createable m t mtd x, Createable m t Clone x)
+    => Createable m (ArrayT t) mtd (ArrayR (String,x)) where
+        alloc n t method f = f method (Value t n Array2.empty) >>= fixup_array
 
-setidx :: (Accessable (m m1) a x r, Monad m1, Monad (m m1), MonadTrans m)
-    => m1 Int -> m1 x -> a -> (m m1) r
-setidx mi mx a = do
-    i <- lift mi
-    x <- lift mx
-    access i x a
+{- Accessable -}
 
-instance Assignable (VProc l) (Array t x) (Array t x) where
-    assign mv mr = error "undefined: array assignments"
+elab_access i f method (Value t n a2) = do
+    item <- alloc (item_name n i) (aconstr t) method f
+    a2' <- return (Array2.update i (vn item, vr item) a2)
+    return (Value t n a2')
 
-instance (MonadPtr m) => Assignable (Elab m) (Array t x) (Array t x) where
-    assign mv mr = error "undefined: array assignments"
+elab_access_all f method arr@(Value t n _) = looper (arange t) where
+    looper UnconstrT = do
+        pfail "elab_access_all: can't loop unconstrained array: array %s" n
+    looper rg = do
+        loopM arr (Range.toList rg) $ \arr i -> do
+            elab_access i f method arr
 
-{-
-index :: (MonadPtr m, Arrayable m a el) => m Int -> m a -> m el
-index mi ma = mi >>= \i -> ma >>= \a -> safeIdx i a
+instance (Createable (Elab m) t method x) => 
+    Accessable (Elab m) (Array t x) method (Value t x) where
+        access' = elab_access
+        access_all = elab_access_all
 
-setidx :: (MonadPtr m, Arrayable m (Array t e) (t,e))
-    => m Int -> Assigner m (t,e) -> Array t e -> m Plan
-setidx mi f r = f (index mi (pure r))
+proc_access i f Clone (plan, val@(Value (ArrayT et _) n a2)) = do
+    (en,item) <- unMaybeM (Array2.index i a2) (
+        pfail "proc_access: index not found: array %s index %d" n i)
+    (plan',_) <- f Clone (plan,(Value et en item))
+    return (plan',val)
 
-setall :: (MonadPtr m, Arrayable m (Array t e) (t,e))
-    => Assigner m (t,e) -> Array t e -> m Plan
-setall f a = iter f a
+instance Accessable (VProc l) (Plan, Array t x) Clone (Plan,Value t x) where
+        access' = proc_access
+        access_all = error "proc_access_all undefined"
 
-instance (MonadPtr m) => Assignable (Elab m) (Array t x) (Array t x) where
-    assign = error "FIXME: define array assignments"
 
-instance (Subtypeable t) => Subtypeable (ArrayT t) where
-    type SM (ArrayT t) = RangeT
-    build_subtype r a = a { arange = r } 
-    valid_subtype_of (ArrayT t1 r1) (ArrayT t2 r2) =
-        (t1 `valid_subtype_of` t2) && (r1 `inner_range` r2)
+{- Assignable -}
 
-iter :: (MonadPtr m, Arrayable m (Array t e) (t,e))
-    => Assigner m (t,e) -> Array t e -> m Plan
-iter f a@(ArrayT _ UnconstrT, _) = do
-    fail "iterate in without ranges"
-iter f a@(ArrayT te (RangeT l u), r) = do
-    concat <$> forM [l..u] (\i -> f (unsafeIdx i a))
+elab_assign rh@(Value t' n' a2') method lh@(Value t n a2) = do
+    let is = (Range.toList $ arange t')
+    a2' <- loopM a2 is (\a2 i -> do
+        erh <- index' i rh
+        item <- alloc (item_name n i) (aconstr t) method (assign' erh)
+        return (Array2.update i (vn item, vr item) a2))
+    return (Value t n a2')
 
-class (Monad m) => Arrayable m a el | a -> el where
-    safeIdx :: Int -> a -> m el
-    unsafeIdx :: Int -> a -> m el
+instance (
+    Createable (Elab m) t method x,
+    Assignable (Elab m) (Value t x) method (Value t x))
+    => Assignable (Elab m) (Array t x) method (Array t x) where
+        assign' = elab_assign
 
-instance (MonadPtr m, Createable (Elab m) t a) =>
-         Arrayable (Elab m) (Array t a) (t,a) where
+-- FIXME: inefficient
+proc_assign rh Clone (plan,lh@(Value (ArrayT _ rg) _ _)) = do
+    plan' <- loopM plan (Range.toList rg) (\p i -> do
+        erh <- index' i rh
+        elh <- index' i lh
+        fst <$> assign' erh Clone (p,elh))
+    return (plan', lh)
 
-    safeIdx i a@(ArrayT te rg@(UnconstrT), r) = do
-        unsafeIdx i a
-    safeIdx i a@(ArrayT te rg@(RangeT _ _), r) = do
-        when (not (inrage i rg)) $ do
-            fail "index: array index out of range"
-        unsafeIdx i a
-
-    unsafeIdx i a@(ArrayT te _, r) = do
-        a2 <- derefM r
-        (e,a2') <- readArrayDef a2 i (\n -> alloc n te)
-        writeM r a2'
-        return (te, e)
-
-instance Arrayable (VProc l) (Array t a) (t,a) where
-
-    safeIdx i a@(ArrayT te UnconstrT, r) = do
-        fail "idx_proc: can't deindex the unconstrained array"
-    safeIdx i a@(ArrayT te rg@(RangeT _ _), r) = do
-        when (not (inrage i rg)) $ do
-            fail "index: array index out of range"
-        unsafeIdx i a
-
-    unsafeIdx i (ArrayT te UnconstrT, r) = do
-        fail "idx_proc: can't deindex the unconstrained array"
-    unsafeIdx i (ArrayT te rg@(RangeT _ _), r) = do
-        a2 <- derefM r
-        e <- readArray a2 i
-        return (te, e)
-
--}
+instance (Assignable (VProc l) (Value t e) Clone (Plan, Value t e))
+    => Assignable (VProc l) (Array t e) Clone (Plan, Array t e) where
+        assign' = proc_assign
 
 

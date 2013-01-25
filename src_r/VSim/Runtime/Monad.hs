@@ -16,6 +16,7 @@ import Control.Monad.Trans
 import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Data.List
+import Data.Range
 import Data.Array2
 import Text.Printf
 
@@ -87,9 +88,6 @@ in_range_w :: PrimitiveT -> Waveform -> Bool
 in_range_w t w = and $ map f $ wchanges w where
     f (Change _ v) = in_range t v
 
-subst_with UnconstrT (l,u) = RangeT l u
-subst_with rg@(RangeT _ _) _ = rg
-
 instance (MonadPtr m) => Constrained m Signal where
     ccheck (Value t _ r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
 
@@ -108,21 +106,6 @@ sigassign2 r w = do
     writeM r s{swave = w}
     return (sproc s)
 
--- | VHDL Range type
-data RangeT = RangeT {
-      rbegin :: Int
-    , rend :: Int
-    } | UnconstrT
-    deriving(Show)
-
-inner_of _ UnconstrT = True
-inner_of UnconstrT _ = False
-inner_of (RangeT b1 e1) (RangeT b2 e2) = (b1 >= b2) && (e1 <= e2)
-
-inrage :: Int -> RangeT -> Bool
-inrage x (RangeT l r) = x >= l && x <= r
-inrage x (UnconstrT) = True
-
 -- | VHDL array type
 data ArrayT t = ArrayT {
       -- | Type of elements
@@ -135,7 +118,7 @@ data ArrayT t = ArrayT {
 type ArrayR a = Array2 a
 
 -- | VHDL array entity
-type Array t e = Value (ArrayT t) (Ptr (ArrayR e))
+type Array t e = Value (ArrayT t) (ArrayR (String,e))
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
@@ -299,7 +282,7 @@ breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
 class (MonadMem m) => MonadElab m
 
 newtype Elab m a = Elab { unElab :: (StateT Memory m) a }
-    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem)
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadFix)
 
 instance (MonadPtr m) => MonadElab (Elab m)
 
@@ -324,14 +307,22 @@ newtype EnumVal = EnumVal Int
 
 type Plan = [(Signal, Int)]
 
--- type Assigner m c = m c -> m Plan
 type Agg m method tgt = method -> tgt -> m tgt
 
 data Clone = Clone
 
 data Link = Link
 
+-- FIXME: bad arguments handling
 pfail x = fail . printf (x ++ "\n")
+
+{- Common helpers -}
+when_not x fail = when (not x) fail
+
+unMaybeM Nothing fail = fail
+unMaybeM (Just x) _ = return x
+
+loopM a b f = foldM f a b
 
 
 -- newtype Link m a = Link { unLink :: m a }

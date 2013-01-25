@@ -56,7 +56,9 @@ maybeUpdateM fail f ptr = derefM ptr >>= check . f where
     check (Nothing) = fail
 
 instance (Show x) => Show (IORef x) where
-    show x = "@(" ++ show (unsafePerformIO $ derefM x) ++ ")"
+    show x
+        | x == nullPtr = "@(NULLPTR)"
+        | otherwise = "@(" ++ show (unsafePerformIO $ derefM x) ++ ")"
 
 nullPtr :: (Ptr a)
 nullPtr = unsafePerformIO (newIORef $ error "dereferencing null pointer")
