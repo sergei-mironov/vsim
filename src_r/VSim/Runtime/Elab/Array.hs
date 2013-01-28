@@ -83,22 +83,25 @@ elab_access_all f arr@(Value t n _) = looper (arange t) where
         loopM arr (Range.toList rg) $ \arr i -> do
             elab_access i f arr
 
-instance (Createable (Clone m) t x) => Accessable (Clone m) (Array t x) (Value t x) where
-        access' = elab_access
-        access_all = elab_access_all
-instance (Createable (Link m) t x) => Accessable (Link m) (Array t x) (Value t x) where
+instance (Createable (Clone m) t x)
+    => Accessable (Clone m) (Array t x) (Value t x) where
         access' = elab_access
         access_all = elab_access_all
 
-proc_access i f (plan, val@(Value (ArrayT et _) n a2)) = do
+instance (Createable (Link m) t x)
+    => Accessable (Link m) (Array t x) (Value t x) where
+        access' = elab_access
+        access_all = elab_access_all
+
+proc_access i f val@(Value (ArrayT et _) n a2) = do
     (en,item) <- unMaybeM (Array2.index i a2) (
         pfail "proc_access: index not found: array %s index %d" n i)
-    (plan',_) <- f (plan,(Value et en item))
-    return (plan',val)
+    f (Value et en item)
+    return val
 
-instance Accessable (Assign l) (Plan, Array t x) (Plan,Value t x) where
-        access' = proc_access
-        access_all = error "proc_access_all undefined"
+instance Accessable (Assign l) (Array t x) (Value t x) where
+    access' = proc_access
+    access_all = error "proc_access_all undefined"
 
 {- Assignable -}
 
@@ -106,8 +109,8 @@ elab_assign rh@(Value t' n' a2') lh@(Value t n a2) = do
     let is = (Range.toList $ arange t')
     a2' <- loopM a2 is (\a2 i -> do
         erh <- index' i rh
-        item <- alloc (item_name n i) (aconstr t) (assign' erh)
-        return (Array2.update i (vn item, vr item) a2))
+        elh <- alloc (item_name n i) (aconstr t) (assign' erh)
+        return (Array2.update i (vn elh, vr elh) a2))
     return (Value t n a2')
 
 instance (
@@ -123,15 +126,14 @@ instance (
         assign' = elab_assign
 
 -- FIXME: inefficient
-proc_assign rh (plan,lh@(Value (ArrayT _ rg) _ _)) = do
-    plan' <- loopM plan (Range.toList rg) (\p i -> do
+proc_assign rh lh@(Value (ArrayT _ rg) _ _) = do
+    forM_ (Range.toList rg) (\i -> do
         erh <- index' i rh
         elh <- index' i lh
-        fst <$> assign' erh (p,elh))
-    return (plan', lh)
+        assign' erh elh)
+    return lh
 
-instance (Assignable (Assign l) (Value t e) (Plan, Value t e))
-    => Assignable (Assign l) (Array t e) (Plan, Array t e) where
+instance (Assignable (Assign l) (Value t e) (Value t e))
+    => Assignable (Assign l) (Array t e) (Array t e) where
         assign' = proc_assign
-
 

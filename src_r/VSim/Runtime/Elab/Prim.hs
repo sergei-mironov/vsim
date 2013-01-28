@@ -83,12 +83,13 @@ elab_var_clone vv tgt_ = do
     return tgt
 
 -- | Generate request for signal update in the process monad.
-proc_sig_update vv (plan,tgt) = do
-    v <- Assign (val vv)
-    return ((tgt,v):plan, tgt)
+proc_sig_update vv tgt = do
+    v <- hug (val vv)
+    modify (\plan -> ((tgt,v):plan))
+    return tgt
 
 proc_var_update vv tgt@(var) = do
-    v <- Assign (val vv)
+    v <- hug (val vv)
     updateM (\var -> var{ vval = v }) (vr var)
     ccheck var
     return tgt
@@ -114,7 +115,7 @@ instance (MonadPtr m) => Assignable (Clone m) Variable Variable where
 instance (MonadPtr m) => Assignable (Clone m) Int Variable where
         assign' = elab_var_clone
 
-instance (Valueable (VProc l) v) => Assignable (Assign l) v (Plan,Signal) where
+instance (Valueable (VProc l) v) => Assignable (Assign l) v Signal where
         assign' = proc_sig_update
 instance (Valueable (VProc l) v) => Assignable (Assign l) v Variable where
         assign' = proc_var_update

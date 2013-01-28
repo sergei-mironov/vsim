@@ -340,11 +340,13 @@ newtype Clone m a = Clone { unClone :: (Elab m) a }
 instance Parent (Clone m) (Elab m) where
     hug me = Clone me
 
-newtype Assign l a = Assign { unAssign :: (VProc l) a }
-    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr)
+newtype Assign l a = Assign { unAssign :: StateT Plan (VProc l) a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadState Plan)
+
+runAssign mx = execStateT (unAssign mx) []
 
 instance Parent (Assign l) (VProc l) where
-    hug me = Assign me
+    hug me = Assign (lift me)
 
 -- newtype Access m a = Access { unAccess :: m a }
 --     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
