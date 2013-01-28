@@ -37,7 +37,7 @@ check_not_null x = when_null (vr x) (fail "check_not_null failed")
 
 typeval (PrimitiveT l _) = l
 
-alloc_prim n t method f = f method (Value t n nullPtr)
+alloc_prim n t f = f (Value t n nullPtr)
 
 fixup_signal tgt@(Value t n r)
     | not (isNull r) = return tgt
@@ -52,66 +52,71 @@ fixup_variable tgt@(Value t n r)
         p <- allocM $ VarR (typeval t)
         return tgt{vr = p}
 
-instance (MonadPtr m) => Createable (Elab m) PrimitiveT method (Ptr SigR) where
-    alloc n t m f = alloc_prim n t m f >>= fixup_signal >>= addmem where
-        addmem sig = modify_mem (\m -> m{ msignals = (sig:msignals m)}) >> return sig
+elab_alloc_signal n t f = alloc_prim n t f >>= fixup_signal >>= addmem where
+    addmem sig = modify_mem (\m -> m{ msignals = (sig:msignals m)}) >> return sig
 
-instance (MonadPtr m) => Createable (Elab m) PrimitiveT method (Ptr VarR) where
-    alloc n t m f = alloc_prim n t m f >>= fixup_variable
+alloc_var n t f = alloc_prim n t f >>= fixup_variable
+
+instance (MonadPtr m) => Createable (Link m) PrimitiveT (Ptr SigR) where
+    alloc = elab_alloc_signal
+instance (MonadPtr m) => Createable (Clone m) PrimitiveT (Ptr SigR) where
+    alloc = elab_alloc_signal
+instance (MonadPtr m) => Createable (Clone m) PrimitiveT (Ptr VarR) where
+    alloc = alloc_var
 
 {- Assignable -}
 
-elab_sig_link (Value _ n r') _ tgt = do
+elab_sig_link (Value _ n r') tgt = do
     check_null tgt
     return tgt{ vr = r' }
 
-elab_sig_clone vv _ tgt_ = do
+elab_sig_clone vv tgt_ = do
     tgt <- fixup_signal tgt_
-    v <- val vv
+    v <- hug (val vv)
     p <- updateM (\s -> s { swave = (wconst v)}) (vr tgt)
     return tgt
 
-elab_var_clone vv _ tgt_ = do
+elab_var_clone vv tgt_ = do
     tgt <- fixup_variable tgt_
-    v <- val vv
+    v <- Clone (val vv)
     p <- updateM (\var -> var{ vval = v} ) (vr tgt)
     return tgt
 
 -- | Generate request for signal update in the process monad.
-proc_sig_update vv _ (plan,tgt) = do
-    v <- val vv
+proc_sig_update vv (plan,tgt) = do
+    v <- Assign (val vv)
     return ((tgt,v):plan, tgt)
 
-proc_var_update vv _ tgt@(var) = do
-    v <- val vv
+proc_var_update vv tgt@(var) = do
+    v <- Assign (val vv)
     updateM (\var -> var{ vval = v }) (vr var)
     ccheck var
     return tgt
 
-instance (MonadPtr m) => Assignable (Elab m) Signal Link Signal where
+instance (MonadPtr m) => Assignable (Link m) Signal Signal where
         assign' = elab_sig_link
-instance (MonadPtr m) => Assignable (Elab m) Variable Link Signal where
+instance (MonadPtr m) => Assignable (Link m) Variable Signal where
         assign' = elab_sig_clone
-instance (MonadPtr m) => Assignable (Elab m) Int Link Signal where
-        assign' = elab_sig_clone
-
-instance (MonadPtr m) => Assignable (Elab m) Signal Clone Signal where
-        assign' = elab_sig_clone
-instance (MonadPtr m) => Assignable (Elab m) Variable Clone Signal where
-        assign' = elab_sig_clone
-instance (MonadPtr m) => Assignable (Elab m) Int Clone Signal where
+instance (MonadPtr m) => Assignable (Link m) Int Signal where
         assign' = elab_sig_clone
 
-instance (MonadPtr m) => Assignable (Elab m) Signal Clone Variable where
+instance (MonadPtr m) => Assignable (Clone m) Signal Signal where
+        assign' = elab_sig_clone
+instance (MonadPtr m) => Assignable (Clone m) Variable Signal where
+        assign' = elab_sig_clone
+instance (MonadPtr m) => Assignable (Clone m) Int Signal where
+        assign' = elab_sig_clone
+
+instance (MonadPtr m) => Assignable (Clone m) Signal Variable where
         assign' = elab_var_clone
-instance (MonadPtr m) => Assignable (Elab m) Variable Clone Variable where
+instance (MonadPtr m) => Assignable (Clone m) Variable Variable where
         assign' = elab_var_clone
-instance (MonadPtr m) => Assignable (Elab m) Int Clone Variable where
+instance (MonadPtr m) => Assignable (Clone m) Int Variable where
         assign' = elab_var_clone
 
-instance (Valueable (VProc l) v) => Assignable (VProc l) v Clone (Plan,Signal) where
+instance (Valueable (VProc l) v) => Assignable (Assign l) v (Plan,Signal) where
         assign' = proc_sig_update
-instance (Valueable (VProc l) v) => Assignable (VProc l) v Clone Variable where
+instance (Valueable (VProc l) v) => Assignable (Assign l) v Variable where
         assign' = proc_var_update
 
 {- Type stuff -}

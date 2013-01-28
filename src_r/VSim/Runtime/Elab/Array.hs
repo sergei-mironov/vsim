@@ -62,69 +62,76 @@ fixup_array (Value (ArrayT t rg) n a2) = do
     return (Value (ArrayT t rg') n a2')
     where
         f i = do
-            item <- alloc (item_name n i) t Clone defval
+            item <- alloc (item_name n i) t defval
             return (vn item, vr item)
 
-instance (Createable m t mtd x, Createable m t Clone x)
-    => Createable m (ArrayT t) mtd (ArrayR (String,x)) where
-        alloc n t method f = f method (Value t n Array2.empty) >>= fixup_array
+instance (Createable m t x)
+    => Createable m (ArrayT t) (ArrayR (String,x)) where
+        alloc n t f = f (Value t n Array2.empty) >>= fixup_array
 
 {- Accessable -}
 
-elab_access i f method (Value t n a2) = do
-    item <- alloc (item_name n i) (aconstr t) method f
+elab_access i f (Value t n a2) = do
+    item <- alloc (item_name n i) (aconstr t) f
     a2' <- return (Array2.update i (vn item, vr item) a2)
     return (Value t n a2')
 
-elab_access_all f method arr@(Value t n _) = looper (arange t) where
+elab_access_all f arr@(Value t n _) = looper (arange t) where
     looper UnconstrT = do
         pfail "elab_access_all: can't loop unconstrained array: array %s" n
     looper rg = do
         loopM arr (Range.toList rg) $ \arr i -> do
-            elab_access i f method arr
+            elab_access i f arr
 
-instance (Createable (Elab m) t method x) => 
-    Accessable (Elab m) (Array t x) method (Value t x) where
+instance (Createable (Clone m) t x) => Accessable (Clone m) (Array t x) (Value t x) where
+        access' = elab_access
+        access_all = elab_access_all
+instance (Createable (Link m) t x) => Accessable (Link m) (Array t x) (Value t x) where
         access' = elab_access
         access_all = elab_access_all
 
-proc_access i f Clone (plan, val@(Value (ArrayT et _) n a2)) = do
+proc_access i f (plan, val@(Value (ArrayT et _) n a2)) = do
     (en,item) <- unMaybeM (Array2.index i a2) (
         pfail "proc_access: index not found: array %s index %d" n i)
-    (plan',_) <- f Clone (plan,(Value et en item))
+    (plan',_) <- f (plan,(Value et en item))
     return (plan',val)
 
-instance Accessable (VProc l) (Plan, Array t x) Clone (Plan,Value t x) where
+instance Accessable (Assign l) (Plan, Array t x) (Plan,Value t x) where
         access' = proc_access
         access_all = error "proc_access_all undefined"
 
-
 {- Assignable -}
 
-elab_assign rh@(Value t' n' a2') method lh@(Value t n a2) = do
+elab_assign rh@(Value t' n' a2') lh@(Value t n a2) = do
     let is = (Range.toList $ arange t')
     a2' <- loopM a2 is (\a2 i -> do
         erh <- index' i rh
-        item <- alloc (item_name n i) (aconstr t) method (assign' erh)
+        item <- alloc (item_name n i) (aconstr t) (assign' erh)
         return (Array2.update i (vn item, vr item) a2))
     return (Value t n a2')
 
 instance (
-    Createable (Elab m) t method x,
-    Assignable (Elab m) (Value t x) method (Value t x))
-    => Assignable (Elab m) (Array t x) method (Array t x) where
+    Createable (Clone m) t x,
+    Assignable (Clone m) (Value t x) (Value t x))
+    => Assignable (Clone m) (Array t x) (Array t x) where
+        assign' = elab_assign
+
+instance (
+    Createable (Link m) t x,
+    Assignable (Link m) (Value t x) (Value t x))
+    => Assignable (Link m) (Array t x) (Array t x) where
         assign' = elab_assign
 
 -- FIXME: inefficient
-proc_assign rh Clone (plan,lh@(Value (ArrayT _ rg) _ _)) = do
+proc_assign rh (plan,lh@(Value (ArrayT _ rg) _ _)) = do
     plan' <- loopM plan (Range.toList rg) (\p i -> do
         erh <- index' i rh
         elh <- index' i lh
-        fst <$> assign' erh Clone (p,elh))
+        fst <$> assign' erh (p,elh))
     return (plan', lh)
 
-instance (Assignable (VProc l) (Value t e) Clone (Plan, Value t e))
-    => Assignable (VProc l) (Array t e) Clone (Plan, Array t e) where
+instance (Assignable (Assign l) (Value t e) (Plan, Value t e))
+    => Assignable (Assign l) (Array t e) (Plan, Array t e) where
         assign' = proc_assign
 
 

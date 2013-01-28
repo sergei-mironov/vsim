@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module VSim.Runtime.Monad where
 
@@ -307,11 +308,10 @@ newtype EnumVal = EnumVal Int
 
 type Plan = [(Signal, Int)]
 
-type Agg m method tgt = method -> tgt -> m tgt
+type Agg m tgt = tgt -> m tgt
 
-data Clone = Clone
-
-data Link = Link
+-- data Clone = Clone
+-- data Link = Link
 
 -- FIXME: bad arguments handling
 pfail x = fail . printf (x ++ "\n")
@@ -325,17 +325,26 @@ unMaybeM (Just x) _ = return x
 loopM a b f = foldM f a b
 
 
--- newtype Link m a = Link { unLink :: m a }
---     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+class Parent m mi | m -> mi where
+    hug :: mi x -> m x
 
--- instance MonadTrans Link where lift = Link
+newtype Link m a = Link { unLink :: (Elab m) a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
+instance Parent (Link m) (Elab m) where
+    hug me = Link me
 
--- newtype Clone m a = Clone { unClone :: m a }
---     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+newtype Clone m a = Clone { unClone :: (Elab m) a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
--- instance MonadTrans Clone where lift = Clone
+instance Parent (Clone m) (Elab m) where
+    hug me = Clone me
 
+newtype Assign l a = Assign { unAssign :: (VProc l) a }
+    deriving(Monad, Applicative, Functor, MonadIO, MonadPtr)
+
+instance Parent (Assign l) (VProc l) where
+    hug me = Assign me
 
 -- newtype Access m a = Access { unAccess :: m a }
 --     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)

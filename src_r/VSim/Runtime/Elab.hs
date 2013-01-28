@@ -48,8 +48,8 @@ import VSim.Runtime.Elab.Array
 
 alloc_function f = return f
 
-aggregate :: (MonadPtr m) => [method -> a -> m a] -> method -> a -> m a
-aggregate fs method a = loopM a fs $ \a f -> f method a
+aggregate :: (MonadPtr m) => [a -> m a] -> a -> m a
+aggregate fs a = loopM a fs $ \a f -> f a
 
 alloc_urange :: (MonadElab m) => m RangeT
 alloc_urange = pure UnconstrT
@@ -65,13 +65,13 @@ alloc_ranged_type mr = mkprim <$> mr where
 alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
-alloc_signal :: (Createable m t Clone (SR t))
-    => String -> t -> Agg m Clone (Value t (SR t)) -> m (Value t (SR t))
-alloc_signal n t f = alloc n t Clone f
+alloc_signal :: (Createable (Clone m) t (SR t))
+    => String -> t -> Agg (Clone m) (Value t (SR t)) -> (Elab m) (Value t (SR t))
+alloc_signal n t f = unClone (alloc n t f)
 
-alloc_variable :: (Createable m t Clone (VR t))
-    => String -> t -> Agg m Clone (Value t (VR t)) -> m (Value t (VR t))
-alloc_variable n t f = alloc n t Clone f
+alloc_variable :: (Createable (Clone m) t (VR t))
+    => String -> t -> Agg (Clone m) (Value t (VR t)) -> (Elab m) (Value t (VR t))
+alloc_variable n t f = unClone (alloc n t f)
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
