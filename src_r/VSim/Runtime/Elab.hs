@@ -66,12 +66,12 @@ alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
 alloc_signal :: (Createable (Elab m) t (SR t))
-    => String -> t -> Agg (Clone m) (Value_u t (SR t)) -> (Elab m) (Value t (SR t))
-alloc_signal n t f = alloc t >>= unClone . f >>= fixup n
+    => String -> t -> Agg (Clone m) (Value t (SR t)) -> (Elab m) (Value t (SR t))
+alloc_signal n t f = alloc n t >>= unClone . f >>= fixup
 
 alloc_variable :: (Createable (Elab m) t (VR t))
-    => String -> t -> Agg (Clone m) (Value_u t (VR t)) -> (Elab m) (Value t (VR t))
-alloc_variable n t f = alloc t >>= unClone . f >>= fixup n
+    => String -> t -> Agg (Clone m) (Value t (VR t)) -> (Elab m) (Value t (VR t))
+alloc_variable n t f = alloc n t >>= unClone . f >>= fixup
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)

@@ -23,10 +23,10 @@ defval x = return x
 
 -- | Something that can be created in monad m, having type t
 class (MonadPtr m) => Createable m t x where
-    alloc :: t -> m (Value_u t x)
-    fixup :: String -> (Value_u t x) -> m (Value t x)
+    alloc :: String -> t -> m (Value t x)
+    fixup :: (Value t x) -> m (Value t x)
 
-alloc_agg t f = alloc t >>= f
+alloc_agg n t f = alloc n t >>= f
 
 
 -- | States that @v value can be assigned to @c in the monad @m.
@@ -56,6 +56,7 @@ access :: (Accessable m container item, Parent m mi)
 access mi a c = (hug mi) >>= \i -> access' i a c
 
 
--- class (MonadPtr m) => Fieldable m v t r where
---     setfield' :: (t->(String,et),r->er) -> v t r -> Agg m (v et er) -> m (v t r)
+-- class (MonadPtr m) => Fieldable m sel container item where
+--     setfld :: sel -> Agg m item -> container -> m container
+
 

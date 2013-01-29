@@ -49,14 +49,9 @@ data Safe
 data Unsafe
 
 data Value t x = Value {
-      vt :: t
-    , vn :: String
+      vn :: String
+    , vt :: t
     , vr :: x
-    } deriving(Show)
-
-data Value_u t x = Value_u {
-      ut :: t
-    , ur :: x
     } deriving(Show)
 
 -- | VHDL primitive type can are described with it's upper and lower bounds. Use
@@ -76,7 +71,6 @@ newtype VarR = VarR { vval :: Int } deriving(Show)
 --     clone r = derefM r >>= allocM 
 
 type Variable = Value PrimitiveT (Ptr VarR)
-type Variable_u = Value_u PrimitiveT (Ptr VarR)
 
 -- | VHDL primitive signal
 data SigR = SigR {
@@ -86,7 +80,6 @@ data SigR = SigR {
     } deriving(Show)
 
 type Signal = Value PrimitiveT (Ptr SigR)
-type Signal_u = Value_u PrimitiveT (Ptr SigR)
 
 signalUniqIq :: (MonadPtr m) => Signal -> m Int
 signalUniqIq s = suniq <$> derefM (vr s)
@@ -99,10 +92,10 @@ in_range_w t w = and $ map f $ wchanges w where
     f (Change _ v) = in_range t v
 
 instance (MonadPtr m) => Constrained m Signal where
-    ccheck (Value t _ r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+    ccheck (Value _ t r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
 
 instance (MonadPtr m) => Constrained m Variable where
-    ccheck (Value t _ r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
+    ccheck (Value _ t r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
 sigassign1 :: (MonadSim m, Constrained m Signal) => Assignment -> m ()
 sigassign1 (Assignment v pw) = do
@@ -129,7 +122,6 @@ type ArrayR a = Array2 a
 
 -- | VHDL array entity
 type Array t e = Value (ArrayT t) (ArrayR e)
-type Array_u t e = Value_u (ArrayT t) (ArrayR e)
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
