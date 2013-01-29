@@ -48,7 +48,9 @@ fixup_variable tgt@(Value n t r)
 
 convert (Value n t r) = Value n t r
 
-addmem sig = modify_mem (\m -> m{ msignals = (sig:msignals m)}) >> return sig
+addmem sig = do
+    get_mem >>= addToMem sig >>= put_mem
+    return sig
 
 alloc_nullptr n t = return (Value n t nullPtr)
 

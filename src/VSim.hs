@@ -8,6 +8,7 @@ import Language.Haskell.Syntax
 import Language.Haskell.Pretty
 
 import Data.Maybe
+import Data.List as List
 import System.IO
 import System.Exit
 import System.Environment
@@ -65,8 +66,8 @@ instance (AsInt a) => AsInt (WithLoc a) where
 noLoc = SrcLoc "<unknown>" 0 0
 
 unHierPath :: WLHierNameWPath -> String
-unHierPath (WithLoc _ (_,(s:_))) = BS.unpack s
-unHierPath p = error "unHierPath: unsupported " ++ (show p)
+unHierPath (WithLoc _ (_,ls)) = List.intercalate "_" (map BS.unpack ls)
+-- unHierPath p = error "unHierPath: unsupported " ++ (show p)
 
 gen_appl' :: (AsIdent n) => n -> [HsExp] -> HsExp
 gen_appl' n [] = error "gen_appl': no args"
@@ -145,11 +146,11 @@ gen_elab ts = [
     , HsFunBind [HsMatch noLoc (HsIdent "elab") [] (HsUnGuardedRhs body) []]
     ] where
 
-    name_of_integer = "integer"
+    name_of_integer = "integer_standard_std"
 
     body = HsDo $ concat [
-          [gen_function name_of_integer "alloc_unranged_type" []]
-        , gen_elab_constants ts
+          -- [gen_function name_of_integer "alloc_unranged_type" []]
+          gen_elab_constants ts
         , gen_elab_types ts
         , gen_elab_proc ts
         , gen_elab_decls ts
@@ -203,10 +204,11 @@ gen_elab ts = [
     gen_range s = perror
         "%s\ngen_range: a-to-b ranges or <>, please" (PP.ppShow s)
 
-    gen_alloc_type (IRType p (ITDArray [c] _)) = [
+    gen_alloc_type (IRType p (ITDArray [c] t)) = [
           gen_function (unHierPath p) "alloc_array_type" [
               gen_range_c c
-            , gen_ident name_of_integer
+            -- , name_of_integer
+            , gen_type_ident t
             ] ]
 
     gen_alloc_type (IRType p (ITDConstraint _ t [c])) = [
@@ -390,9 +392,11 @@ gen_elab ts = [
         gen_expr (IEPhysical val un) = gen_appl un [gen_int val]
         -- FIXME: only signals can be imaged, but noone prevents user from
         -- imaging arrays or records
-        gen_expr (IETypeValueAttr loc T_image e t)
-            | type_name_is name_of_integer t = gen_appl "t_image" [gen_expr e, gen_type_ident t]
-            | otherwise = perror "%s\ngen_expr: image integers only, please" (show t)
+        -- gen_expr (IETypeValueAttr loc T_image e t)
+        --     | type_name_is name_of_integer t = gen_appl "t_image" [gen_expr e, gen_type_ident t]
+        --     | otherwise = perror "%s\ngen_expr: image integers only, please" (show t)
+        gen_expr (IETypeValueAttr loc T_image e t) = gen_appl "t_image" [
+            gen_expr e, gen_type_ident t]
         gen_expr e = perror "%s\ngen_expr: unsupported expr" (show e)
 
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing

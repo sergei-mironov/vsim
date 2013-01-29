@@ -24,7 +24,7 @@ printSignal :: String -> SigR -> String
 printSignal n s = printf "signal %s wave %s" n (printWaveform (swave s))
 
 printSignalsM :: (MonadIO m) => Memory -> m ()
-printSignalsM m = liftIO $ mapM printSignalM >=> mapM_ putStrLn $ (msignals m)
+printSignalsM m = liftIO $ mapM printSignalM >=> mapM_ putStrLn $ (allSignals m)
 
 printProcessesM :: (MonadIO m) => Memory -> m ()
 printProcessesM m = do

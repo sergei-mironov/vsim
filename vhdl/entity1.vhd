@@ -36,5 +36,10 @@ begin
     clk <= clk + 1 after 1 us;
 	o <= o1 + o2;
 
+    reporter : process(o)
+    begin
+        report "o=" & integer'image(o);
+    end process;
+
 end architecture main;
 

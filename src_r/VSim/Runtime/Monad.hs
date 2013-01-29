@@ -16,8 +16,9 @@ import Control.Monad.Identity
 import Control.Monad.Trans
 import Data.Monoid
 import qualified Data.IntMap as IntMap
-import Data.List
+import Data.List as List
 import Data.Range
+import Data.IntMap as IntMap
 import Data.Array2
 import Text.Printf
 
@@ -88,14 +89,16 @@ in_range :: PrimitiveT -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u
 
 in_range_w :: PrimitiveT -> Waveform -> Bool
-in_range_w t w = and $ map f $ wchanges w where
+in_range_w t w = and $ List.map f $ wchanges w where
     f (Change _ v) = in_range t v
 
 instance (MonadPtr m) => Constrained m Signal where
-    ccheck (Value _ t r) = derefM r >>= \s -> ccfail_ifnot s (in_range_w t (swave s))
+    ccheck (Value n t r) = derefM r >>= \s -> do
+        when (not $ in_range_w t (swave s)) $ do
+            pfail3 "constrained failed: name %s type (%s) val (%s)" n (show t) (show (swave s))
 
 instance (MonadPtr m) => Constrained m Variable where
-    ccheck (Value _ t r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
+    ccheck (Value n t r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
 sigassign1 :: (MonadSim m, Constrained m Signal) => Assignment -> m ()
 sigassign1 (Assignment v pw) = do
@@ -177,7 +180,7 @@ relink r ss = do
     mapM_ (updateM (addproc r)) ss
     writeM r p{psignals = ss}
     where 
-        rmproc r s = s{ sproc = delete r (sproc s)}
+        rmproc r s = s{ sproc = List.delete r (sproc s)}
         addproc r s = s{ sproc = r:(sproc s)}
 
 rewind :: (MonadSim m) => Ptr Process -> ProcessHandler -> Maybe NextTime -> m ()
@@ -186,12 +189,25 @@ rewind r h nt = do
     writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
-      msignals :: [Signal]
+      msignals :: IntMap ([String], Signal)
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
 emptyMem :: Memory
-emptyMem = Memory [] []
+emptyMem = Memory IntMap.empty []
+
+addToMem :: (MonadPtr m) => Signal -> Memory -> m Memory
+addToMem s m = do
+    u <- suniq <$> derefM (vr s)
+    let upd u (ns,_) (ns',s) = (ns++ns', s)
+    return m{ msignals = IntMap.insertWithKey upd u ([vn s],s) (msignals m) }
+
+uniqSignals :: Memory -> [Ptr SigR]
+uniqSignals m = List.map (vr . snd . snd) (IntMap.toList (msignals m))
+
+allSignals :: Memory -> [Signal]
+allSignals m = List.concat $ List.map combine $ IntMap.toList (msignals m) where
+    combine (_,(ns,s)) = List.map (\n -> s {vn = n}) ns
 
 -- | Simulation event
 newtype SimStep = SimStep [Ptr Process]
@@ -317,6 +333,7 @@ type Agg m tgt = tgt -> m tgt
 
 pfail x a = fail (printf (x ++ "\n") a)
 pfail2 x a b = fail (printf (x ++ "\n") a b)
+pfail3 x a b c = fail (printf (x ++ "\n") a b c)
 
 {- Common helpers -}
 when_not x fail = when (not x) fail
