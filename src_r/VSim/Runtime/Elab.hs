@@ -24,6 +24,7 @@ module VSim.Runtime.Elab (
     -- , alloc_enum
     , aggregate
     , alloc_function
+    , alloc_port
     ) where
 
 import Control.Monad.Trans
@@ -72,6 +73,10 @@ alloc_signal n t f = alloc n t >>= unClone . f >>= fixup
 alloc_variable :: (Createable (Elab m) t (VR t))
     => String -> t -> Agg (Clone m) (Value t (VR t)) -> (Elab m) (Value t (VR t))
 alloc_variable n t f = alloc n t >>= unClone . f >>= fixup
+
+alloc_port :: (Createable (Elab m) t (SR t))
+    => String -> t -> Agg (Link m) (Value t (SR t)) -> (Elab m) (Value t (SR t))
+alloc_port n t f = alloc n t >>= unLink . f >>= fixup
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)

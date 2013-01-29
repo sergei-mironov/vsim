@@ -98,7 +98,6 @@ gen_function r n as = HsGenerator noLoc (gen_pat r) (gen_appl' n (reverse as))
 gen_return p x = gen_function p "return" [x]
 gen_return_ x = gen_function_ "return" [x]
 
-
 gen_list es = HsList es
 
 gen_pair es = HsTuple es
@@ -133,6 +132,8 @@ gen_assign_or_aggregate f e = build (expr_to_aggr e) where
             gaa = gen_assign_or_aggregate
 
     build Nothing = gen_assign [f e]
+
+gen_defval = gen_ident "defval"
 
 gen_elab :: [IRTop] -> [HsDecl]
 gen_elab ts = [
@@ -172,6 +173,7 @@ gen_elab ts = [
 
     gen_elab_decls [] = []
     gen_elab_decls ((IRTSignal s):ts) = (gen_alloc_signal s) ++ (gen_elab_decls ts)
+    gen_elab_decls ((IRTPort p):ts) = (gen_alloc_port p) ++ (gen_elab_decls ts)
     gen_elab_decls ((IRTProcess p):ts) = (gen_alloc_process p) ++ (gen_elab_decls ts)
     gen_elab_decls (t:ts) = gen_elab_decls ts
 
@@ -229,12 +231,20 @@ gen_elab ts = [
         ]
     gen_alloc_signal (IRSignal p (ITDName t) (IOENothing loc)) = [
           gen_function (unHierPath p) "alloc_signal" [
-              gen_str $ unHierPath p, gen_ident $ unHierPath t, gen_ident "id"
+              gen_str $ unHierPath p, gen_ident $ unHierPath t, gen_defval
             ]
         ]
     gen_alloc_signal _ = error $ concat [
           "gen_alloc_signal: want default value expression for simple signal"
         , "gen_alloc_signal: or simple int array without default val"
+        ]
+
+    gen_alloc_port (IRPort p t (IOEJustExpr _ e)) = [
+          gen_function (unHierPath p) "alloc_port" [
+              gen_str $ unHierPath p
+            , gen_type_ident t
+            , gen_assign_or_aggregate gen_elab_expr e
+            ]
         ]
 
     gen_alloc_constant (IRConstant p _ loc e) = [
@@ -254,7 +264,7 @@ gen_elab ts = [
     gen_alloc_variable (IRVariable p t (IOEJustExpr _ e)) =
         [ build_alloc_variable (unHierPath p) t (gen_assign_or_aggregate gen_elab_expr e) ]
     gen_alloc_variable (IRVariable p t (IOENothing _)) =
-        [ build_alloc_variable (unHierPath p) t (gen_ident "id") ]
+        [ build_alloc_variable (unHierPath p) t (gen_defval) ]
 
     gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
     gen_elab_expr (IEName loc n) = gen_name gen_elab_expr n
