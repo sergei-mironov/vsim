@@ -16,9 +16,18 @@ import VSim.Runtime.Ptr
 
 defval x = return x
 
+
+-- | Something that can be created in monad m, having type t
+-- class (MonadPtr m) => Createable m t x where
+--     alloc :: String -> t -> Agg m (Value t x) -> m (Value t x)
+
 -- | Something that can be created in monad m, having type t
 class (MonadPtr m) => Createable m t x where
-    alloc :: String -> t -> Agg m (Value t x) -> m (Value t x)
+    alloc :: t -> m (Value_u t x)
+    fixup :: String -> (Value_u t x) -> m (Value t x)
+
+alloc_agg t f = alloc t >>= f
+
 
 -- | States that @v value can be assigned to @c in the monad @m.
 -- Implementation has a choise: it can either perform inplace monadic
@@ -30,6 +39,13 @@ assign :: (Assignable m v target, Parent m mi)
     => mi v -> target -> m target 
 assign mv t = (hug mv) >>= \v -> assign' v t
 
+
+class (MonadPtr m) => Indexable m container item | container -> item where
+    index' :: Int -> container -> m item
+
+index mi mv = mi >>= \i -> mv >>= \v -> index' i v
+
+
 -- | Class of accessable containers
 class (MonadPtr m) => Accessable m container item | container -> item where
     access' :: Int -> (Agg m item) -> container -> m container
@@ -38,4 +54,8 @@ class (MonadPtr m) => Accessable m container item | container -> item where
 access :: (Accessable m container item, Parent m mi)
     => mi Int -> (Agg m item) -> container -> m container 
 access mi a c = (hug mi) >>= \i -> access' i a c
+
+
+-- class (MonadPtr m) => Fieldable m v t r where
+--     setfield' :: (t->(String,et),r->er) -> v t r -> Agg m (v et er) -> m (v t r)
 

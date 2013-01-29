@@ -45,11 +45,18 @@ instance (MonadMem m) => MonadMem (BP l e m) where
 modify_mem :: MonadMem m => (Memory -> Memory) -> m ()
 modify_mem f = get_mem >>= \m -> put_mem (f m)
 
+data Safe
+data Unsafe
 
 data Value t x = Value {
       vt :: t
     , vn :: String
     , vr :: x
+    } deriving(Show)
+
+data Value_u t x = Value_u {
+      ut :: t
+    , ur :: x
     } deriving(Show)
 
 -- | VHDL primitive type can are described with it's upper and lower bounds. Use
@@ -69,6 +76,7 @@ newtype VarR = VarR { vval :: Int } deriving(Show)
 --     clone r = derefM r >>= allocM 
 
 type Variable = Value PrimitiveT (Ptr VarR)
+type Variable_u = Value_u PrimitiveT (Ptr VarR)
 
 -- | VHDL primitive signal
 data SigR = SigR {
@@ -78,6 +86,7 @@ data SigR = SigR {
     } deriving(Show)
 
 type Signal = Value PrimitiveT (Ptr SigR)
+type Signal_u = Value_u PrimitiveT (Ptr SigR)
 
 signalUniqIq :: (MonadPtr m) => Signal -> m Int
 signalUniqIq s = suniq <$> derefM (vr s)
@@ -119,7 +128,8 @@ data ArrayT t = ArrayT {
 type ArrayR a = Array2 a
 
 -- | VHDL array entity
-type Array t e = Value (ArrayT t) (ArrayR (String,e))
+type Array t e = Value (ArrayT t) (ArrayR e)
+type Array_u t e = Value_u (ArrayT t) (ArrayR e)
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
@@ -131,18 +141,18 @@ add_assignment :: Assignment -> PS -> PS
 add_assignment a ps = ps { passignments = a:(passignments ps) }
 
 -- | VHDL record type
-newtype RecordT x = RecordT x
-    deriving(Show)
+newtype RecordT x = RecordT {
+    rtype :: x
+    } deriving(Show)
 
 -- | VHDL records
 data RecordR a = RecordR {
-      rname :: String
-    , rtuple :: a
+    rtuple :: a
     } deriving(Show)
 
 type Accessor r f = (r -> f)
 
-type Record t x = (RecordT t, Ptr (RecordR x))
+type Record t x = Value (RecordT t) (RecordR x)
 
 -- | State of a VHDL process
 data PS = PS {
@@ -313,8 +323,8 @@ type Agg m tgt = tgt -> m tgt
 -- data Clone = Clone
 -- data Link = Link
 
--- FIXME: bad arguments handling
-pfail x = fail . printf (x ++ "\n")
+pfail x a = fail (printf (x ++ "\n") a)
+pfail2 x a b = fail (printf (x ++ "\n") a b)
 
 {- Common helpers -}
 when_not x fail = when (not x) fail

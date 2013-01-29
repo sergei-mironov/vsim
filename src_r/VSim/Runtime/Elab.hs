@@ -8,7 +8,7 @@ module VSim.Runtime.Elab (
       module VSim.Runtime.Elab.Class
     , module VSim.Runtime.Elab.Prim
     , module VSim.Runtime.Elab.Array
-    -- , module VSim.Runtime.Elab.Record
+    , module VSim.Runtime.Elab.Record
     -- , alloc_signal_agg
     , alloc_signal
     -- , alloc_variable_agg
@@ -44,7 +44,7 @@ import VSim.Runtime.Ptr
 import VSim.Runtime.Elab.Class
 import VSim.Runtime.Elab.Prim
 import VSim.Runtime.Elab.Array
--- import VSim.Runtime.Elab.Record
+import VSim.Runtime.Elab.Record
 
 alloc_function f = return f
 
@@ -65,13 +65,13 @@ alloc_ranged_type mr = mkprim <$> mr where
 alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
-alloc_signal :: (Createable (Clone m) t (SR t))
-    => String -> t -> Agg (Clone m) (Value t (SR t)) -> (Elab m) (Value t (SR t))
-alloc_signal n t f = unClone (alloc n t f)
+alloc_signal :: (Createable (Elab m) t (SR t))
+    => String -> t -> Agg (Clone m) (Value_u t (SR t)) -> (Elab m) (Value t (SR t))
+alloc_signal n t f = alloc t >>= unClone . f >>= fixup n
 
-alloc_variable :: (Createable (Clone m) t (VR t))
-    => String -> t -> Agg (Clone m) (Value t (VR t)) -> (Elab m) (Value t (VR t))
-alloc_variable n t f = unClone (alloc n t f)
+alloc_variable :: (Createable (Elab m) t (VR t))
+    => String -> t -> Agg (Clone m) (Value_u t (VR t)) -> (Elab m) (Value t (VR t))
+alloc_variable n t f = alloc t >>= unClone . f >>= fixup n
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
