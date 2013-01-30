@@ -82,5 +82,6 @@ timewheel (t, SimStep ps) = do
             ws <- mprocesses <$> get_mem
             (t', es@(ES ss' ps1)) <- (scan_event ss >=> scan_event ws) (maxBound, mempty)
             ps2 <- concat <$> mapM (\(r,w) -> sigassign2 r w) ss'
+            -- FIXME: merge processes wizely! do not allow duplicates!
             return (t', SimStep (ps1`mappend`ps2))
 
