@@ -11,11 +11,11 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Time
 import VSim.Runtime.Ptr
 
-printWaveform :: Waveform -> String
+printWaveform :: (Show a) => Waveform a -> String
 printWaveform (Waveform cs) = concat $ map pc cs where
     pc (Change t c)
-        | t < maxBound = printf "< %d until %d >" c ((watch t) - 1)
-        | otherwise = printf "< %d until inf >" c
+        | t < maxBound = printf "< %s until %d >" (show c) ((watch t) - 1)
+        | otherwise = printf "< %s until inf >" (show c)
 
 printSignalM :: (MonadIO m) => Signal -> m String
 printSignalM v = derefM (vr v) >>= return . printSignal (vn v)

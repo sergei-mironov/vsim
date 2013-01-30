@@ -24,56 +24,56 @@ import VSim.Runtime.Time
 -- | Change is a part of a waveform. It's semantic is:
 -- foreach t . t < until => (value `at_time` t) == cvalue
 --             t >= until => value is undefined
-data Change = Change {
+data Change a = Change {
       until :: NextTime
-    , cvalue :: Int
+    , cvalue :: a
     } deriving(Show,Eq)
 
-fromPair :: (NextTime,Int) -> Change
+fromPair :: (NextTime,a) -> Change a
 fromPair (a,b) = Change a b
 
-infinity :: Int -> Change
+infinity :: a -> Change a
 infinity v = Change maxBound v
 
-wcons :: Change -> [Change] -> [Change]
+wcons :: (Eq a) => Change a -> [Change a] -> [Change a]
 wcons c [] = [c]
 wcons c@(Change t1 v1) cs@((Change t2 v2):l)
     | v1 == v2 = cs
     | t1 == t2 = c:l
     | otherwise = c:cs
 
-wappend :: [Change] -> [Change] -> [Change]
+wappend :: (Eq a) => [Change a] -> [Change a] -> [Change a]
 wappend [] f = f
 wappend p f = (init p) ++ ((last p) `wcons` f)
 
 -- | Non-empty list of changes, sorted by (until::Time). The last element should
 -- specify value of the waveform at +infinity time
-newtype Waveform = Waveform {
-      wchanges :: [Change]
+newtype Waveform a = Waveform {
+      wchanges :: [Change a]
     } deriving(Show,Eq)
 
 -- | Returns waveform of a constant value
-wconst :: Int -> Waveform
+wconst :: a -> Waveform a
 wconst val = Waveform [infinity val]
 
-invariant :: Waveform -> Bool
+invariant :: (Eq a) => Waveform a -> Bool
 invariant w = and $ map ($w) [invariant1, invariant2]
 
-invariant1 :: Waveform -> Bool
+invariant1 :: Waveform a -> Bool
 invariant1 (Waveform cs) = (length cs > 0) && (until $ last cs) == maxBound
 
-invariant2 :: Waveform -> Bool
+invariant2 :: (Eq a) => Waveform a -> Bool
 invariant2 (Waveform cs) = and $ map check (cs `zip` (tail cs)) where
     check (Change t1 v1 , Change t2 v2) = t1 < t2 && v1 /= v2
 
 -- | Returns time t such that: t <= t_really_next_event
-event :: Waveform -> (NextTime, Waveform)
+event :: Waveform a -> (NextTime, Waveform a)
 event (Waveform (c@(Change t _):c':cs)) = (t, Waveform (c':cs))
 event (Waveform (c@(Change t _):[])) = (t, error "event: passing the end-of-time")
 event (Waveform []) = error "event: attempt to unevent empty waveform"
 
 -- | Return the value of a waveform at time t
-valueAt :: Time -> Waveform -> Int
+valueAt :: Time -> Waveform a -> a
 valueAt t (Waveform []) = error "valueAt: infinity invariant failed"
 valueAt t (Waveform ((Change t' v):cs))
     | t `before` t' = v
@@ -81,14 +81,14 @@ valueAt t (Waveform ((Change t' v):cs))
 
 -- | Returns the value of a waveform at time t. Fails if the value can't be
 -- aquired from the head change.
-valueAt1 :: (Timeable t) => t -> Waveform -> Int
+valueAt1 :: (Timeable t) => t -> Waveform a -> a
 valueAt1 t (Waveform []) = error "valueAt1: infinity invariant failed"
 valueAt1 t (Waveform ((Change t' v):_))
     | t `before` t' = v
     | otherwise = error "valueAt1: accessability invariant failed"
 
 -- | Detect earliest change of a vaweform
-earliest :: Waveform -> Waveform -> Ordering
+earliest :: Waveform a -> Waveform a -> Ordering
 earliest (Waveform ((Change t1 _):_)) (Waveform ((Change t2 _):_)) = compare t1 t2
 earliest (Waveform _) (Waveform _) = error "earliest: vmpty waveform"
 
@@ -101,16 +101,16 @@ earliest (Waveform _) (Waveform _) = error "earliest: vmpty waveform"
 --
 -- r _ _/-\_ _ _
 --         t
-concatAt :: NextTime -> Waveform -> Waveform -> Waveform
+concatAt :: (Eq a) => NextTime -> Waveform a -> Waveform a -> Waveform a
 concatAt t w1 w2 = Waveform (p`wappend`f) where
     (p,f) = (past t w1, future t w2)
 
-past :: NextTime -> Waveform -> [Change]
+past :: NextTime -> Waveform a -> [Change a]
 past t (Waveform (c@(Change t' v'):cs))
     | t' < t = c:(past t (Waveform cs))
     | t' >= t = [Change t v']
 
-future :: NextTime -> Waveform -> [Change]
+future :: NextTime -> Waveform a -> [Change a]
 future t (Waveform []) = []
 future t (Waveform (c@(Change t' v'):cs))
     | t' <= t = future t (Waveform cs)
@@ -118,26 +118,26 @@ future t (Waveform (c@(Change t' v'):cs))
 
 -- | forall t . t >=  psince => (valueAt t PW) == (valueAt t pwave)
 --              t < psince => (valueAt t PW) == undefined
-data ProjectedWaveform = PW {
+data ProjectedWaveform a = PW {
       psince :: NextTime
-    , pwave :: Waveform
+    , pwave :: Waveform a
     } deriving(Show)
 
 nullPW = PW maxBound (wconst 0)
 
 -- | Takes the current and the projected waveforms, returns resulting waveform
-unPW :: Waveform -> ProjectedWaveform -> Waveform
+unPW :: (Eq a) => Waveform a -> ProjectedWaveform a -> Waveform a
 unPW w (PW s w') = concatAt s w w'
 
-appendPW :: ProjectedWaveform -> ProjectedWaveform -> ProjectedWaveform
+appendPW :: (Eq a) => ProjectedWaveform a -> ProjectedWaveform a -> ProjectedWaveform a
 appendPW (PW s1 w1) (PW s2 w2) = PW (s1 `min` s2) (concatAt (s1`max`s2) w1 w2)
 
 {- Tests -}
 
-instance Arbitrary Change where
+instance (Arbitrary a) => Arbitrary (Change a) where
     arbitrary = Change <$> arbitrary <*> arbitrary
 
-instance Arbitrary Waveform where
+instance (Eq a, Arbitrary a) => Arbitrary (Waveform a) where
     arbitrary =  (infinity <$> arbitrary) >>= wf 5 . (\s -> [s]) >>= return . Waveform where
         wf n x@((Change t v):cs)
             | n == 0 = return x
@@ -145,7 +145,7 @@ instance Arbitrary Waveform where
             where 
                 earlier (Change t' _) = t' < t
 
-instance Arbitrary ProjectedWaveform where
+instance (Eq a, Arbitrary a) => Arbitrary (ProjectedWaveform a) where
     arbitrary = do
         w@(Waveform (c:_)) <- arbitrary
         s <- suchThat arbitrary (<=(until c))

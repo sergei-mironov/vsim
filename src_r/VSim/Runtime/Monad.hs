@@ -75,7 +75,7 @@ type Variable = Value PrimitiveT (Ptr VarR)
 
 -- | VHDL primitive signal
 data SigR = SigR {
-      swave :: Waveform
+      swave :: Waveform Int
     , sproc :: [Ptr Process]
     , suniq :: Int
     } deriving(Show)
@@ -88,7 +88,7 @@ signalUniqIq s = suniq <$> derefM (vr s)
 in_range :: PrimitiveT -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u
 
-in_range_w :: PrimitiveT -> Waveform -> Bool
+in_range_w :: PrimitiveT -> Waveform Int -> Bool
 in_range_w t w = and $ List.map f $ wchanges w where
     f (Change _ v) = in_range t v
 
@@ -106,7 +106,7 @@ sigassign1 (Assignment v pw) = do
     writeM (vr v) s{ swave = unPW (swave s) pw }
     ccheck v
 
-sigassign2 :: (MonadSim m) => Ptr SigR -> Waveform -> m [Ptr Process]
+sigassign2 :: (MonadSim m) => Ptr SigR -> Waveform Int -> m [Ptr Process]
 sigassign2 r w = do
     s <- derefM r
     writeM r s{swave = w}
@@ -129,7 +129,7 @@ type Array t e = Value (ArrayT t) (ArrayR e)
 -- | Assignment event, list of them is the result of process execution
 data Assignment = Assignment {
       acurr :: Signal
-    , anext :: ProjectedWaveform
+    , anext :: ProjectedWaveform Int
     } deriving(Show)
 
 add_assignment :: Assignment -> PS -> PS

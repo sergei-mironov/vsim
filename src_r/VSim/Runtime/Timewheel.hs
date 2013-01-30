@@ -20,7 +20,7 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Ptr
 
-data ES = ES [(Ptr SigR, Waveform)] [Ptr Process]
+data ES = ES [(Ptr SigR, Waveform Int)] [Ptr Process]
     deriving(Show)
 
 instance Monoid ES where
