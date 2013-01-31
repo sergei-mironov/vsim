@@ -54,6 +54,8 @@ addmem sig = do
 
 alloc_nullptr n t = return (Value n t nullPtr)
 
+alloc_defval n t = return (Value n t (typeval t))
+
 instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
     alloc = alloc_nullptr
     fixup x = fixup_signal x >>= addmem
@@ -61,6 +63,10 @@ instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
 instance (MonadMem m) => Createable m PrimitiveT (Ptr VarR) where
     alloc = alloc_nullptr
     fixup = fixup_variable
+
+instance (MonadPtr m) => Createable m PrimitiveT (Int) where
+    alloc = alloc_defval
+    fixup = return
 
 {- Assignable -}
 
@@ -91,6 +97,10 @@ proc_var_update vv tgt@(var) = do
     ccheck var
     return tgt
 
+const_var_update vv tgt@(var) = do
+    v <- hug (val vv)
+    return tgt{vr = v}
+
 instance (MonadPtr m) => Assignable (Link m) Signal Signal where
         assign' = elab_sig_link
 instance (MonadPtr m) => Assignable (Link m) Variable Signal where
@@ -98,24 +108,28 @@ instance (MonadPtr m) => Assignable (Link m) Variable Signal where
 instance (MonadPtr m) => Assignable (Link m) Int Signal where
         assign' = elab_sig_clone
 
-instance (MonadPtr m) => Assignable (Clone m) Signal Signal where
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Signal Signal where
         assign' = elab_sig_clone
-instance (MonadPtr m) => Assignable (Clone m) Variable Signal where
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Variable Signal where
         assign' = elab_sig_clone
-instance (MonadPtr m) => Assignable (Clone m) Int Signal where
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Int Signal where
         assign' = elab_sig_clone
 
-instance (MonadPtr m) => Assignable (Clone m) Signal Variable where
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Signal Variable where
         assign' = elab_var_clone
-instance (MonadPtr m) => Assignable (Clone m) Variable Variable where
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Variable Variable where
         assign' = elab_var_clone
-instance (MonadPtr m) => Assignable (Clone m) Int Variable where
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Int Variable where
         assign' = elab_var_clone
 
 instance (Valueable (VProc l) v) => Assignable (Assign l) v Signal where
         assign' = proc_sig_update
 instance (Valueable (VProc l) v) => Assignable (Assign l) v Variable where
         assign' = proc_var_update
+
+
+instance (MonadPtr m, Valueable m v) => Assignable (Clone m) v Constant where
+        assign' = const_var_update
 
 {- Type stuff -}
 
@@ -139,6 +153,9 @@ instance (MonadPtr m) => Valueable (Elab m) Signal where
     -- FIXME: I am not sure that it is ok to ask minBound in Elab monad
     val v = valueAt <$> (pure minBound) <*> (swave <$> derefM (vr v))
 
+instance (Monad m) => Valueable m Constant where
+    val v = return (vr v)
+
 -- Imageable
 
 instance (MonadProc m) => Imageable m Signal PrimitiveT where
@@ -146,6 +163,9 @@ instance (MonadProc m) => Imageable m Signal PrimitiveT where
 
 instance (MonadProc m) => Imageable m Variable PrimitiveT where
     t_image mr _ = show <$> (vval <$> (derefM =<< (vr <$> mr)))
+
+instance (MonadProc m) => Imageable m Constant PrimitiveT where
+    t_image mr _ = (show . vr) <$> mr
 
 instance (MonadProc m) => Imageable m Int PrimitiveT where
     t_image mr _ = show <$> mr

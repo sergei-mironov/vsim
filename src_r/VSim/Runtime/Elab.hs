@@ -69,11 +69,11 @@ alloc_unranged_type :: (MonadElab m) => m PrimitiveT
 alloc_unranged_type = return unranged
 
 alloc_signal :: (Createable (Elab m) t (SR t))
-    => String -> t -> Agg (Clone m) (Value t (SR t)) -> (Elab m) (Value t (SR t))
+    => String -> t -> Agg (Clone (Elab m)) (Value t (SR t)) -> (Elab m) (Value t (SR t))
 alloc_signal n t f = alloc n t >>= unClone . f >>= fixup
 
 alloc_variable :: (Createable (Elab m) t (VR t))
-    => String -> t -> Agg (Clone m) (Value t (VR t)) -> (Elab m) (Value t (VR t))
+    => String -> t -> Agg (Clone (Elab m)) (Value t (VR t)) -> (Elab m) (Value t (VR t))
 alloc_variable n t f = alloc n t >>= unClone . f >>= fixup
 
 alloc_port :: (Createable (Elab m) t (SR t))
@@ -83,10 +83,9 @@ alloc_port n t f = alloc n t >>= unLink . f >>= fixup
 alloc_named_constant :: (MonadElab m) => String -> m Int -> m Int
 alloc_named_constant _ v = v
 
--- FIXME: wont' help: need (Clone (Elab m))
-alloc_constant :: (MonadPtr m, Parent m mi, Createable mi t (CR t))
-    => t -> Agg m (Value t (CR t)) -> mi (Value t (CR t))
-alloc_constant t f = alloc [] t >>= unM . f >>= fixup
+alloc_constant :: (MonadPtr m, Createable m t (CR t))
+    => t -> Agg (Clone m) (Value t (CR t)) -> m (Value t (CR t))
+alloc_constant t f = alloc [] t >>= unClone . f >>= fixup
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)

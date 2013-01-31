@@ -86,6 +86,8 @@ instance HasUniq SigR where
 
 type Signal = Value PrimitiveT (Ptr SigR)
 
+type Constant = Value PrimitiveT Int
+
 signalUniqIq :: (MonadPtr m) => Signal -> m Int
 signalUniqIq s = suniq <$> derefM (vr s)
 
@@ -364,10 +366,10 @@ instance (Monad m) => Parent (Link m) (Elab m) where
     hug me = Link me
     unM = unLink
 
-newtype Clone m a = Clone { unClone :: (Elab m) a }
+newtype Clone m a = Clone { unClone :: m a }
     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
-instance (Monad m) => Parent (Clone m) (Elab m) where
+instance (Monad m) => Parent (Clone m) m where
     hug me = Clone me
     unM = unClone
 

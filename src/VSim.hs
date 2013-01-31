@@ -78,6 +78,8 @@ gen_appl' n (a:as) = HsApp (gen_appl' n as) a
 gen_appl :: (AsIdent n) => n -> [HsExp] -> HsExp
 gen_appl n as = HsParen $ gen_appl' n (reverse as)
 
+appl_alloc_constant t e = gen_appl "alloc_constant" [ t , e ]
+
 gen_op :: String -> HsExp -> HsExp -> HsExp
 gen_op n e1 e2 = HsParen $ HsInfixApp e1 qn e2 where
     qn = HsQVarOp $ UnQual $ HsSymbol n
@@ -95,6 +97,9 @@ gen_function_ n as = HsQualifier (gen_appl' n (reverse as))
 gen_function_ret :: (AsIdent n, AsIdent p) => p -> n -> [HsExp] -> HsStmt
 gen_function_ret r n [] = HsGenerator noLoc (gen_pat r) (gen_ident n)
 gen_function_ret r n as = HsGenerator noLoc (gen_pat r) (gen_appl' n (reverse as))
+
+-- | Generate monadic statement like `x <- n args'
+gen_function_ret' r as = HsGenerator noLoc (gen_pat r) as
 
 -- | Generate monadic statement like `x <- n args'
 gen_function :: (AsIdent n) => HsPat -> n -> [HsExp] -> HsStmt
@@ -274,11 +279,12 @@ gen_elab ts = [
             ]
         ]
 
-    gen_alloc_constant (IRConstant p _ loc e) = [
-          gen_function_ret (unHierPath p) "alloc_named_constant" [
-              gen_str (unHierPath p)
-            , gen_elab_expr e
-            ]
+    gen_alloc_constant (IRConstant p t loc e) = [
+          gen_function_ret' (unHierPath p) (
+            appl_alloc_constant
+              (gen_type_ident t)
+              (gen_assign_or_aggregate gen_elab_expr e)
+            )
         ]
 
     build_alloc_variable p t x =
@@ -403,7 +409,12 @@ gen_elab ts = [
         gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
         gen_stmt (ISReturn loc) = [gen_function_ "retp" [unit_con]]
         gen_stmt (ISReturnExpr loc e) = [
-            gen_function_ "retf" [gen_type_ident (find_fun_type loc ts), gen_expr e]]
+              gen_function_ "retf" [
+                  appl_alloc_constant
+                    (gen_type_ident (find_fun_type loc ts))
+                    (gen_assign_or_aggregate gen_expr e)
+                ]
+            ]
         gen_stmt (ISProcCall n args loc) = [gen_function_ "call" [
             gen_op_chain "<<" (gen_ident (unHierPath n) : map (gen_expr . snd) args)
             ]]

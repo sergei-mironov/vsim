@@ -3,6 +3,8 @@ end entity test;
 
 architecture test_arch of test is
 
+    constant c : integer := 0;
+
     type arr01 is array (0 to 1) of integer;
 
     function p1(a1 : arr01) return integer is
