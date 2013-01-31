@@ -66,9 +66,6 @@ instance (AsInt a) => AsInt (WithLoc a) where
 
 noLoc = SrcLoc "<unknown>" 0 0
 
-unHierPath :: WLHierNameWPath -> String
-unHierPath (WithLoc _ (_,ls)) = List.intercalate "_" (map BS.unpack ls)
-
 shortName :: WLHierNameWPath -> String
 shortName (WithLoc _ (_,(n:_))) = BS.unpack n
 -- unHierPath p = error "unHierPath: unsupported " ++ (show p)

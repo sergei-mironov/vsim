@@ -23,7 +23,7 @@ data WithLoc a = WithLoc {
       withLocLoc :: Loc
     , withLocVal :: a
     }
-    deriving (Show, Data, Typeable)
+    deriving (Eq, Show, Data, Typeable)
 
 instance Functor WithLoc where
     fmap f (WithLoc l x) = WithLoc l (f x)
