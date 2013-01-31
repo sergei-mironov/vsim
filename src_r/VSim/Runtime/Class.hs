@@ -18,9 +18,9 @@ class Representable t where
     type SR t :: *
     -- | Varaiable representation
     type VR t :: *
-    -- | Free-form representation. Used for carrying function returns and
+    -- | Constant representation. Used for carrying function returns and
     -- constants
-    type FR t :: *
+    type CR t :: *
 
 constrM :: (Monad m, Applicative m) => t -> m y -> m (t,y)
 constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my

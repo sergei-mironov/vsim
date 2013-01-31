@@ -9,6 +9,9 @@ architecture test_arch of test is
 
 	procedure p1(variable a1 : inout arr01) is
 	begin
+        report "a";
+        return;
+        report "b";
         a1(0) := 0;
         a1(1) := 1;
 	end procedure;
@@ -17,8 +20,9 @@ begin
 
     main: process
         variable s0, s1 : integer := 10;
+        variable i : arr01;
 	begin
-		-- p1(a1 => (0 => s0 , 1 => s1)); -- ERROR
+		p1(i);
 		assert false report "end of simulation" severity failure;
 	end process;
 

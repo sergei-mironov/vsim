@@ -27,7 +27,7 @@ import VSim.Runtime.Elab.Class
 instance Representable PrimitiveT where
     type SR PrimitiveT = Ptr SigR
     type VR PrimitiveT = Ptr VarR
-    type FR PrimitiveT = Int
+    type CR PrimitiveT = Int
 
 {- Createable -}
 

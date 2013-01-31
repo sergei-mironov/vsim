@@ -24,18 +24,18 @@ import VSim.Runtime.Elab.Class
 instance (Representable x) => Representable (RecordT x) where
     type SR (RecordT x) = RecordR (SR x)
     type VR (RecordT x) = RecordR (VR x)
-    type FR (RecordT x) = RecordR (FR x)
+    type CR (RecordT x) = RecordR (CR x)
 
 instance (Representable a, Representable b) =>
          Representable ((String, a), b)  where
     type SR ((String, a), b) = (Ptr (SR a), SR b)
     type VR ((String, a), b) = (Ptr (VR a), VR b)
-    type FR ((String, a), b) = (FR a, FR b)
+    type CR ((String, a), b) = (CR a, CR b)
 
 instance Representable ()  where
     type SR () = ()
     type VR () = ()
-    type FR () = ()
+    type CR () = ()
 
 {- Createable -}
 

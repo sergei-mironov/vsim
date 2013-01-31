@@ -12,6 +12,7 @@ module VSim.Runtime.Elab (
     , alloc_signal
     , alloc_variable
     , alloc_constant
+    , alloc_named_constant
     , alloc_process
     , alloc_process_let
     , alloc_subtype
@@ -79,6 +80,14 @@ alloc_port :: (Createable (Elab m) t (SR t))
     => String -> t -> Agg (Link m) (Value t (SR t)) -> (Elab m) (Value t (SR t))
 alloc_port n t f = alloc n t >>= unLink . f >>= fixup
 
+alloc_named_constant :: (MonadElab m) => String -> m Int -> m Int
+alloc_named_constant _ v = v
+
+-- FIXME: wont' help: need (Clone (Elab m))
+alloc_constant :: (MonadPtr m, Parent m mi, Createable mi t (CR t))
+    => t -> Agg m (Value t (CR t)) -> mi (Value t (CR t))
+alloc_constant t f = alloc [] t >>= unM . f >>= fixup
+
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
     => String -> [Signal] -> ProcessHandler -> m (Ptr Process)
@@ -94,8 +103,6 @@ alloc_process_let :: (MonadElab m)
     => String -> [Signal] -> m ProcessHandler -> m (Ptr Process)
 alloc_process_let n ss lh = lh >>= alloc_process n ss
 
-alloc_constant :: (MonadElab m) => String -> m Int -> m Int
-alloc_constant _ v = v
 
 -- | Allocate a subtype for a type t. Just create new type for now..
 alloc_subtype :: (MonadElab m) => m RangeT -> PrimitiveT -> m PrimitiveT

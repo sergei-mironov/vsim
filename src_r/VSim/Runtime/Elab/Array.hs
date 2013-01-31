@@ -33,7 +33,7 @@ alloc_array_type mr t = ArrayT <$> (pure t) <*> mr
 instance (Representable t) => Representable (ArrayT t) where
     type SR (ArrayT t) = ArrayR (SR t)
     type VR (ArrayT t) = ArrayR (VR t)
-    type FR (ArrayT t) = ArrayR (FR t)
+    type CR (ArrayT t) = ArrayR (CR t)
 
 replace_unconstr UnconstrT x = x
 replace_unconstr (RangeT l u) _ = RangeT l u

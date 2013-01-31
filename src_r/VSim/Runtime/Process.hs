@@ -138,6 +138,9 @@ call e = do
 (<<) = (=<<)
 infixl 1 <<
 
-ret :: l -> VProc l ()
-ret l = VProc (earlyBP l)
+retf :: t -> VProc l l -> VProc l ()
+retf _ ml = ml >>= \l -> VProc (earlyBP l)
+
+retp :: VProc () ()
+retp = VProc (earlyBP ())
 

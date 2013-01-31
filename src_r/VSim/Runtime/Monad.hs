@@ -353,28 +353,33 @@ unMaybeM (Just x) _ = return x
 loopM a b f = foldM f a b
 
 
-class Parent m mi | m -> mi where
+class (Monad m, Monad mi) => Parent m mi | m -> mi where
     hug :: mi x -> m x
+    unM :: m x -> mi x
 
 newtype Link m a = Link { unLink :: (Elab m) a }
     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
-instance Parent (Link m) (Elab m) where
+instance (Monad m) => Parent (Link m) (Elab m) where
     hug me = Link me
+    unM = unLink
 
 newtype Clone m a = Clone { unClone :: (Elab m) a }
     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
 
-instance Parent (Clone m) (Elab m) where
+instance (Monad m) => Parent (Clone m) (Elab m) where
     hug me = Clone me
+    unM = unClone
 
 newtype Assign l a = Assign { unAssign :: StateT Plan (VProc l) a }
     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadState Plan)
 
 runAssign mx = execStateT (unAssign mx) []
+evalAssign mx = evalStateT (unAssign mx) []
 
 instance Parent (Assign l) (VProc l) where
     hug me = Assign (lift me)
+    unM = evalAssign
 
 -- newtype Access m a = Access { unAccess :: m a }
 --     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)

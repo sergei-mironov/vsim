@@ -180,6 +180,7 @@ gen_elab ts = [
     -- HACK: lift all the procedures
     gen_elab_proc [] = []
     gen_elab_proc ((IRTProcedure p):ts) = (gen_alloc_procedure p) ++ (gen_elab_proc ts)
+    gen_elab_proc ((IRTFunction p):ts) = (gen_alloc_function p) ++ (gen_elab_proc ts)
     gen_elab_proc (t:ts) = gen_elab_proc ts
 
     gen_elab_decls [] = []
@@ -192,6 +193,7 @@ gen_elab ts = [
         map_let (ILDConstant c) = gen_alloc_constant c
         map_let (ILDVariable v) = gen_alloc_variable v
         map_let (ILDProcedure p) = gen_alloc_procedure p
+        map_let (ILDFunction p) = gen_alloc_function p
         map_let e = perror "%s\ngen_let: only variables, constants or procedures, please"
             (show e)
 
@@ -266,15 +268,15 @@ gen_elab ts = [
 
     gen_alloc_port (IRPort p t (IOEJustExpr _ e)) = [
           gen_function_ret (unHierPath p) "alloc_port" [
-              gen_str $ unHierPath p
+              gen_str (unHierPath p)
             , gen_type_ident t
             , gen_assign_or_aggregate gen_elab_expr e
             ]
         ]
 
     gen_alloc_constant (IRConstant p _ loc e) = [
-          gen_function_ret (unHierPath p) "alloc_constant" [
-              gen_str $ unHierPath p
+          gen_function_ret (unHierPath p) "alloc_named_constant" [
+              gen_str (unHierPath p)
             , gen_elab_expr e
             ]
         ]
@@ -337,6 +339,10 @@ gen_elab ts = [
             (concat $ map gen_arg as) ++
             [gen_return_ (gen_seq ss)]
 
+    gen_alloc_function (IRFunction p as _ stmt) =
+        -- Note: (gen_stmt ret) handles return type
+        gen_alloc_procedure (IRProcedure p as stmt)
+
     type_name_is pat n = gen_ident pat == gen_type_ident n
 
     gen_type_ident :: IRTypeDescr -> HsExp
@@ -395,7 +401,9 @@ gen_elab ts = [
         gen_stmt (ISWait loc [] Nothing (Just e)) = [gen_function_ "wait" [gen_expr e]]
         gen_stmt (ISWait loc [] Nothing Nothing) = [gen_function_ "wait" [gen_ident "next"]]
         gen_stmt (ISFor lbl loc i (ITDRangeDescr range) s) = gen_for range i s
-        gen_stmt (ISReturn loc) = [gen_function_ "ret" [unit_con]]
+        gen_stmt (ISReturn loc) = [gen_function_ "retp" [unit_con]]
+        gen_stmt (ISReturnExpr loc e) = [
+            gen_function_ "retf" [gen_type_ident (find_fun_type loc ts), gen_expr e]]
         gen_stmt (ISProcCall n args loc) = [gen_function_ "call" [
             gen_op_chain "<<" (gen_ident (unHierPath n) : map (gen_expr . snd) args)
             ]]
@@ -423,6 +431,9 @@ gen_elab ts = [
         --     | otherwise = perror "%s\ngen_expr: image integers only, please" (show t)
         gen_expr (IETypeValueAttr loc T_image e t) = gen_appl "t_image" [
             gen_expr e, gen_type_ident t]
+        gen_expr (IEFunctionCall n args loc) = gen_appl "call" [
+              gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
+            ]
         gen_expr e = perror "%s\ngen_expr: unsupported expr" (show e)
 
 gen_import m = HsImportDecl noLoc (Module m) False Nothing Nothing
