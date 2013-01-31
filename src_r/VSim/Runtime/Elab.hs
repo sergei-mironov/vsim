@@ -15,7 +15,7 @@ module VSim.Runtime.Elab (
     , alloc_process
     , alloc_process_let
     , alloc_subtype
-    -- , assume_subtype_of
+    , assume_subtype_of
     , alloc_ranged_type
     , alloc_unranged_type
     , alloc_range
@@ -101,11 +101,11 @@ alloc_constant _ v = v
 alloc_subtype :: (MonadElab m) => m RangeT -> PrimitiveT -> m PrimitiveT
 alloc_subtype mr _ = alloc_ranged_type mr
 
--- assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
--- assume_subtype_of t' (t,r) = do
---     when (not $ t `valid_subtype_of` t') (fail $
---         printf "type convertion from %s to %s failed" (show t) (show t'))
---     return (t,r)
+assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> Value t x -> m (Value t x)
+assume_subtype_of t' x@(Value n t r) = do
+    when (not $ t `valid_subtype_of` t') (
+        pfail2 "type convertion from %s to %s failed" (show t) (show t'))
+    return x
 
 alloc_enum_type :: (MonadElab m) => Int -> m (PrimitiveT, [Int])
 alloc_enum_type len = let (l,r) = (0, len-1) in return (PrimitiveT l r, [l..r])

@@ -312,12 +312,14 @@ gen_elab ts = [
             scan_sens s = perror "%s\nscan_sens: use idents, please" (show s)
 
     gen_let_func n pats stmts =
-        HsLetStmt [HsFunBind [HsMatch noLoc n pats body []]] where
-            body = HsUnGuardedRhs $ stmts
+        gen_function_ret n "alloc_function" [HsParen $ HsLambda noLoc pats stmts]
+        -- HsLetStmt [HsFunBind [HsMatch noLoc n pats body []]] 
+        -- where
+            -- body = HsUnGuardedRhs $ stmts
 
     -- Generates a procedure declaration
     gen_alloc_procedure (IRProcedure p as stmt) = [
-          gen_let_func (mkName $ unHierPath p) (map arg' as) (gen_let stmt) ] where
+          gen_let_func (unHierPath p) (map arg' as) (gen_let stmt) ] where
 
         arg' (IRArg n _ _ _) = gen_pat (mangle' n)
 
@@ -333,6 +335,7 @@ gen_elab ts = [
             (concat $ map gen_arg as) ++
             (gen_elab_letdecls ldecls) ++
             [gen_return_ (gen_seq ss)]
+
         gen_let ss = HsParen $ HsDo $
             (concat $ map gen_arg as) ++
             [gen_return_ (gen_seq ss)]
