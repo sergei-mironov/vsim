@@ -40,10 +40,12 @@ find_arg_type name i top = extract $ check1 $ listify is_proc top where
 extract_fun_type fs = List.map (\(IRFunction _ _ t _) -> t) fs
 
 find_fun_type :: Loc -> [IRTop] -> IRTypeDescr
-find_fun_type loc top = check1 $ extract_fun_type $ listify has_loc top where
+find_fun_type loc top = pick1 $ extract_fun_type $ listify has_loc top where
     has_loc (IRFunction _ _ t ss) = (List.length (listify (==loc) ss)) > 0
-    check1 [t] = t
-    check1 [] = error $ "find_fun_type: return without function??? loc:" ++ (show loc)
-    check1 xs = error $ "find_fun_type: more than 1 objects found: " ++ (show xs)
+    pick1 [] = error $ "find_fun_type: return without function??? loc:" ++ (show loc)
+    pick1 xs = List.last xs
+    -- check1 [t] = t
+    -- check1 [] = error $ "find_fun_type: return without function??? loc:" ++ (show loc)
+    -- check1 xs = error $ "find_fun_type: more than 1 objects found: " ++ (show xs)
 
 
