@@ -12,6 +12,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
 import Data.Monoid
+import Data.Set as Set
 import Text.Printf
 
 import VSim.Runtime.Monad
@@ -63,7 +64,7 @@ timewheel (t, SimStep ps) = do
     where
 
         -- Kicks all the processes from the previous step
-        kick_processes = concat <$> mapM kick ps where
+        kick_processes = concat <$> mapM kick (Set.toList ps) where
             kick r = do
                 p <- derefM r
                 ((PP ss nt, PS _ as), h') <- runVProc (phandler p) (PS t [])
@@ -82,6 +83,5 @@ timewheel (t, SimStep ps) = do
             ws <- mprocesses <$> get_mem
             (t', es@(ES ss' ps1)) <- (scan_event ss >=> scan_event ws) (maxBound, mempty)
             ps2 <- concat <$> mapM (\(r,w) -> sigassign2 r w) ss'
-            -- FIXME: merge processes wizely! do not allow duplicates!
-            return (t', SimStep (ps1`mappend`ps2))
+            return (t', SimStep ((Set.fromList ps1)`mappend`(Set.fromList ps2)))
 

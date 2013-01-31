@@ -5,9 +5,11 @@ module VSim.VIR
     ( module VSim.VIR.AST
     , module VSim.VIR.Types
     , module VSim.VIR.Syntax
+    , EnumElement(..)
     ) where
 
 import VSim.VIR.AST
 import VSim.VIR.Types
 import VSim.VIR.Syntax
+import VSim.VIR.Lexer
 

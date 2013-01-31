@@ -7,6 +7,7 @@ import qualified Data.ByteString.Char8 as BS
 import Language.Haskell.Syntax
 import Language.Haskell.Pretty
 
+import Data.Char
 import Data.Maybe
 import Data.List as List
 import System.IO
@@ -67,6 +68,9 @@ noLoc = SrcLoc "<unknown>" 0 0
 
 unHierPath :: WLHierNameWPath -> String
 unHierPath (WithLoc _ (_,ls)) = List.intercalate "_" (map BS.unpack ls)
+
+shortName :: WLHierNameWPath -> String
+shortName (WithLoc _ (_,(n:_))) = BS.unpack n
 -- unHierPath p = error "unHierPath: unsupported " ++ (show p)
 
 gen_appl' :: (AsIdent n) => n -> [HsExp] -> HsExp
@@ -91,17 +95,26 @@ gen_function_ n [] = HsQualifier (gen_ident n)
 gen_function_ n as = HsQualifier (gen_appl' n (reverse as))
 
 -- | Generate monadic statement like `x <- n args'
-gen_function :: (AsIdent n, AsIdent p) => p -> n -> [HsExp] -> HsStmt
-gen_function r n [] = HsGenerator noLoc (gen_pat r) (gen_ident n)
-gen_function r n as = HsGenerator noLoc (gen_pat r) (gen_appl' n (reverse as))
+gen_function_ret :: (AsIdent n, AsIdent p) => p -> n -> [HsExp] -> HsStmt
+gen_function_ret r n [] = HsGenerator noLoc (gen_pat r) (gen_ident n)
+gen_function_ret r n as = HsGenerator noLoc (gen_pat r) (gen_appl' n (reverse as))
+
+-- | Generate monadic statement like `x <- n args'
+gen_function :: (AsIdent n) => HsPat -> n -> [HsExp] -> HsStmt
+gen_function pat n [] = HsGenerator noLoc pat (gen_ident n)
+gen_function pat n as = HsGenerator noLoc pat (gen_appl' n (reverse as))
 
 -- Return wrappers
-gen_return p x = gen_function p "return" [x]
+gen_return p x = gen_function_ret p "return" [x]
 gen_return_ x = gen_function_ "return" [x]
 
 gen_list es = HsList es
 
 gen_pair es = HsTuple es
+
+gen_pat_pair es = HsPTuple es
+
+gen_pat_list es = HsPList es
 
 gen_str s = HsLit $ HsString $ unI $ mkName s where
     unI (HsIdent x) = x
@@ -149,7 +162,7 @@ gen_elab ts = [
     name_of_integer = "integer_standard_std"
 
     body = HsDo $ concat [
-          -- [gen_function name_of_integer "alloc_unranged_type" []]
+          -- [gen_function_ret name_of_integer "alloc_unranged_type" []]
           gen_elab_constants ts
         , gen_elab_types ts
         , gen_elab_proc ts
@@ -205,34 +218,47 @@ gen_elab ts = [
         "%s\ngen_range: a-to-b ranges or <>, please" (PP.ppShow s)
 
     gen_alloc_type (IRType p (ITDArray [c] t)) = [
-          gen_function (unHierPath p) "alloc_array_type" [
+          gen_function_ret (unHierPath p) "alloc_array_type" [
               gen_range_c c
             -- , name_of_integer
             , gen_type_ident t
             ] ]
 
     gen_alloc_type (IRType p (ITDConstraint _ t [c])) = [
-        gen_function (unHierPath p) "alloc_subtype" [
+        gen_function_ret (unHierPath p) "alloc_subtype" [
               gen_arr_range c
             , gen_type_ident t
             ] ]
 
     gen_alloc_type (IRType p (ITDRangeDescr r)) = [
-        gen_function (unHierPath p) "alloc_ranged_type" [
+        gen_function_ret (unHierPath p) "alloc_ranged_type" [
               gen_range r
             ] ]
+
+    gen_alloc_type (IRType p (ITDEnum es)) = [
+        gen_function pat "alloc_enum_type" [
+              gen_ident (show $ length es)
+            ] ]
+        where 
+            pat = gen_pat_pair [gen_pat (unHierPath p), gen_pat_list (map epat es)]
+            short s = intercalate "_" ("enum":s)
+            epat (EnumId i) = gen_pat i
+            epat (EnumChar ' ') = gen_pat "enum_space"
+            epat (EnumChar c)
+                | isAlphaNum c = gen_pat (short [[c]])
+                | otherwise = gen_pat (short ["ord", (show $ ord c)])
 
     gen_alloc_type (IRType p t) = [] -- perror "%s\ngen_alloc_type: ITDArray only, please" (show t)
 
     gen_alloc_signal (IRSignal p t (IOEJustExpr _ e)) = [
-          gen_function (unHierPath p) "alloc_signal" [
+          gen_function_ret (unHierPath p) "alloc_signal" [
               gen_str $ unHierPath p
             , gen_type_ident t
             , gen_assign_or_aggregate gen_elab_expr e
             ]
         ]
     gen_alloc_signal (IRSignal p (ITDName t) (IOENothing loc)) = [
-          gen_function (unHierPath p) "alloc_signal" [
+          gen_function_ret (unHierPath p) "alloc_signal" [
               gen_str $ unHierPath p, gen_ident $ unHierPath t, gen_defval
             ]
         ]
@@ -242,7 +268,7 @@ gen_elab ts = [
         ]
 
     gen_alloc_port (IRPort p t (IOEJustExpr _ e)) = [
-          gen_function (unHierPath p) "alloc_port" [
+          gen_function_ret (unHierPath p) "alloc_port" [
               gen_str $ unHierPath p
             , gen_type_ident t
             , gen_assign_or_aggregate gen_elab_expr e
@@ -250,14 +276,14 @@ gen_elab ts = [
         ]
 
     gen_alloc_constant (IRConstant p _ loc e) = [
-          gen_function (unHierPath p) "alloc_constant" [
+          gen_function_ret (unHierPath p) "alloc_constant" [
               gen_str $ unHierPath p
             , gen_elab_expr e
             ]
         ]
 
     build_alloc_variable p t x =
-        gen_function p "alloc_variable" [
+        gen_function_ret p "alloc_variable" [
               gen_str p
             , gen_type_ident t
             , x
@@ -273,7 +299,7 @@ gen_elab ts = [
     gen_elab_expr e = perror "gen_elab_expr: int constants only, please (got %s)" (show e)
 
     gen_alloc_process (IRProcess p ns lets s) = [
-          gen_function (unHierPath p) "alloc_process_let" [
+          gen_function_ret (unHierPath p) "alloc_process_let" [
               gen_str $ unHierPath p
             , gen_list $ map scan_sens ns
             , HsParen $ HsDo $
@@ -300,7 +326,7 @@ gen_elab ts = [
                 (gen_assign [gen_appl "pure" [gen_ident $ mangle' n]])
             ]
         gen_arg (IRArg n t _ _) = [ 
-              gen_function n "assume_subtype_of" [gen_type_ident t, (gen_ident (mangle' n))]
+              gen_function_ret n "assume_subtype_of" [gen_type_ident t, (gen_ident (mangle' n))]
             ]
 
         gen_let (ISLet ldecls ss) = HsParen $ HsDo $

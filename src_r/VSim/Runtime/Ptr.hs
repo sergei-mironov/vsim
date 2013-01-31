@@ -11,6 +11,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.BP
 import Data.IORef
+import Data.Unique
 import Text.Printf
 import System.IO
 import System.IO.Unsafe
@@ -64,8 +65,16 @@ nullPtr :: (Ptr a)
 nullPtr = unsafePerformIO (newIORef $ error "dereferencing null pointer")
 {-# NOINLINE nullPtr #-}
 
+unsafeDeref :: (Ptr a) -> a
+unsafeDeref = unsafePerformIO . liftIO . derefM
+{-# NOINLINE unsafeDeref #-}
+
 isNull p = p == nullPtr
 
-when_null p m = when (isNull p) m
-when_not_null p m = when (not $ isNull p) m
+class HasUniq x where
+    getUniq :: x -> Int
+
+instance (HasUniq x) => Ord (Ptr x) where
+    compare px py = retr px `compare` retr py where
+        retr = getUniq . unsafeDeref
 

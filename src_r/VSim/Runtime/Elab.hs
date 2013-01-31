@@ -9,19 +9,18 @@ module VSim.Runtime.Elab (
     , module VSim.Runtime.Elab.Prim
     , module VSim.Runtime.Elab.Array
     , module VSim.Runtime.Elab.Record
-    -- , alloc_signal_agg
     , alloc_signal
-    -- , alloc_variable_agg
     , alloc_variable
     , alloc_constant
     , alloc_process
     , alloc_process_let
-    -- , alloc_subtype
+    , alloc_subtype
     -- , assume_subtype_of
     , alloc_ranged_type
     , alloc_unranged_type
     , alloc_range
-    -- , alloc_enum
+    , alloc_urange
+    , alloc_enum_type
     , aggregate
     , alloc_function
     , alloc_port
@@ -33,6 +32,7 @@ import Control.Applicative
 import Data.IntMap as IntMap
 import Data.IORef
 import Data.Range
+import Data.Unique
 import Text.Printf
 import System.IO
 import System.Random
@@ -52,6 +52,7 @@ alloc_function f = return f
 aggregate :: (MonadPtr m) => [a -> m a] -> a -> m a
 aggregate fs a = loopM a fs $ \a f -> f a
 
+-- | Allocates unconstrained range
 alloc_urange :: (MonadElab m) => m RangeT
 alloc_urange = pure UnconstrT
 
@@ -84,7 +85,8 @@ alloc_process :: (MonadElab m)
 alloc_process n ss h = do
     let encycle [] = forever h
         encycle xs = forever (h >> wait_on (Prelude.map vr xs))
-    p <- allocM (Process n (encycle ss) Nothing [])
+    u <- liftIO (hashUnique <$> newUnique)
+    p <- allocM (Process n (encycle ss) Nothing [] u)
     modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
     return p
 
@@ -95,9 +97,9 @@ alloc_process_let n ss lh = lh >>= alloc_process n ss
 alloc_constant :: (MonadElab m) => String -> m Int -> m Int
 alloc_constant _ v = v
 
--- | Allocate a subtype for a type t
--- alloc_subtype :: (Subtypeable t, MonadElab m) => m (SM t) -> t -> m t
--- alloc_subtype mm t = mm >>= \m -> return (build_subtype m t)
+-- | Allocate a subtype for a type t. Just create new type for now..
+alloc_subtype :: (MonadElab m) => m RangeT -> PrimitiveT -> m PrimitiveT
+alloc_subtype mr _ = alloc_ranged_type mr
 
 -- assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> (t, x) -> m (t, x)
 -- assume_subtype_of t' (t,r) = do
@@ -105,11 +107,8 @@ alloc_constant _ v = v
 --         printf "type convertion from %s to %s failed" (show t) (show t'))
 --     return (t,r)
 
--- alloc_enum :: (MonadElab m) => [String] -> m (EnumT, [EnumVal])
--- alloc_enum vals = do
---     let len = (length vals)
---     return (EnumT len, Prelude.map EnumVal [0..len-1])
-
+alloc_enum_type :: (MonadElab m) => Int -> m (PrimitiveT, [Int])
+alloc_enum_type len = let (l,r) = (0, len-1) in return (PrimitiveT l r, [l..r])
 
 {- Mappable -}
 

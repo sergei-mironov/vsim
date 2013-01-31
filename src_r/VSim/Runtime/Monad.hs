@@ -20,6 +20,7 @@ import Data.List as List
 import Data.Range
 import Data.IntMap as IntMap
 import Data.Array2
+import Data.Set as Set
 import Text.Printf
 
 import VSim.Runtime.Class
@@ -79,6 +80,9 @@ data SigR = SigR {
     , sproc :: [Ptr Process]
     , suniq :: Int
     } deriving(Show)
+
+instance HasUniq SigR where
+    getUniq = suniq
 
 type Signal = Value PrimitiveT (Ptr SigR)
 
@@ -168,10 +172,15 @@ data Process = Process {
     -- ^ Returns newly-assigned signals
     , pawake :: Maybe NextTime
     , psignals :: [Ptr SigR]
+    , puniq :: Int
+    -- ^ Unique identifier
     }
 
 instance Show Process where
     show p = printf "Process { pname = \"%s\" }" (pname p)
+
+instance HasUniq Process where
+    getUniq = puniq
 
 relink :: (MonadSim m) => Ptr Process -> [Ptr SigR] -> m ()
 relink r ss = do
@@ -210,11 +219,11 @@ allSignals m = List.concat $ List.map combine $ IntMap.toList (msignals m) where
     combine (_,(ns,s)) = List.map (\n -> s {vn = n}) ns
 
 -- | Simulation event
-newtype SimStep = SimStep [Ptr Process]
+newtype SimStep = SimStep (Set.Set (Ptr Process))
     deriving(Show)
 
 start_step :: Memory -> (Time, SimStep)
-start_step m = (minBound, SimStep (mprocesses m))
+start_step m = (minBound, SimStep (Set.fromList $ mprocesses m))
 
 
 data Severity = Low | High
