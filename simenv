@@ -72,7 +72,9 @@ runtest() { (
 		die "$VSIM is not an executable"
 	
 	TNAME=`basename $tn .vhd`
-	echo $TNAME > $out/NAME
+	echo "$TNAME" >$out/NAME
+	date +"%Y-%m-%d-%H-%M-%S" >$out/DATE
+	date >$out/DATE
 
 	TST=src_r/Test/$TNAME
 	if test -f "$TST" ; then
@@ -85,7 +87,6 @@ runtest() { (
 			die "error: File $TST.hs exists and I can't delete it"
 	fi
 
-	date > $out/DATE
 	( runtr "$tn" ; echo $? >&2 ; ) 2> $out/transl.log |
 	( read -r x ; 
 	  cat $x > $out/transl.vir ;
