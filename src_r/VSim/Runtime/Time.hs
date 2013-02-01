@@ -16,14 +16,15 @@ import Control.Applicative
 import Control.Monad
 import Text.Printf
 import Test.QuickCheck
+import Data.Int
 
 -- | Current simulation time representation. Time is measured in femtoseconds.
 -- User normally can't do anything with this time except watching at it.
-newtype Time = Time { unTime :: Int }
+newtype Time = Time { unTime :: Int64 }
     deriving(Show,Eq,Ord)
 
 -- | Next time representation for future planning.
-newtype NextTime = NextTime { unNextTime :: Int }
+newtype NextTime = NextTime { unNextTime :: Int64 }
     deriving(Show,Eq,Ord)
 
 instance Bounded Time where
@@ -35,8 +36,8 @@ instance Bounded NextTime where
     maxBound = NextTime (maxBound)
 
 class Timeable x where
-    watch :: x -> Int
-    ticked :: x -> Int -> NextTime
+    watch :: x -> Int64
+    ticked :: x -> Int64 -> NextTime
 
 -- | <
 before :: (Timeable t1, Timeable t2) => t1 -> t2 -> Bool
@@ -48,19 +49,20 @@ move_time nt@(NextTime t) maxt
     | nt >= maxt = Nothing
     | otherwise = Just (Time t)
 
+tick_the_time x v
+    | (x + v) <= x = error $
+        printf "ticked: can not decrement time: time %d time_to_add %d" x v
+    | otherwise = NextTime (x + v)
+
 instance Timeable Time where
     watch (Time x) = x
-    ticked (Time x) v
-        | (x + v) <= x = error "ticked: can not decrement time"
-        | otherwise = NextTime (x + v)
+    ticked (Time x) v = tick_the_time x v
 
 instance Timeable NextTime where
     watch (NextTime x) = x
-    ticked (NextTime x) v
-        | (x + v) <= x = error "ticked: can not decrement time"
-        | otherwise = NextTime (x + v)
+    ticked (NextTime x) v = tick_the_time x v
 
-milliSecond, microSecond, nanoSecond, picoSecond, femtoSecond :: Int
+milliSecond, microSecond, nanoSecond, picoSecond, femtoSecond :: Int64
 milliSecond = 1000*microSecond
 microSecond = 1000*nanoSecond
 nanoSecond  = 1000*picoSecond

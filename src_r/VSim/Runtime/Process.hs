@@ -6,6 +6,7 @@
 -- | Module declares various process-level DSL combinators
 module VSim.Runtime.Process where
 
+import Data.Int
 import Data.List
 import Data.Monoid
 import qualified Data.IntMap as IntMap
@@ -29,19 +30,19 @@ class (Monad m) => Appendable m x where
 instance (Monad m, Monoid x) => Appendable m x where
     (.++.) ms1 ms2 = mappend `liftM` ms1 `ap` ms2
 
-ms :: (MonadProc m) => Int -> m NextTime
+ms :: (MonadProc m) => Int64 -> m NextTime
 ms t = ticked <$> now <*> (pure $ t * milliSecond)
 
-us :: (MonadProc m) => Int -> m NextTime
+us :: (MonadProc m) => Int64 -> m NextTime
 us t = ticked <$> now <*> (pure $ t * microSecond)
 
-ps :: (MonadProc m) => Int -> m NextTime
+ps :: (MonadProc m) => Int64 -> m NextTime
 ps t = ticked <$> now <*> (pure $ t * picoSecond)
 
-ns :: (MonadProc m) => Int -> m NextTime
+ns :: (MonadProc m) => Int64 -> m NextTime
 ns t = ticked <$> now <*> (pure $ t * nanoSecond)
 
-fs :: (MonadProc m) => Int -> m NextTime
+fs :: (MonadProc m) => Int64 -> m NextTime
 fs t = ticked <$> now <*> (pure $ t * femtoSecond)
 
 next :: (MonadProc m) => m NextTime
