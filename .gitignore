@@ -8,3 +8,4 @@ dist/*
 tags
 Autogen.hs
 tr/bin/*
+history/*
