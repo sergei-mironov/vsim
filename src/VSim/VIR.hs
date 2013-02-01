@@ -9,6 +9,7 @@ module VSim.VIR
     , unHierPath
     , find_arg_type
     , find_fun_type
+    , has_type_declaration
     ) where
 
 import Data.Generics
@@ -47,5 +48,11 @@ find_fun_type loc top = pick1 $ extract_fun_type $ listify has_loc top where
     -- check1 [t] = t
     -- check1 [] = error $ "find_fun_type: return without function??? loc:" ++ (show loc)
     -- check1 xs = error $ "find_fun_type: more than 1 objects found: " ++ (show xs)
+
+has_type_declaration :: String -> [IRTop] -> Bool
+has_type_declaration n ts = check $ listify match ts where
+    match (IRType hn _) = unHierPath hn == n
+    check (x:xs) = True
+    check [] = False
 
 

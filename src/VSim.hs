@@ -164,13 +164,18 @@ gen_elab ts = [
     name_of_integer = "integer_standard_std"
 
     body = HsDo $ concat [
-          [gen_function_ret name_of_integer "alloc_unranged_type" []]
+          fix_undeclared_integer
         , gen_elab_constants ts
         , gen_elab_types ts
         , gen_elab_proc ts
         , gen_elab_decls ts
         , [gen_return_ unit_con]
         ]
+
+    fix_undeclared_integer
+        | has_type_declaration name_of_integer ts = []
+        | otherwise =
+            [gen_function_ret name_of_integer "alloc_unranged_type" []]
 
     -- HACK: lift all the constants
     gen_elab_constants [] = []
