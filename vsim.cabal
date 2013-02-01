@@ -12,9 +12,16 @@ Cabal-version:       >=1.2
 -- Copyright:           
 -- Description:         
 
+flag vircheck
+    description: compile VirCheck
+    default    : True
+
 Executable VirCheck
   hs-source-dirs:    src
-  main-is:           VirCheck.hs
+  if flag(vircheck)
+    main-is:           VirCheck.hs
+  else
+    main-is:           VirCheck_Fake.hs
 
 Executable VSim
   hs-source-dirs:    src
