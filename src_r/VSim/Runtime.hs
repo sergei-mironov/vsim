@@ -20,6 +20,7 @@ import Control.Monad.Trans
 import Data.NestedTuple
 import Text.Printf
 import System.IO
+import System.Exit
 
 import VSim.Runtime.Process
 import VSim.Runtime.Timewheel
@@ -69,5 +70,9 @@ sim et elab = do
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
     (_,m) <- runElab elab
-    sim' m (loop et (start_step m))
+    case noProcesses m of
+        False -> sim' m (loop et (start_step m))
+        True -> do
+            hPutStrLn stderr "no processes to simulate"
+            exitFailure
 

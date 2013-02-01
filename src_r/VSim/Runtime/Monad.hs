@@ -204,6 +204,9 @@ data Memory = Memory {
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
+noProcesses (Memory _ []) = True
+noProcesses (Memory _ _) = False
+
 emptyMem :: Memory
 emptyMem = Memory IntMap.empty []
 
