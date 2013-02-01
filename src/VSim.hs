@@ -164,8 +164,8 @@ gen_elab ts = [
     name_of_integer = "integer_standard_std"
 
     body = HsDo $ concat [
-          -- [gen_function_ret name_of_integer "alloc_unranged_type" []]
-          gen_elab_constants ts
+          [gen_function_ret name_of_integer "alloc_unranged_type" []]
+        , gen_elab_constants ts
         , gen_elab_types ts
         , gen_elab_proc ts
         , gen_elab_decls ts
