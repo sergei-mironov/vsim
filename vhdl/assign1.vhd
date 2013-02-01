@@ -1,7 +1,7 @@
-entity ENT00001_Test_Bench is
-end entity ENT00001_Test_Bench;
+entity main is
+end entity main;
 
-architecture arch of ENT00001_Test_Bench is
+architecture main of main is
 	constant CYCLES : integer := 1000;
 	signal clk : integer := 0;
     signal s : integer;
