@@ -73,7 +73,6 @@ runtest() { (
 	
 	TNAME=`basename $tn .vhd`
 	echo "$TNAME" >$out/NAME
-	date +"%Y-%m-%d-%H-%M-%S" >$out/DATE
 	date >$out/DATE
 
 	TST=src_r/Test/$TNAME

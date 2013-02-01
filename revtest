@@ -37,12 +37,9 @@ REV="$1"
 test -n "$REV" ||
 	die "usage: revtest GIT_REVISION"
 
-if test -d "$DB/$REV" ; then
-	rm -rf "$DB/$REV" ||
-		die "Can't remove $DB/$REV"
-fi
-
-mkdir -p $DB/$REV >/dev/null 2>&1
+REVREC=$DB/`date +"%Y-%m-%d-%H-%M-%S"`-$REV
+mkdir -p $REVREC >/dev/null ||
+	die "Can't create $REVREC"
 
 (
 	checkout $REV | (
@@ -62,9 +59,10 @@ mkdir -p $DB/$REV >/dev/null 2>&1
 
 			logdir=`runtest $f`
 			name=`cat $logdir/NAME`
-			mv $logdir $DB/$REV/$name
+			mv $logdir $REVREC/$name
 		done
 	)
-) 2>&1 | tee $DB/$REV/revtest.log
+
+) 2>&1 | tee $REVREC/revtest.log
 
 
