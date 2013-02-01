@@ -1,0 +1,48 @@
+#!/bin/sh
+
+REPO=$HOME/proj/vsim
+
+die() {
+	echo "$@" >&2 ; exit 1 ;
+}
+
+msg() {
+	echo "$@" >&2
+}
+
+REV=""
+while test -n "$1" ; do
+	case "$1" in
+		*) REV="-b $1" ;;
+	esac
+done
+
+checkout() { (
+
+	local repo="$1"
+	local rev="$2"
+
+	test -n "$repo" ||
+		die "REPO is not specifiied"
+
+	case $rev in
+		"") rev="" ;;
+		*) rev="-b $rev" ;;
+	esac
+
+	set -e
+
+	local tmpdir=`mktemp -d`
+	cd "$tmpdir"
+	( git clone $rev $repo .
+	  cabal configure --disable-library-profiling
+	  cabal build
+	)>&2
+	echo "$tmpdir"
+
+) }
+
+# TGTDIR=`mktemp -d`
+
+checkout $REPO
+
