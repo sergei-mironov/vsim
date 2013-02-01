@@ -1,28 +1,17 @@
 #!/bin/sh
 
 REPO=$HOME/proj/vsim
+DB=$HOME/proj/vsim/history
 
 die() {
 	echo "$@" >&2 ; exit 1 ;
 }
 
-msg() {
-	echo "$@" >&2
-}
-
-REV=""
-while test -n "$1" ; do
-	case "$1" in
-		*) REV="-b $1" ;;
-	esac
-done
-
 checkout() { (
 
-	local repo="$1"
 	local rev="$2"
 
-	test -n "$repo" ||
+	test -n "$REPO" ||
 		die "REPO is not specifiied"
 
 	case $rev in
@@ -34,15 +23,48 @@ checkout() { (
 
 	local tmpdir=`mktemp -d`
 	cd "$tmpdir"
-	( git clone $rev $repo .
-	  cabal configure --disable-library-profiling
-	  cabal build
+	echo "Checkouting in $tmpdir" >&2
+	( set -x
+	  git clone $rev $REPO .
+	  ./build-minimal.sh
 	)>&2
 	echo "$tmpdir"
 
 ) }
 
-# TGTDIR=`mktemp -d`
+REV="$1"
 
-checkout $REPO
+test -n "$REV" ||
+	die "usage: revtest GIT_REVISION"
+
+if test -d "$DB/$REV" ; then
+	rm -rf "$DB/$REV" ||
+		die "Can't remove $DB/$REV"
+fi
+
+mkdir -p $DB/$REV >/dev/null 2>&1
+
+(
+	checkout $REV | (
+		read repo
+
+		echo "Cloned in $repo" >&2
+		cd "$repo"
+
+		. ./simenv
+
+		for f in vhdl/*vhd ; do
+
+			echo 
+			echo "Running $f"
+			echo "==========================="
+			echo 
+
+			logdir=`runtest $f`
+			name=`cat $logdir/NAME`
+			mv $logdir $DB/$REV/$name
+		done
+	)
+) 2>&1 | tee $DB/$REV/revtest.log
+
 
