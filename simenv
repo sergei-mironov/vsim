@@ -71,7 +71,10 @@ runtest() { (
 	test -x "$VSIM" ||
 		die "$VSIM is not an executable"
 	
-	TST=src_r/Test/`basename $tn .vhd`
+	TNAME=`basename $tn .vhd`
+	echo $TNAME > $out/NAME
+
+	TST=src_r/Test/$TNAME
 	if test -f "$TST" ; then
 		rm -rf "$TST" ||
 			die "error: File $TST exists and I can't delete it"
@@ -82,7 +85,7 @@ runtest() { (
 			die "error: File $TST.hs exists and I can't delete it"
 	fi
 
-	date > $out/date
+	date > $out/DATE
 	( runtr "$tn" ; echo $? >&2 ; ) 2> $out/transl.log |
 	( read -r x ; 
 	  cat $x > $out/transl.vir ;
@@ -283,11 +286,11 @@ help() {
 }
 
 if ! echo $0 | grep -q sh ; then (
-	echo "You probably want to include this file insted of running it."
-	echo "Type \`. simenv' in the shell prompt."
+	echo "simenv: You probably want to include this file insted of running it."
+	echo "simenv: Type \`. simenv' in the shell prompt."
 	) >&2
 else
-	echo "VSim runtime helper functions now enabled"
-	echo "Type \`help' to view list of commands"
+	echo "simenv: VSim runtime helper functions now enabled"
+	echo "simenv: Type \`help' to view list of commands"
 fi
 
