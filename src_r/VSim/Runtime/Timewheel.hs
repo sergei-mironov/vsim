@@ -10,6 +10,7 @@ module VSim.Runtime.Timewheel (
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
+import Data.List as List
 import Data.Maybe
 import Data.Monoid
 import Data.Set as Set
@@ -21,31 +22,29 @@ import VSim.Runtime.Waveform
 import VSim.Runtime.Process
 import VSim.Runtime.Ptr
 
-data ES = ES [(Ptr (SigR Int), Waveform Int)] [Ptr Process]
+data Event = Event [AnyPrimitiveSignal] [Ptr Process]
     deriving(Show)
 
-instance Monoid ES where
-    mempty = ES mempty mempty
-    mappend (ES a b) (ES x y) = ES (a`mappend`x) (b`mappend`y)
+instance Monoid Event where
+    mempty = Event mempty mempty
+    mappend (Event a b) (Event x y) = Event (a`mappend`x) (b`mappend`y)
 
+-- | Means that an Event could be extracted from x
 class Eventable x where
-    next_event :: (MonadIO m, Applicative m, MonadMem m) => x -> m (NextTime, ES)
+    next_event :: (MonadMem m) => x -> m (NextTime, Event)
 
-instance Eventable (Ptr (SigR Int)) where
-    next_event r = do
-        (t,w) <- event <$> swave <$> derefM r
-        let es = ES [(r,w)] []
-        return (t, es)
+instance Eventable AnyPrimitiveSignal where
+    next_event s@(AnyPrimitiveSignal v) = do
+        (t,_) <- event <$> swave <$> derefM (vr v)
+        return (t, Event [s] [])
 
 instance Eventable (Ptr Process) where
-    next_event r = do
-        let chk Nothing = (maxBound, ES [] [])
-            chk (Just t) = (t, ES [] [r])
-        (t,es) <- chk <$> pawake <$> derefM r
-        return (t,es)
+    next_event r = chk <$> pawake <$> derefM r where
+        chk Nothing  = (maxBound, Event [] [])
+        chk (Just t) = (t       , Event [] [r])
 
-scan_event :: (MonadIO m, Applicative m, Eventable e, MonadMem m)
-    => [e] -> (NextTime, ES) -> m (NextTime, ES)
+scan_event :: (Eventable e, MonadMem m)
+    => [e] -> (NextTime, Event) -> m (NextTime, Event)
 scan_event es init = foldM cmp init es where
     cmp (t,e) x = do
         (t',e') <- next_event x
@@ -81,7 +80,7 @@ timewheel (t, SimStep ps) = do
         update_signals = do
             ss <- uniqSignals <$> get_mem
             ws <- mprocesses <$> get_mem
-            (t', es@(ES ss' ps1)) <- (scan_event ss >=> scan_event ws) (maxBound, mempty)
-            ps2 <- concat <$> mapM (\(r,w) -> sigassign2 r w) ss'
+            (t', es@(Event ss' ps1)) <- (scan_event ss >=> scan_event ws) (maxBound, mempty)
+            ps2 <- concat <$> mapM (\(AnyPrimitiveSignal v) -> sigassign2 v) ss'
             return (t', SimStep ((Set.fromList ps1)`mappend`(Set.fromList ps2)))
 

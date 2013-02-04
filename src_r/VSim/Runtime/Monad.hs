@@ -116,10 +116,10 @@ sigassign1 (Assignment v pw) = do
     writeM (vr v) s{ swave = unPW (swave s) pw }
     ccheck v
 
-sigassign2 :: (MonadSim m) => Ptr (SigR Int) -> Waveform Int -> m [Ptr Process]
-sigassign2 r w = do
-    s <- derefM r
-    writeM r s{swave = w}
+sigassign2 :: (MonadSim m) => (Signal t) -> m [Ptr Process]
+sigassign2 v = do
+    s <- derefM (vr v)
+    writeM (vr v) s{swave = (snd . event . swave $ s)}
     return (sproc s)
 
 -- | VHDL array type
@@ -204,7 +204,7 @@ rewind r h nt = do
     writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
-      msignals :: IntMap ([String], Signal Int)
+      msignals :: IntMap [AnyPrimitiveSignal]
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
@@ -214,18 +214,20 @@ noProcesses (Memory _ _) = False
 emptyMem :: Memory
 emptyMem = Memory IntMap.empty []
 
-addToMem :: (MonadPtr m) => Signal Int -> Memory -> m Memory
+-- | Add the signal to memory.
+addToMem :: (MonadPtr m, Show t) => Signal t -> Memory -> m Memory
 addToMem s m = do
     u <- suniq <$> derefM (vr s)
-    let upd u (ns,_) (ns',s) = (ns++ns', s)
-    return m{ msignals = IntMap.insertWithKey upd u ([vn s],s) (msignals m) }
+    return m{ msignals = IntMap.insertWithKey
+                           (\u s s' -> (s `mappend` s')) u
+                           [AnyPrimitiveSignal s]
+                           (msignals m) }
 
-uniqSignals :: Memory -> [Ptr (SigR Int)]
-uniqSignals m = List.map (vr . snd . snd) (IntMap.toList (msignals m))
+uniqSignals :: Memory -> [AnyPrimitiveSignal]
+uniqSignals m = List.map (head . snd) (IntMap.toList (msignals m))
 
-allSignals :: Memory -> [Signal Int]
-allSignals m = List.concat $ List.map combine $ IntMap.toList (msignals m) where
-    combine (_,(ns,s)) = List.map (\n -> s {vn = n}) ns
+allSignals :: Memory -> [AnyPrimitiveSignal]
+allSignals m = List.concat $ List.map snd $ IntMap.toList (msignals m) where
 
 -- | Simulation event
 newtype SimStep = SimStep (Set.Set (Ptr Process))
@@ -392,6 +394,8 @@ instance Parent (Assign l) (VProc l) where
 
 -- | Container for primitive signals
 data AnyPrimitiveSignal where
-    APS :: (Show t) => Value (PrimitiveT t) (Ptr (SigR t)) -> AnyPrimitiveSignal
+    AnyPrimitiveSignal :: (Show t) => Signal t -> AnyPrimitiveSignal
 
+instance Show AnyPrimitiveSignal where
+    show (AnyPrimitiveSignal x) = printf "AnyPrimitiveSignal %s" (show x)
 
