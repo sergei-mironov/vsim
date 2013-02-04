@@ -60,12 +60,12 @@ alloc_urange = pure UnconstrT
 alloc_range :: (MonadElab m) => m Int -> m Int -> m RangeT
 alloc_range ml mu = RangeT <$> ml <*> mu
 
-alloc_ranged_type :: (MonadElab m) => m RangeT -> m PrimitiveT
+alloc_ranged_type :: (MonadElab m) => m RangeT -> m (PrimitiveT Int)
 alloc_ranged_type mr = mkprim <$> mr where
     mkprim (RangeT l u) = PrimitiveT l u
     mkprim (UnconstrT) = PrimitiveT minBound maxBound
 
-alloc_unranged_type :: (MonadElab m) => m PrimitiveT
+alloc_unranged_type :: (MonadElab m) => m (PrimitiveT Int)
 alloc_unranged_type = return unranged
 
 alloc_signal :: (Createable (Elab m) t (SR t))
@@ -104,7 +104,7 @@ alloc_process_let n ss lh = lh >>= alloc_process n ss
 
 
 -- | Allocate a subtype for a type t. Just create new type for now..
-alloc_subtype :: (MonadElab m) => m RangeT -> PrimitiveT -> m PrimitiveT
+alloc_subtype :: (MonadElab m) => m RangeT -> (PrimitiveT Int) -> m (PrimitiveT Int)
 alloc_subtype mr _ = alloc_ranged_type mr
 
 assume_subtype_of :: (MonadElab m, Subtypeable t, Show t) => t -> Value t x -> m (Value t x)
@@ -113,7 +113,7 @@ assume_subtype_of t' x@(Value n t r) = do
         pfail2 "type convertion from %s to %s failed" (show t) (show t'))
     return x
 
-alloc_enum_type :: (MonadElab m) => Int -> m (PrimitiveT, [Int])
+alloc_enum_type :: (MonadElab m) => Int -> m (PrimitiveT Int, [Int])
 alloc_enum_type len = let (l,r) = (0, len-1) in return (PrimitiveT l r, [l..r])
 
 {- Mappable -}

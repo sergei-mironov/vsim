@@ -24,10 +24,10 @@ import VSim.Runtime.Ptr
 import VSim.Runtime.Waveform
 import VSim.Runtime.Elab.Class
 
-instance Representable PrimitiveT where
-    type SR PrimitiveT = Ptr SigR
-    type VR PrimitiveT = Ptr VarR
-    type CR PrimitiveT = Int
+instance Representable (PrimitiveT t) where
+    type SR (PrimitiveT t) = Ptr (SigR t)
+    type VR (PrimitiveT t) = Ptr (VarR t)
+    type CR (PrimitiveT t) = t
 
 {- Createable -}
 
@@ -56,15 +56,15 @@ alloc_nullptr n t = return (Value n t nullPtr)
 
 alloc_defval n t = return (Value n t (typeval t))
 
-instance (MonadMem m) => Createable m PrimitiveT (Ptr SigR) where
+instance (MonadMem m) => Createable m (PrimitiveT Int) (Ptr (SigR Int)) where
     alloc = alloc_nullptr
     fixup x = fixup_signal x >>= addmem
 
-instance (MonadMem m) => Createable m PrimitiveT (Ptr VarR) where
+instance (MonadMem m) => Createable m (PrimitiveT t) (Ptr (VarR t)) where
     alloc = alloc_nullptr
     fixup = fixup_variable
 
-instance (MonadPtr m) => Createable m PrimitiveT (Int) where
+instance (MonadPtr m) => Createable m (PrimitiveT t) t where
     alloc = alloc_defval
     fixup = return
 
@@ -133,8 +133,8 @@ instance (MonadPtr m, Valueable m v) => Assignable (Clone m) v Constant where
 
 {- Type stuff -}
 
-instance Subtypeable PrimitiveT where
-    type SM PrimitiveT = RangeT
+instance Subtypeable (PrimitiveT Int) where
+    type SM (PrimitiveT Int) = RangeT
     build_subtype (RangeT u l) p = (PrimitiveT u l)
     build_subtype (UnconstrT) p = PrimitiveT minBound maxBound
 
@@ -158,16 +158,16 @@ instance (Monad m) => Valueable m Constant where
 
 -- Imageable
 
-instance (MonadProc m) => Imageable m Signal PrimitiveT where
+instance (MonadProc m) => Imageable m Signal (PrimitiveT Int) where
     t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< (vr <$> mr))))
 
-instance (MonadProc m) => Imageable m Variable PrimitiveT where
+instance (MonadProc m) => Imageable m Variable (PrimitiveT Int) where
     t_image mr _ = show <$> (vval <$> (derefM =<< (vr <$> mr)))
 
-instance (MonadProc m) => Imageable m Constant PrimitiveT where
+instance (MonadProc m) => Imageable m Constant (PrimitiveT Int) where
     t_image mr _ = (show . vr) <$> mr
 
-instance (MonadProc m) => Imageable m Int PrimitiveT where
+instance (Show t, MonadProc m) => Imageable m t (PrimitiveT t) where
     t_image mr _ = show <$> mr
 
 

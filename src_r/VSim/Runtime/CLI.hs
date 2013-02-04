@@ -20,7 +20,7 @@ printWaveform (Waveform cs) = concat $ map pc cs where
 printSignalM :: (MonadIO m) => Signal -> m String
 printSignalM v = derefM (vr v) >>= return . printSignal (vn v)
 
-printSignal :: String -> SigR -> String
+printSignal :: (Show t) => String -> SigR t -> String
 printSignal n s = printf "signal %s wave %s" n (printWaveform (swave s))
 
 printSignalsM :: (MonadIO m) => Memory -> m ()

@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs #-}
 
 module VSim.Runtime.Monad where
 
@@ -58,43 +59,46 @@ data Value t x = Value {
 
 -- | VHDL primitive type can are described with it's upper and lower bounds. Use
 -- of Ints is a limitation of a current implementation.
-data PrimitiveT = PrimitiveT {
-      lower :: Int
-    , upper :: Int
+data PrimitiveT t = PrimitiveT {
+      lower :: t
+    , upper :: t
     } deriving(Show)
 
+ranged :: Int -> Int -> PrimitiveT Int
 ranged a b = PrimitiveT a b
+
+unranged :: PrimitiveT Int
 unranged = PrimitiveT minBound maxBound
 
 -- | VHDL variable (runtime representation)
-newtype VarR = VarR { vval :: Int } deriving(Show)
+newtype VarR t = VarR { vval :: t } deriving(Show)
 
 -- instance (MonadPtr m) => Cloneable m (Ptr a) where
 --     clone r = derefM r >>= allocM 
 
-type Variable = Value PrimitiveT (Ptr VarR)
+type Variable = Value (PrimitiveT Int) (Ptr (VarR Int))
 
 -- | VHDL primitive signal
-data SigR = SigR {
-      swave :: Waveform Int
+data SigR t = SigR {
+      swave :: Waveform t
     , sproc :: [Ptr Process]
     , suniq :: Int
     } deriving(Show)
 
-instance HasUniq SigR where
+instance HasUniq (SigR t) where
     getUniq = suniq
 
-type Signal = Value PrimitiveT (Ptr SigR)
+type Signal = Value (PrimitiveT Int) (Ptr (SigR Int))
 
-type Constant = Value PrimitiveT Int
+type Constant = Value (PrimitiveT Int) Int
 
 signalUniqIq :: (MonadPtr m) => Signal -> m Int
 signalUniqIq s = suniq <$> derefM (vr s)
 
-in_range :: PrimitiveT -> Int -> Bool
+in_range :: (PrimitiveT Int) -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u
 
-in_range_w :: PrimitiveT -> Waveform Int -> Bool
+in_range_w :: PrimitiveT Int -> Waveform Int -> Bool
 in_range_w t w = and $ List.map f $ wchanges w where
     f (Change _ v) = in_range t v
 
@@ -112,7 +116,7 @@ sigassign1 (Assignment v pw) = do
     writeM (vr v) s{ swave = unPW (swave s) pw }
     ccheck v
 
-sigassign2 :: (MonadSim m) => Ptr SigR -> Waveform Int -> m [Ptr Process]
+sigassign2 :: (MonadSim m) => Ptr (SigR Int) -> Waveform Int -> m [Ptr Process]
 sigassign2 r w = do
     s <- derefM r
     writeM r s{swave = w}
@@ -173,7 +177,7 @@ data Process = Process {
     , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
     , pawake :: Maybe NextTime
-    , psignals :: [Ptr SigR]
+    , psignals :: [Ptr (SigR Int)]
     , puniq :: Int
     -- ^ Unique identifier
     }
@@ -184,7 +188,7 @@ instance Show Process where
 instance HasUniq Process where
     getUniq = puniq
 
-relink :: (MonadSim m) => Ptr Process -> [Ptr SigR] -> m ()
+relink :: (MonadSim m) => Ptr Process -> [Ptr (SigR Int)] -> m ()
 relink r ss = do
     p <- derefM r
     mapM_ (updateM (rmproc r)) (psignals p)
@@ -216,7 +220,7 @@ addToMem s m = do
     let upd u (ns,_) (ns',s) = (ns++ns', s)
     return m{ msignals = IntMap.insertWithKey upd u ([vn s],s) (msignals m) }
 
-uniqSignals :: Memory -> [Ptr SigR]
+uniqSignals :: Memory -> [Ptr (SigR Int)]
 uniqSignals m = List.map (vr . snd . snd) (IntMap.toList (msignals m))
 
 allSignals :: Memory -> [Signal]
@@ -264,7 +268,7 @@ runVSim sim st = do
         Left (p,bp) -> return (Left (p, m, VSim bp))
         Right a -> return (Right a)
 
-data ProcPause = PP [Ptr SigR] (Maybe NextTime)
+data ProcPause = PP [Ptr (SigR Int)] (Maybe NextTime)
     deriving (Show)
 
 -- | Monad for process execution.
@@ -277,7 +281,7 @@ instance MonadProc (VProc l)
 
 class (MonadProc m, MonadBP Pause m) => MonadWait m where
     wait_until :: NextTime -> m ()
-    wait_on :: [Ptr SigR] -> m ()
+    wait_on :: [Ptr (SigR Int)] -> m ()
 
 instance MonadBP Pause (VProc l) where
     pause = VProc . lift . lift . pause
@@ -386,8 +390,8 @@ instance Parent (Assign l) (VProc l) where
     hug me = Assign (lift me)
     unM = evalAssign
 
--- newtype Access m a = Access { unAccess :: m a }
---     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadMem, MonadElab)
+-- | Container for primitive signals
+data AnyPrimitiveSignal where
+    APS :: (Show t) => Value (PrimitiveT t) (Ptr (SigR t)) -> AnyPrimitiveSignal
 
--- instance MonadTrans Access where lift = Access
 
