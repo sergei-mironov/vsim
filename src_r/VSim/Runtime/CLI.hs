@@ -17,7 +17,7 @@ printWaveform (Waveform cs) = concat $ map pc cs where
         | t < maxBound = printf "< %s until %d >" (show c) ((watch t) - 1)
         | otherwise = printf "< %s until inf >" (show c)
 
-printSignalM :: (MonadIO m) => Signal -> m String
+printSignalM :: (MonadIO m, Show t) => Signal t -> m String
 printSignalM v = derefM (vr v) >>= return . printSignal (vn v)
 
 printSignal :: (Show t) => String -> SigR t -> String

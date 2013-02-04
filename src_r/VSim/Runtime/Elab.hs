@@ -89,7 +89,7 @@ alloc_constant t f = alloc [] t >>= unClone . f >>= fixup
 
 -- | Register the process in memory. Updates list of signal reactions
 alloc_process :: (MonadElab m)
-    => String -> [Signal] -> ProcessHandler -> m (Ptr Process)
+    => String -> [Signal Int] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
     let encycle [] = forever h
         encycle xs = forever (h >> wait_on (Prelude.map vr xs))
@@ -99,7 +99,7 @@ alloc_process n ss h = do
     return p
 
 alloc_process_let :: (MonadElab m)
-    => String -> [Signal] -> m ProcessHandler -> m (Ptr Process)
+    => String -> [Signal Int] -> m ProcessHandler -> m (Ptr Process)
 alloc_process_let n ss lh = lh >>= alloc_process n ss
 
 

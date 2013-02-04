@@ -62,7 +62,8 @@ plan'n'rsort mr ls = do
     let tcomp (t1,_) (t2,_) = t1`compare`t2
     return (reverse $ sortBy tcomp ls')
 
-makePW :: (MonadPtr m) => [(NextTime,Plan)] -> m [Assignment]
+-- | Converts time-value pairs to the list of assignments
+makePW :: (MonadPtr m) => [(NextTime,Plan)] -> m [Assignment Int]
 makePW ls = do
     let retlist = return . map snd . IntMap.toList
     let execM e s = flip execStateT e s >>= retlist

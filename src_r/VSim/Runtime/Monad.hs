@@ -88,11 +88,11 @@ data SigR t = SigR {
 instance HasUniq (SigR t) where
     getUniq = suniq
 
-type Signal = Value (PrimitiveT Int) (Ptr (SigR Int))
+type Signal t = Value (PrimitiveT t) (Ptr (SigR t))
 
 type Constant = Value (PrimitiveT Int) Int
 
-signalUniqIq :: (MonadPtr m) => Signal -> m Int
+signalUniqIq :: (MonadPtr m) => Signal Int -> m Int
 signalUniqIq s = suniq <$> derefM (vr s)
 
 in_range :: (PrimitiveT Int) -> Int -> Bool
@@ -102,7 +102,7 @@ in_range_w :: PrimitiveT Int -> Waveform Int -> Bool
 in_range_w t w = and $ List.map f $ wchanges w where
     f (Change _ v) = in_range t v
 
-instance (MonadPtr m) => Constrained m Signal where
+instance (MonadPtr m) => Constrained m (Signal Int) where
     ccheck (Value n t r) = derefM r >>= \s -> do
         when (not $ in_range_w t (swave s)) $ do
             pfail3 "constrained failed: name %s type (%s) val (%s)" n (show t) (show (swave s))
@@ -110,7 +110,7 @@ instance (MonadPtr m) => Constrained m Signal where
 instance (MonadPtr m) => Constrained m Variable where
     ccheck (Value n t r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
-sigassign1 :: (MonadSim m, Constrained m Signal) => Assignment -> m ()
+sigassign1 :: (MonadSim m, Constrained m (Signal Int)) => Assignment Int -> m ()
 sigassign1 (Assignment v pw) = do
     s <- derefM (vr v)
     writeM (vr v) s{ swave = unPW (swave s) pw }
@@ -137,12 +137,12 @@ type ArrayR a = Array2 a
 type Array t e = Value (ArrayT t) (ArrayR e)
 
 -- | Assignment event, list of them is the result of process execution
-data Assignment = Assignment {
-      acurr :: Signal
-    , anext :: ProjectedWaveform Int
+data Assignment t = Assignment {
+      acurr :: Signal t
+    , anext :: ProjectedWaveform t
     } deriving(Show)
 
-add_assignment :: Assignment -> PS -> PS
+add_assignment :: Assignment Int -> PS -> PS
 add_assignment a ps = ps { passignments = a:(passignments ps) }
 
 -- | VHDL record type
@@ -162,7 +162,7 @@ type Record t x = Value (RecordT t) (RecordR x)
 -- | State of a VHDL process
 data PS = PS {
       ptime :: Time
-    , passignments :: [Assignment]
+    , passignments :: [Assignment Int]
     } deriving(Show)
 
 now :: (MonadState PS m) => m Time
@@ -204,7 +204,7 @@ rewind r h nt = do
     writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
-      msignals :: IntMap ([String], Signal)
+      msignals :: IntMap ([String], Signal Int)
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
@@ -214,7 +214,7 @@ noProcesses (Memory _ _) = False
 emptyMem :: Memory
 emptyMem = Memory IntMap.empty []
 
-addToMem :: (MonadPtr m) => Signal -> Memory -> m Memory
+addToMem :: (MonadPtr m) => Signal Int -> Memory -> m Memory
 addToMem s m = do
     u <- suniq <$> derefM (vr s)
     let upd u (ns,_) (ns',s) = (ns++ns', s)
@@ -223,7 +223,7 @@ addToMem s m = do
 uniqSignals :: Memory -> [Ptr (SigR Int)]
 uniqSignals m = List.map (vr . snd . snd) (IntMap.toList (msignals m))
 
-allSignals :: Memory -> [Signal]
+allSignals :: Memory -> [Signal Int]
 allSignals m = List.concat $ List.map combine $ IntMap.toList (msignals m) where
     combine (_,(ns,s)) = List.map (\n -> s {vn = n}) ns
 
@@ -342,7 +342,7 @@ data EnumT = EnumT {
 newtype EnumVal = EnumVal Int
     deriving(Show)
 
-type Plan = [(Signal, Int)]
+type Plan = [(Signal Int, Int)]
 
 type Agg m tgt = tgt -> m tgt
 
