@@ -103,7 +103,7 @@ runtest() { (
 		die "$TST is not an executable"
 	fi
 
-	( stime -o $out/binary.time $TST ; echo $? ; ) | tee $out/binary.log
+	( stime -o $out/binary.time $TST 2>&1 ; echo $? ; ) | tee $out/binary.log
 
 	) 2>&1 | tee $out/script.log >&2
 
@@ -290,7 +290,9 @@ if ! echo $0 | grep -q sh ; then (
 	echo "simenv: Type \`. simenv' in the shell prompt."
 	) >&2
 else
-	echo "simenv: VSim runtime helper functions now enabled"
+	echo "simenv:"
+	echo "simenv: VSim runtime helper functions are enabled"
 	echo "simenv: Type \`help' to view list of commands"
+	echo "simenv:"
 fi
 

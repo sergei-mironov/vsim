@@ -32,16 +32,26 @@ checkout() { (
 
 ) }
 
-REV="$1"
+REV=""
 
-test -n "$REV" ||
-	die "usage: revtest GIT_REVISION"
+while test -n "$1"; do
+	case "$1" in
+		*) REV="$1" ;; 
+	esac
+	shift
+done
+
+if test -z "$REV" ; then
+	REV=`git log --oneline | head -n 1 | awk '{print $1}'`
+fi
 
 REVREC=$DB/`date +"%Y-%m-%d-%H-%M-%S"`-$REV
 mkdir -p $REVREC >/dev/null ||
 	die "Can't create $REVREC"
 
 (
+	echo "Running tests in $REVREC"
+
 	checkout $REV | (
 		read repo
 
