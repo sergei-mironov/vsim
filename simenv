@@ -97,13 +97,19 @@ runtest() { (
 	GHC_SRC=`ospath $TST.hs`
 	GHC_OUT=`ospath $TST`
 
-	( stime -o $out/ghc.time \
-		ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1 ; echo $? ; ) | tee $out/ghc.log
-	if ! test -x "$TST" ; then
-		die "$TST is not an executable"
-	fi
+	words=`wc -w $out/sim.hs | awk '{print $1}'`
+	if "$words" != "0" ; then
+		( stime -o $out/ghc.time \
+			ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1 ; echo $? ; ) | tee $out/ghc.log
+		if ! test -x "$TST" ; then
+			die "$TST is not an executable"
+		fi
 
-	( stime -o $out/binary.time $TST 2>&1 ; echo $? ; ) | tee $out/binary.log
+		( stime -o $out/binary.time $TST 2>&1 ; echo $? ; ) | tee $out/binary.log
+	else
+		echo "sim.hs is empty, removing" >&2
+		rm $out/sim.hs
+	fi
 
 	) 2>&1 | tee $out/script.log >&2
 
