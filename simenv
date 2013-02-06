@@ -71,6 +71,9 @@ runtest() { (
 	test -x "$VSIM" ||
 		die "$VSIM is not an executable"
 	
+	cp $tn $out/source.vhd ||
+		die "Can't copy VHDL source"
+
 	TNAME=`basename $tn .vhd`
 	echo "$TNAME" >$out/NAME
 	date >$out/DATE
