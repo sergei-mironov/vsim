@@ -101,7 +101,8 @@ runtest() { (
 	GHC_OUT=`ospath $TST`
 
 	words=`wc -w $out/sim.hs | awk '{print $1}'`
-	if "$words" != "0" ; then
+
+	if [ "$words" != "0" ] ; then
 		( stime -o $out/ghc.time \
 			ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1 ; echo $? ; ) | tee $out/ghc.log
 		if ! test -x "$TST" ; then
