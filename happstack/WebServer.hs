@@ -30,6 +30,8 @@ import System.IO
 import System.Directory
 import System.Locale
 import System.FilePath
+import System.Environment
+import System.Exit
 import Prelude hiding (catch,div)
 import GHC.Generics
 
@@ -132,12 +134,12 @@ loadSets = loadMany loadSet
 loadFiles fs = map takeFileName <$> loadMany (\f -> do
     doesFileExist f >>= \b -> if b then return (Just f) else return Nothing) fs
 
-myApp :: ServerPart Response
-myApp = table where
+myApp :: String -> ServerPart Response
+myApp d = table where
 
     alllogs = "alllogs"
-    css = "happstack"
-    root = "history"
+    root = d</>"history"
+    css = d</>"happstack"
     for a b = map b a
     abs x = let t = "/" in t ++ (intercalate t x)
     setHref s = A.href (toValue $ abs [rname s])
@@ -368,6 +370,16 @@ myApp = table where
                 formatHtmlBlock defaultFormatOpts $
                     highlightAs (ftype (takeExtension f)) code
 
-main :: IO ()
-main = simpleHTTP nullConf myApp
+exit x = do
+    hPutStrLn stderr $ "WebServer: " ++ x
+    exitFailure
+    
+-- main_ (d:_) 
+--     | isAbsolute d = simpleHTTP nullConf (myApp d)
+--     | otherwise = exit "Absolute path required"
 
+main_ (d:_) = simpleHTTP nullConf (myApp d)
+main_ _ = exit "One argument required"
+
+main :: IO ()
+main = getArgs >>= main_
