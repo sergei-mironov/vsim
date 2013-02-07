@@ -30,7 +30,7 @@ ospath() {
 }
 
 stime() {
-	/usr/bin/time -f '%e' "$@"
+	`which time` -f '%e' "$@"
 }
 
 vircheck() {
