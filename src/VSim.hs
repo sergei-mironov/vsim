@@ -163,7 +163,7 @@ gen_elab ts = [
 
     name_of_integer = "integer_standard_std"
 
-    body = HS.Do $ concat [
+    body = HS.MDo $ concat [
           fix_undeclared_integer
         , gen_elab_constants ts
         , gen_elab_types ts
@@ -459,13 +459,16 @@ gen_main = (:[]) $ HS.FunBind [HS.Match noLoc (HS.Ident "main") [] Nothing (HS.U
         body = HS.Do [gen_function_ "sim" [gen_ident "maxBound", gen_ident "elab" ]]
 
 gen_module :: [IRTop] -> HS.Module
-gen_module ts = HS.Module noLoc (ModuleName "Main") [] Nothing Nothing imports body where
+gen_module ts = HS.Module noLoc (ModuleName "Main") pragmas Nothing Nothing imports body where
     imports = [
           gen_import "VSim.Runtime"
         ]
     body = concat [
           gen_elab ts
         , gen_main
+        ]
+    pragmas = [
+          LanguagePragma noLoc [Ident "RecursiveDo"]
         ]
 
 prettyPrintM tops = putStrLn $ prettyPrint $ gen_module tops
