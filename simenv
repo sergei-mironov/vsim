@@ -42,6 +42,7 @@ vircheck() {
 
 gensim() {
 	comment "gensim FILE.vhdl : Generate Haskell code for FILE.vhdl"
+	cabal build &&
 	runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
 }
 
@@ -103,8 +104,12 @@ runtest() { (
 	words=`wc -w $out/sim.hs | awk '{print $1}'`
 
 	if [ "$words" != "0" ] ; then
-		( stime -o $out/ghc.time \
-			ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1 ; echo $? ; ) | tee $out/ghc.log
+		( set -x
+		  ghc --version
+		  stime -o $out/ghc.time \
+			ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
+		  echo $?
+		) | tee $out/ghc.log
 		if ! test -x "$TST" ; then
 			die "$TST is not an executable"
 		fi
