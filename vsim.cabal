@@ -26,6 +26,7 @@ Executable VirCheck
 Executable VSim
   hs-source-dirs:    src
   main-is:           VSim.hs
+  Build-depends:     haskell-src-exts
 
 Library
   hs-source-dirs:    src
@@ -34,7 +35,7 @@ Library
   
   -- Packages needed in order to build this package.
   Build-depends: base, mtl, syb, containers, bytestring, filepath, time, array,
-                 pretty-show, QuickCheck, haskell-src
+                 pretty-show, QuickCheck
   
   -- Modules not exported by this package.
   -- Other-modules:       

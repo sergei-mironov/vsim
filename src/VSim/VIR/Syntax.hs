@@ -7,12 +7,10 @@ import Control.Monad
 import Control.Monad.State
 import Control.Monad.Trans
 
-import Language.Haskell.Syntax
-import Language.Haskell.Pretty
-
 import VSim.Data.Loc
 import VSim.VIR.Types
 
+{-
 
 data HGenState = HGS {
     {- nothing -}
@@ -23,7 +21,8 @@ type HGen m a = StateT HGenState m a
 makeIdent :: WLHierNameWPath -> HsName
 makeIdent (WithLoc _ (n,ns)) = HsIdent $ intercalate "_" $ (BS.unpack n) : (map BS.unpack ns)
 
-declareSignal :: (Monad m) => IRSignal -> HGen m [HsStmt]
+declareSignal :: (Monad m) => IRSignal -> HGen m [HS.Stmt]
 declareSignal (IRSignal n t (IOEJustExpr _ _)) = error "not supported"
 declareSignal (IRSignal n t (IOENothing _)) = return $ concat [ ]
 
+-}
