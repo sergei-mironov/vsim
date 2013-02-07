@@ -46,7 +46,7 @@ data Status = SOk | SError String
 type TestTime = Float
 
 data TestRecord = TestRecord {
-      tname :: String
+      tNAME :: String
     , tdir :: FilePath
     , trCode :: Maybe Int
     , vsimCode :: Maybe Int
@@ -55,8 +55,15 @@ data TestRecord = TestRecord {
     , binTime :: Maybe TestTime
     } deriving(Eq, Show, Generic)
 
+tname = takeFileName . tdir
+
 instance Ord TestRecord where
     compare tr1 tr2 = (tname tr1) `compare` (tname tr2)
+
+hasTime t | binTime t /= Nothing = True
+          | otherwise = False
+
+passed = hasTime
 
 data TestSet = TestSet {
       rdir :: FilePath
@@ -65,7 +72,20 @@ data TestSet = TestSet {
     , rtests :: [TestRecord]
     } deriving(Eq, Show, Generic)
 
-rname tl = takeFileName $ rdir tl
+filter_failes s = filter (not . hasTime) (rtests s)
+
+filter_passed s = filter hasTime (rtests s)
+
+count_changes s s' = (length $ filter_passed s') - (length $ filter_passed s)
+
+slice_by_name ss n = filter (not.null.fst) $ (map (filter ((==n).tname).rtests) ss) `zip` ss
+
+find_test s n = listToMaybe $ filter ((==n) . tname) $ rtests s
+
+find_set ss n = listToMaybe $ filter ((==n) . rname) ss
+
+rname = takeFileName . rdir
+
 rgit_id tl = drop 20 $ rname tl
 
 instance Ord TestSet where
@@ -74,17 +94,9 @@ instance Ord TestSet where
 zeroCode (Just 0) = True
 zeroCode _ = False
 
-passed fld l = foldl' cmp (0,0) l where
-    cmp (c,t) r | zeroCode (fld r) = (c+1, t+1)
-                | otherwise = (c, t+1)
-
 catch' m = (do m >>= \a -> a `deepseq` (return (Just a))) `catch` err2nothing
     where err2nothing :: SomeException -> IO (Maybe a)
           err2nothing e = return Nothing
-
-catch'' m = (do m >>= \a -> a `deepseq` (return (Just a))) `catch` err2nothing
-    where err2nothing :: SomeException -> IO (Maybe a)
-          err2nothing e = putStrLn (show e) >> return Nothing
 
 loadLastWord fp = (last <$> words <$> readFile fp)
 readLastWord fp = (read <$> loadLastWord fp)
@@ -122,14 +134,17 @@ loadFiles fs = map takeFileName <$> loadMany (\f -> do
 myApp :: ServerPart Response
 myApp = table where
 
+    alllogs = "alllogs"
     css = "happstack"
     root = "history"
     for a b = map b a
     abs x = let t = "/" in t ++ (intercalate t x)
     setHref s = A.href (toValue $ abs [rname s])
     testHref s t = A.href (toValue $ abs [rname s, tname t])
-    fileHref s t f = A.href (toValue $ abs [rname s, tname t, f])
+    fileHref s t f = A.href (toValue $ abs [rname s, tname t, alllogs ++ "#" ++ f])
+    anchored e x = (e ! (A.name x) ! (A.id x))
 
+    aSelect = a ! class_ "selected"
     aBtn = a ! class_ "bttn"
     aBtnSmall = a ! class_ "bttn-small"
     aAsis = a ! class_ "asis"
@@ -157,19 +172,27 @@ myApp = table where
     table = msum [
           dir "css" $ path $ \f -> do
             serveFile (guessContentTypeM mimeTypes) (css</>f)
-        , path $ \s -> do
-            (Just s) <- liftIO $ loadSet (root</>s)
+        , do 
+            ss <- liftIO $ (reverse . sort) <$> loadSets root
             msum [
-                  path $ \t -> do
-                    (Just t) <- liftIO $ loadTest ((rdir s)</>t)
+                  path $ \sn -> do
+                    let s = case find_set ss sn of
+                                Just s -> s
+                                Nothing -> error sn
                     msum [
-                        dir "alllogs" $ testIndexLogs s t
-                      , path (\f -> testFile s t f)
-                      , testIndex s t
-                      ]
-                , setIndex s
+                          path $ \tn -> do
+                            let t = case find_test s tn of
+                                        Just t -> t
+                                        Nothing -> error (sn</>tn)
+                            msum [
+                                dir "alllogs" $ testIndexLogs s t
+                              , path (\f -> testFile ss s t f)
+                              , testIndex ss s t
+                              ]
+                        , setIndex ss s
+                        ]
+                , mainIndex ss
                 ]
-        , mainIndex
         ]
 
     headers title = do
@@ -221,34 +244,37 @@ myApp = table where
                             div'row $ body
                             div'row $ aBtn ! href "/" $ "Home"
 
-    mainIndex = do
-        sets <- liftIO $ sort <$> loadSets root
+    mainIndex ss = do
+        let sp | length ss > 0 = ((map Just $ tail ss)++(repeat Nothing)) `zip` ss
+               | otherwise = []
         ok $ template "home page" $ do
-            H.table $ sequence_ $ for sets $ \s -> do
-                let stat x = show $ passed x (rtests s)
+            H.table $ sequence_ $ for sp $ \(s_prev,s) -> do
                 H.tr $ do
                     H.td $ H.a ! setHref s $ H.toHtml (rgit_id s)
-                    H.td $ H.toHtml $ show $ rtime s
-                    H.td $ H.toHtml $ stat trCode
-                    H.td $ H.toHtml $ stat vsimCode
-                    H.td $ H.toHtml $ stat ghcCode
-                    H.td $ H.toHtml $ stat binCode
+                    H.td $ H.toHtml $ show (rtime s)
+                    H.td $ H.toHtml $ str $ printf "%d/%d"
+                        (length $ filter_passed s)
+                        (length $ rtests s)
+                    let render_changes x
+                         | x >= 0 = H.span ! class_ "changes_ge0" $ H.toHtml $ show x
+                         | otherwise = H.span ! class_ "changes_l0" $ H.toHtml $ show x  
+                    case s_prev of
+                        Just sp -> H.td $ H.toHtml $ render_changes $ count_changes sp s
+                        _       -> H.td $ mempty
     
     testStatus t
         | trCode t /= (Just 0) = H.span ! A.class_ "failed-tr" $ "[TR]"
         | vsimCode t /= (Just 0) = H.span ! A.class_ "failed-vsim" $ "[VSIM]"
         | ghcCode t /= (Just 0) = H.span ! A.class_ "failed-ghc" $ "[GHC]"
         | binCode t /= (Just 0) = H.span ! A.class_ "failed-bin" $ "[BIN]"
-        | binTime t == Nothing = H.span ! A.class_ "failed-bin" $ "No time data"
-        | otherwise = H.span ! A.class_ "ok" $ toHtml $ "[" ++ (show $ fromJust (binTime t)) ++ "]"
+        | binTime t == Nothing = H.span ! A.class_ "failed-bin" $ "[?]"
+        | otherwise = H.span ! A.class_ "ok" $
+            toHtml $ "[" ++ (show $ fromJust (binTime t)) ++ "]"
         
-    hasTime t | binTime t /= Nothing = True
-              | otherwise = False
-
     str :: String -> String
     str = id
 
-    setIndex s = do
+    setIndex _ s = do
         ok $ template "VSim details" $ do
             aBtn ! href "/" $ "Up"
             let table ls = H.table ! A.class_ "set" $ sequence_ $ for ls $ \t -> do
@@ -257,23 +283,24 @@ myApp = table where
                                     H.toHtml (tname t)
                                 H.td ! class_ "details-status"  $ aAsis ! testHref s t $
                                     testStatus t
-            let failed = filter (not.hasTime) (rtests s)
-            H.h2 $ toHtml $ str $ printf "Failed (%d/%d)" (length failed) (length (rtests s))
-            table failed
-            let passed = filter hasTime (rtests s)
-            H.h2 $ toHtml $ str $ printf "Passed (%d/%d)" (length passed) (length (rtests s))
-            table passed
+            let fs = filter_failes s
+            H.h2 $ toHtml $ str $ printf "Failed (%d/%d)" (length fs) (length (rtests s))
+            table fs
+            let ps = filter_passed s
+            H.h2 $ toHtml $ str $ printf "Passed (%d/%d)" (length ps) (length (rtests s))
+            table ps
 
     capitilize s = let c = head s in toUpper c : tail s
 
-    testIndex s t = do
+    testIndex ss s t = do
         fs <- liftIO $ sort <$> loadFiles (tdir t)
+        let oldies = slice_by_name ss (tname t)
         ok $ template "VSim details" $ do
             div'row $ do
                 aBtn ! setHref s $ "Up"
             div'row $ do
                 div ! class_ "slot-7-8" $ do
-                    H.h2 $ aAsis ! fileHref s t "alllogs" $
+                    H.h2 $ aAsis ! fileHref s t alllogs $
                         H.toHtml $ (capitilize $ tname t) ++ " >"
                     H.h3 $ "Status"
                     H.table $ do
@@ -296,13 +323,19 @@ myApp = table where
                                 H.tr $ H.td $ H.a ! fileHref s t (takeFileName f) $
                                     H.toHtml (takeFileName f)
                 div ! class_ "slot-7" $ do
-                    H.h3 $ aAsis ! fileHref s t "alllogs" $ "Sources >"
+                    H.h3 $ aAsis ! fileHref s t alllogs $ "Sources >"
                     ftable (srcs fs)
-                    H.h3 $ aAsis ! fileHref s t "alllogs" $ "Logs >"
+                    H.h3 $ aAsis ! fileHref s t alllogs $ "Logs >"
                     ftable (logs fs)
                 div ! class_ "slot-8" $ do
-                    H.h3 $ aAsis ! fileHref s t "alllogs" $ "All >"
-                    ftable fs
+                    H.h3 $  "Others >"
+                    H.hr
+                    H.table $ do
+                        sequence_ $ for oldies $ \ ([t],s') -> do
+                            H.tr $ do
+                                let a = if s == s' then aSelect else H.a
+                                H.td $ a ! testHref s' t $ H.toHtml $ rgit_id s'
+                                H.td $ testStatus t
 
     testIndexLogs s t = do
         fs <- liftIO $ sort <$> loadFiles (tdir t)
@@ -316,10 +349,10 @@ myApp = table where
             aBtn ! testHref s t $ "Up"
             div'row $ do
                 sequence_ $ for fs' $ \(n,html) -> do
-                    H.h3 $ toHtml n
+                    H.h3 `anchored`(H.toValue n) $ toHtml n
                     html
 
-    testFile s t f = do
+    testFile _ s t f = do
         code <- liftIO $ readFile ((tdir t)</>f)
         ok $ template5 "Listing" $ do
             aBtn ! testHref s t $ "Up"

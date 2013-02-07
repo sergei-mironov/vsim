@@ -104,6 +104,10 @@ a:hover, a:active {
 	color: #fff;
 }
 
+a.selected {
+	font-weight: bold;
+}
+
 a.asis {
 	color: black;
 	text-decoration: none;
@@ -256,5 +260,13 @@ a.bttn {
 
 .details-goto {
     width:1%;
+}
+
+.changes_ge0 {
+    color : green;
+}
+
+.changes_l0 {
+    color : darkred;
 }
 
