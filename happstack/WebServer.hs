@@ -48,10 +48,10 @@ type TestTime = Float
 data TestRecord = TestRecord {
       tNAME :: String
     , tdir :: FilePath
-    , trCode :: Maybe Int
-    , vsimCode :: Maybe Int
-    , ghcCode :: Maybe Int
-    , binCode :: Maybe Int
+    , trCode :: (String, Maybe Int)
+    , vsimCode :: (String, Maybe Int)
+    , ghcCode :: (String, Maybe Int)
+    , binCode :: (String, Maybe Int)
     , binTime :: Maybe TestTime
     } deriving(Eq, Show, Generic)
 
@@ -60,7 +60,7 @@ tname = takeFileName . tdir
 instance Ord TestRecord where
     compare tr1 tr2 = (tname tr1) `compare` (tname tr2)
 
-hasTime t | binTime t /= Nothing = True
+hasTime t | (binTime t) /= Nothing = True
           | otherwise = False
 
 passed = hasTime
@@ -105,12 +105,13 @@ loadTest :: FilePath -> IO (Maybe TestRecord)
 loadTest drp = catch' $ do
     let rp = takeFileName drp
     let ll x = catch' (readLastWord (drp </> x))
+    let lc x = (\c->(x,c)) <$> catch' (readLastWord (drp </> x))
     TestRecord <$> (loadLastWord (drp </> "NAME"))
                <*> (pure drp)
-               <*> ll "transl.log"
-               <*> ll "vsim.log"
-               <*> ll "ghc.log"
-               <*> ll "binary.log"
+               <*> lc "transl.log"
+               <*> lc "vsim.log"
+               <*> lc "ghc.log"
+               <*> lc "binary.log"
                <*> ll "binary.time"
 
 loadSet :: FilePath -> IO (Maybe TestSet)
@@ -262,27 +263,28 @@ myApp = table where
                         Just sp -> H.td $ H.toHtml $ render_changes $ count_changes sp s
                         _       -> H.td $ mempty
     
-    testStatus t
-        | trCode t /= (Just 0) = H.span ! A.class_ "failed-tr" $ "[TR]"
-        | vsimCode t /= (Just 0) = H.span ! A.class_ "failed-vsim" $ "[VSIM]"
-        | ghcCode t /= (Just 0) = H.span ! A.class_ "failed-ghc" $ "[GHC]"
-        | binCode t /= (Just 0) = H.span ! A.class_ "failed-bin" $ "[BIN]"
-        | binTime t == Nothing = H.span ! A.class_ "failed-bin" $ "[?]"
-        | otherwise = H.span ! A.class_ "ok" $
-            toHtml $ "[" ++ (show $ fromJust (binTime t)) ++ "]"
+    testStatus s t@(TestRecord _ _ (tr,trc) (vs,vsc) (g,gc) (b,bc) _ )
+        | trc /= (Just 0) = lnk "failed-tr" tr "[TR]"
+        | vsc /= (Just 0) = lnk "failed-vsim" vs "[VSIM]"
+        | gc /= (Just 0) = lnk "failed-ghc" g "[GHC]"
+        | bc /= (Just 0) = lnk "failed-bin" b "[BIN]"
+        | (binTime t) == Nothing = lnk "failed-bin" "" "[?]"
+        | otherwise = lnk "ok" "" $ toHtml $
+            "[" ++ (show $ fromJust (binTime t)) ++ "]"
+        where lnk c f txt = a ! class_ (toValue $ str c) ! fileHref s t f $ txt
         
     str :: String -> String
     str = id
 
     setIndex _ s = do
         ok $ template "VSim details" $ do
+            H.p $ toHtml $ rname s
             aBtn ! href "/" $ "Up"
             let table ls = H.table ! A.class_ "set" $ sequence_ $ for ls $ \t -> do
                             H.tr $ do
                                 H.td ! class_ "details-name" $ aAsis ! testHref s t $
                                     H.toHtml (tname t)
-                                H.td ! class_ "details-status"  $ aAsis ! testHref s t $
-                                    testStatus t
+                                H.td ! class_ "details-status"  $ testStatus s t
             let fs = filter_failes s
             H.h2 $ toHtml $ str $ printf "Failed (%d/%d)" (length fs) (length (rtests s))
             table fs
@@ -297,6 +299,7 @@ myApp = table where
         let oldies = slice_by_name ss (tname t)
         ok $ template "VSim details" $ do
             div'row $ do
+                H.p $ toHtml $ rname s
                 aBtn ! setHref s $ "Up"
             div'row $ do
                 div ! class_ "slot-7-8" $ do
@@ -335,7 +338,7 @@ myApp = table where
                             H.tr $ do
                                 let a = if s == s' then aSelect else H.a
                                 H.td $ a ! testHref s' t $ H.toHtml $ rgit_id s'
-                                H.td $ testStatus t
+                                H.td $ testStatus s' t
 
     testIndexLogs s t = do
         fs <- liftIO $ sort <$> loadFiles (tdir t)

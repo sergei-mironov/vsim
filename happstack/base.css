@@ -94,8 +94,9 @@ h5, h6 {
 
 a, a:link, a:visited {
 	color: #11bad3;
-	text-decoration: none;
-	border-bottom: 1px solid #11bad3;
+	/* text-decoration: none; */
+	text-decoration: underline;
+	border-bottom: 0px solid #11bad3;
 }
 
 a:hover, a:active {
@@ -112,6 +113,26 @@ a.asis {
 	color: black;
 	text-decoration: none;
 	border-bottom: 0; 
+}
+
+a.failed-tr {
+    color: chocolate;
+}
+
+a.failed-vsim {
+    color: coral;
+}
+
+a.failed-ghc {
+    color: FireBrick ;
+}
+
+a.failed-bin {
+    color: darkred;
+}
+
+a.ok {
+    color: darkgreen;
 }
 
 
@@ -187,6 +208,7 @@ hr {
 }
 
 a.bttn {
+	text-decoration: none;
 	border-right: 1px solid #0087a0;
 	border-bottom: 1px solid #0087a0;
 	background: #11bad3;
@@ -223,26 +245,6 @@ a.bttn {
 	color: #666;
 	text-align: center;
 	max-width: none;
-}
-
-.failed-tr {
-    color: chocolate;
-}
-
-.failed-vsim {
-    color: coral;
-}
-
-.failed-ghc {
-    color: FireBrick ;
-}
-
-.failed-bin {
-    color: darkred;
-}
-
-.ok {
-    color: darkgreen;
 }
 
 .details-name {
