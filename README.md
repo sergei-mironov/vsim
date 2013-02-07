@@ -48,5 +48,9 @@ To run an example (say, vhdl/assign4.vhd), one has to do the following:
 
     *Main> :main
 
+Webserver
+=========
 
+	cygwin ~/proj/vsim $ cygrunsrv.exe -I websim --path `pwd`/happstack/WebServer.exe -c `pwd` --args . -i 
+	cygwin ~/proj/vsim $ cygrunsrv.exe -S websim                                                           
 
