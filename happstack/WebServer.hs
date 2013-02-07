@@ -152,10 +152,11 @@ myApp = table where
     div'row = div ! class_ "row"
 
     ftype ".hs"  = "haskell"
+    ftype ".vhd"  = "vhdl"
     ftype ".vir" = "commonlisp"
     ftype _      = "text"
 
-    srcs fs = filter (\f->elem (takeExtension f) [".vir",".hs", ".vhd"]) fs
+    srcs fs = filter (\f->elem (takeExtension f) [".vhd"]) fs
 
     logs fs = let logs1 = filter (flip elem fs) [
                     "transl.log","vsim.log", "ghc.log", "binary.log"]
@@ -163,7 +164,7 @@ myApp = table where
               in logs1 ++ (filter (not . flip elem logs1) logs2)
 
     almostall fs = let logs1 = filter (flip elem fs) [
-                         "transl.log","transl.vir", "vsim.log",
+                         "source.vhd", "transl.log","transl.vir", "vsim.log",
                          "sim.hs", "ghc.log", "binary.log"]
                        logs2 = filter (\f->elem (takeExtension f) [".log"]) fs
                        bads = ["DATE", "NAME"]
@@ -229,7 +230,7 @@ myApp = table where
                     div'row $ do
                         div ! class_ "slot-6" $ H.p mempty
                         div ! class_ "slot-7-8" $ do
-                            div'row $ H.h1 "VSim"
+                            div'row $ H.h1 $ aAsis ! href "/" $ "VSim"
                             div'row $ body
                             div'row $ aBtn ! href "/" $ "Home"
                         div ! class_ "slot-9" $ H.p $ ""
@@ -301,6 +302,10 @@ myApp = table where
     capitilize s = let c = head s in toUpper c : tail s
 
     testIndex ss s t = do
+        let comment ('-':'-':' ':_) = True
+            comment _ = False
+        jtxt <- liftIO $ catch' $ do
+            takeWhile comment <$> lines <$> readFile ((tdir t)</>"source.vhd")
         fs <- liftIO $ sort <$> loadFiles (tdir t)
         let oldies = slice_by_name ss (tname t)
         ok $ template "VSim details" $ do
@@ -310,21 +315,15 @@ myApp = table where
             div'row $ do
                 div ! class_ "slot-7-8" $ do
                     H.h2 $ aAsis ! fileHref s t alllogs $
-                        H.toHtml $ (capitilize $ tname t) ++ " >"
+                        H.toHtml $ (capitilize $ tname t)
+                    case jtxt of
+                            Just txt -> do
+                                sequence_ $ for txt $ \l -> do
+                                    H.p $ toHtml (drop 3 l)
+                            _ -> H.p "no description"
                     H.h3 $ "Status"
-                    H.table $ do
-                        tr $ do
-                            td "Translator"
-                            td $ toHtml $ (show (trCode t))
-                        tr $ do
-                            td "VSim"
-                            td $ toHtml $ (show (vsimCode t))
-                        tr $ do
-                            td "GHC"
-                            td $ toHtml $ (show (ghcCode t))
-                        tr $ do
-                            td "Binary"
-                            td $ toHtml $ (show (binCode t))
+                    toHtml $ str "Test status: "
+                    testStatus s t
             div'row $ do
                 let ftable fs = 
                         H.table $ do
@@ -337,7 +336,7 @@ myApp = table where
                     H.h3 $ aAsis ! fileHref s t alllogs $ "Logs >"
                     ftable (logs fs)
                 div ! class_ "slot-8" $ do
-                    H.h3 $  "Others >"
+                    H.h3 $  "Others"
                     H.hr
                     H.table $ do
                         sequence_ $ for oldies $ \ ([t],s') -> do

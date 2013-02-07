@@ -110,9 +110,18 @@ a.selected {
 }
 
 a.asis {
-	color: black;
+	color: #444;
 	text-decoration: none;
 	border-bottom: 0; 
+}
+
+a.asis:hover, a.asis:active {
+	color: #444;
+	text-decoration: none;
+	border-bottom: 0; 
+	background: white;
+	/* border-color: #00a9c2; */
+	/* color: #fff; */
 }
 
 a.failed-tr {
