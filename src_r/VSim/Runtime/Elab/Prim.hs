@@ -112,12 +112,16 @@ instance (MonadPtr m) => Assignable (Clone (Elab m)) (Signal Int) (Signal Int) w
         assign' = elab_sig_clone
 instance (MonadPtr m) => Assignable (Clone (Elab m)) Variable (Signal Int) where
         assign' = elab_sig_clone
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Constant (Signal Int) where
+        assign' = elab_sig_clone
 instance (MonadPtr m) => Assignable (Clone (Elab m)) Int (Signal Int) where
         assign' = elab_sig_clone
 
 instance (MonadPtr m) => Assignable (Clone (Elab m)) (Signal Int) Variable where
         assign' = elab_var_clone
 instance (MonadPtr m) => Assignable (Clone (Elab m)) Variable Variable where
+        assign' = elab_var_clone
+instance (MonadPtr m) => Assignable (Clone (Elab m)) Constant Variable where
         assign' = elab_var_clone
 instance (MonadPtr m) => Assignable (Clone (Elab m)) Int Variable where
         assign' = elab_var_clone
@@ -144,6 +148,9 @@ instance Subtypeable (PrimitiveT Int) where
 
 {- Valueable -}
 
+instance (Monad m) => Valueable m Constant where
+    val v = return (vr v)
+
 instance (MonadPtr m) => Valueable m Variable where
     val v = vval <$> derefM (vr v)
 
@@ -153,9 +160,6 @@ instance Valueable (VProc l) (Signal Int) where
 instance (MonadPtr m) => Valueable (Elab m) (Signal Int) where
     -- FIXME: I am not sure that it is ok to ask minBound in Elab monad
     val v = valueAt <$> (pure minBound) <*> (swave <$> derefM (vr v))
-
-instance (Monad m) => Valueable m Constant where
-    val v = return (vr v)
 
 -- Imageable
 

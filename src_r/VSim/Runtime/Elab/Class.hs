@@ -51,9 +51,9 @@ class (MonadPtr m) => Accessable m container item | container -> item where
     access' :: Int -> (Agg m item) -> container -> m container
     access_all :: (Agg m item) -> container -> m container
 
-access :: (Accessable m container item, Parent m mi)
-    => mi Int -> (Agg m item) -> container -> m container 
-access mi a c = (hug mi) >>= \i -> access' i a c
+access :: (Accessable m container item, Parent m mi, Valueable mi idx)
+    => mi idx -> (Agg m item) -> container -> m container 
+access midx a c = (hug $ val =<< midx) >>= \i -> access' i a c
 
 
 -- class (MonadPtr m) => Fieldable m sel container item where

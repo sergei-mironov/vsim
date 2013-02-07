@@ -10,18 +10,21 @@ module VSim.VIR
     , find_arg_type
     , find_fun_type
     , has_type_declaration
+    , show_noloc
     ) where
 
 import Data.Char
 import Data.Generics
 import Data.List as List
 import Data.ByteString.Char8 as BS
+import Text.Show.Pretty as PP
 
 import VSim.VIR.AST
 import VSim.VIR.Types
 import VSim.VIR.Syntax
 import VSim.VIR.Lexer
 
+import VSim.Data.Line
 import VSim.Data.Loc
 import VSim.Data.NamePath
 
@@ -59,4 +62,10 @@ has_type_declaration n ts = check $ listify match ts where
     check (x:xs) = True
     check [] = False
 
+-- Remove locations
+rm_locs :: (Data a, Typeable a) => a -> a
+rm_locs = everywhere (mkT (const NoLoc)) . everywhere (mkT (const LineUnknown))
+
+show_noloc :: (Show a, Data a, Typeable a) => a -> String
+show_noloc = PP.ppShow . rm_locs
 

@@ -11,6 +11,7 @@ import Data.Char
 import Data.Maybe
 import Data.List as List
 import System.IO
+import System.IO.Unsafe (unsafePerformIO)
 import System.Exit
 import System.Environment
 import Text.Show.Pretty as PP
@@ -22,6 +23,7 @@ import VSim.Data.Int128
 import VSim.Data.NamePath
 import VSim.VIR
 
+warning x = unsafePerformIO $ hPutStrLn stderr $ "VSim: warning: " ++ x
 perror x = error . printf (x ++ "\n")
 
 class AsIdent x where
@@ -80,6 +82,8 @@ gen_appl n as = HS.Paren $ gen_appl' n (reverse as)
 
 appl_alloc_constant t e = gen_appl "alloc_constant" [ t , e ]
 
+appl_int i = gen_appl "int" [gen_int i]
+
 gen_op :: String -> HS.Exp -> HS.Exp -> HS.Exp
 gen_op n e1 e2 = HS.Paren $ HS.InfixApp e1 qn e2 where
     qn = HS.QVarOp $ UnQual $ HS.Symbol n
@@ -134,16 +138,20 @@ gen_assign_or_aggregate f e = build (expr_to_aggr e) where
     expr_to_aggr _ = Nothing
 
     build (Just ass) = gen_appl "aggregate" [
-        gen_list $ others ass ++ aggr ass] where
+        gen_list $ others ass ++ aggr (0::Int) ass] where
             others (IEAOthers loc e:as) =
                 (gen_appl "access_all" [gen_assign_or_aggregate f e]) : others as
             others (_:as) = others as
             others [] = []
 
-            aggr (IEAExprIndex loc i e:as) = (gen_appl "access" [f i, gaa f e]) : (aggr as)
-            aggr (IEAOthers _ _:as) = aggr as
-            aggr [] = []
-            aggr a = perror "gen_assign_or_aggregate: index or others, please (got %s)" (show a)
+            aggr ix (IEAExprIndex loc i e:as) =
+                (gen_appl "access" [f i, gaa f e]) : (aggr ix as)
+            aggr ix (IEAOthers _ _:as) = aggr ix as
+            aggr ix (IEAExpr loc e:as) = 
+                (gen_appl "access" [appl_int ix, gaa f e]) : (aggr (ix+1) as)
+            aggr ix [] = []
+            aggr ix a = perror "%s\ngen_assign_or_aggregate: index or others, please" $
+                            show_noloc a
 
             gaa = gen_assign_or_aggregate
 
@@ -362,7 +370,7 @@ gen_elab ts = [
     gen_name f (IRName n _) = gen_name' n where
         gen_name' (INIdent p) = gen_appl "pure" [gen_ident $ unHierPath p]
         gen_name' (INIndex _ p _ [(_,e)]) = gen_appl "index" [f e, gen_name' p]
-        gen_name' n = perror "%s\ngen_name: ident or index please" (PP.ppShow n)
+        gen_name' n = perror "%s\ngen_name: ident or index please" (show_noloc n)
 
     -- Generate sequentional statements in a do-wrapper
     gen_seq ss = HS.Paren $ HS.Do $ gen_stmt ss where
@@ -430,7 +438,7 @@ gen_elab ts = [
                 ]
             ]
 
-        gen_expr (IEInt loc i) = gen_appl "int" [gen_int i]
+        gen_expr (IEInt loc i) = appl_int i
         gen_expr (IEString loc bs) = gen_appl "str" [gen_str $ BS.unpack bs]
         gen_expr (IEName loc n) = gen_name gen_expr n
         gen_expr (IEBinOp loc IPlus e1 e2) = gen_appl "add" [gen_expr e1, gen_expr e2]
@@ -448,7 +456,13 @@ gen_elab ts = [
         gen_expr (IEFunctionCall n args loc) = gen_appl "call" [
               gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
             ]
-        gen_expr e = perror "%s\ngen_expr: unsupported expr" (show e)
+        gen_expr a@(IEArrayAttr loc attr e n) = w`seq`gen_appl attr' [gen_name gen_expr n] where
+            w = warning $ printf "%s\ngen_expr (attr): ignoring expression: %s\n"
+                (show_noloc a) (show_noloc e)
+            attr' = map toLower $ show attr
+        -- gen_expr (IEArrayAttr loc attr e n) =
+        --     perror "%s\ngen_expr: unsupported attr" (show_noloc attr)
+        gen_expr e = perror "%s\ngen_expr: unsupported expr" (show_noloc e)
 
 gen_import m = HS.ImportDecl noLoc (ModuleName m) False False Nothing Nothing Nothing
 

@@ -153,3 +153,10 @@ instance Subtypeable (ArrayT t) where
         (rg `inner_of` rg')
 
 
+a_left :: (Monad m) => m (Array t e) -> m Int
+a_left ma = ma >>= return . left . arange . vt
+
+a_right :: (Monad m) => m (Array t e) -> m Int
+a_right ma = ma >>= return . right . arange . vt
+
+
