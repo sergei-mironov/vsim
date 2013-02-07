@@ -266,7 +266,7 @@ myApp d = table where
                         (length $ filter_passed s)
                         (length $ rtests s)
                     let render_changes x
-                         | x >= 0 = H.span ! class_ "changes_ge0" $ H.toHtml $ show x
+                         | x >= 0 = H.span ! class_ "changes_ge0" $ H.toHtml $ '+' : show x
                          | otherwise = H.span ! class_ "changes_l0" $ H.toHtml $ show x  
                     case s_prev of
                         Just sp -> H.td $ H.toHtml $ render_changes $ count_changes sp s
@@ -373,10 +373,6 @@ myApp d = table where
 exit x = do
     hPutStrLn stderr $ "WebServer: " ++ x
     exitFailure
-    
--- main_ (d:_) 
---     | isAbsolute d = simpleHTTP nullConf (myApp d)
---     | otherwise = exit "Absolute path required"
 
 main_ (d:_) = simpleHTTP nullConf (myApp d)
 main_ _ = exit "One argument required"
