@@ -149,7 +149,10 @@ gen_assign_or_aggregate f e = build (expr_to_aggr e) where
 
     build Nothing = gen_assign [f e]
 
-gen_defval = gen_ident "defval"
+gen_defval = gen_ident "defval" 
+
+gen_toplevel_function name body = HS.FunBind [
+    HS.Match noLoc (HS.Ident name) [] Nothing (HS.UnGuardedRhs body) (BDecls [])]
 
 gen_elab :: [IRTop] -> [HS.Decl]
 gen_elab ts = [
@@ -157,8 +160,7 @@ gen_elab ts = [
         HS.TyApp (HS.TyApp (HS.TyCon $ UnQual $ HS.Ident "Elab")
             (HS.TyCon $ UnQual $ HS.Ident "IO"))
                 (HS.TyCon $ Special $ HS.UnitCon)))
-
-    , HS.FunBind [HS.Match noLoc (HS.Ident "elab") [] Nothing (HS.UnGuardedRhs body) (BDecls [])]
+    , gen_toplevel_function "elab" body
     ] where
 
     name_of_integer = "integer_standard_std"
@@ -229,7 +231,6 @@ gen_elab ts = [
     gen_alloc_type (IRType p (ITDArray [c] t)) = [
           gen_function_ret (unHierPath p) "alloc_array_type" [
               gen_range_c c
-            -- , name_of_integer
             , gen_type_ident t
             ] ]
 
@@ -323,9 +324,6 @@ gen_elab ts = [
 
     gen_let_func n pats stmts =
         gen_function_ret n "alloc_function" [HS.Paren $ HS.Lambda noLoc pats stmts]
-        -- HsLetStmt [HS.FunBind [HS.Match noLoc n pats body []]] 
-        -- where
-            -- body = HS.UnGuardedRhs $ stmts
 
     -- Generates a procedure declaration
     gen_alloc_procedure (IRProcedure p as stmt) = [
@@ -454,9 +452,8 @@ gen_elab ts = [
 
 gen_import m = HS.ImportDecl noLoc (ModuleName m) False False Nothing Nothing Nothing
 
-gen_main = (:[]) $ HS.FunBind [HS.Match noLoc (HS.Ident "main") [] Nothing (HS.UnGuardedRhs body) (BDecls [])]
-    where
-        body = HS.Do [gen_function_ "sim" [gen_ident "maxBound", gen_ident "elab" ]]
+gen_main = [gen_toplevel_function "main" body] where
+    body = HS.Do [gen_function_ "sim" [gen_ident "maxBound", gen_ident "elab" ]]
 
 gen_module :: [IRTop] -> HS.Module
 gen_module ts = HS.Module noLoc (ModuleName "Main") pragmas Nothing Nothing imports body where
