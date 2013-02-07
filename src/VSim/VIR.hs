@@ -12,6 +12,7 @@ module VSim.VIR
     , has_type_declaration
     ) where
 
+import Data.Char
 import Data.Generics
 import Data.List as List
 import Data.ByteString.Char8 as BS
@@ -25,7 +26,10 @@ import VSim.Data.Loc
 import VSim.Data.NamePath
 
 unHierPath :: WLHierNameWPath -> String
-unHierPath (WithLoc _ (_,ls)) = List.intercalate "_" (List.map BS.unpack ls)
+unHierPath (WithLoc _ (_,ls)) = mask $ List.intercalate "_" (List.map BS.unpack ls) where
+    mask l@(x:_) | isNumber x = '_':l
+                 | otherwise = l
+    mask l = l
 
 -- | Searches for Type of function or procedure argument
 find_arg_type :: WLHierNameWPath -> Int -> [IRTop] -> IRTypeDescr
