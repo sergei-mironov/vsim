@@ -143,3 +143,13 @@ instance (Assignable (Assign l) (Value t e) (Value t e),
     => Assignable (Assign l) (Array t e) (Array t e) where
         assign' = proc_assign
 
+{- Subtypeable -}
+
+instance Subtypeable (ArrayT t) where
+    type SM (ArrayT t) = RangeT
+    build_subtype r a = a{arange = r}
+
+    valid_subtype_of (ArrayT te rg) (ArrayT te' rg') =
+        (rg `inner_of` rg')
+
+

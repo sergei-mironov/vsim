@@ -136,11 +136,11 @@ gen_assign_or_aggregate f e = build (expr_to_aggr e) where
     build (Just ass) = gen_appl "aggregate" [
         gen_list $ others ass ++ aggr ass] where
             others (IEAOthers loc e:as) =
-                (gen_appl "setall" [gen_assign_or_aggregate f e]) : others as
+                (gen_appl "access_all" [gen_assign_or_aggregate f e]) : others as
             others (_:as) = others as
             others [] = []
 
-            aggr (IEAExprIndex loc i e:as) = (gen_appl "setidx" [f i, gaa f e]) : (aggr as)
+            aggr (IEAExprIndex loc i e:as) = (gen_appl "access" [f i, gaa f e]) : (aggr as)
             aggr (IEAOthers _ _:as) = aggr as
             aggr [] = []
             aggr a = perror "gen_assign_or_aggregate: index or others, please (got %s)" (show a)

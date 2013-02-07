@@ -137,6 +137,7 @@ instance Subtypeable (PrimitiveT Int) where
     type SM (PrimitiveT Int) = RangeT
     build_subtype (RangeT u l) p = (PrimitiveT u l)
     build_subtype (UnconstrT) p = PrimitiveT minBound maxBound
+    build_subtype (NullRangeT) _ = error "build_subtype: don't know what to do with Null ranges"
 
     valid_subtype_of (PrimitiveT b1 e1) (PrimitiveT b2 e2) =
         ((RangeT b1 e1) `inner_of` (RangeT b2 e2))
