@@ -226,13 +226,19 @@ myApp = table where
             headers title
             H.body $ do
                 H.div ! class_ "grid" $ do
-                    div ! class_ "row" $ do
-                        div ! class_ "slot-6" $ H.p $ ""
+                    div'row $ do
+                        div ! class_ "slot-6" $ H.p mempty
                         div ! class_ "slot-7-8" $ do
                             div'row $ H.h1 "VSim"
                             div'row $ body
                             div'row $ aBtn ! href "/" $ "Home"
                         div ! class_ "slot-9" $ H.p $ ""
+                    div'row $ do
+                        div ! class_ "slot-6" $ H.p mempty
+                        div ! class_ "slot-7-8" $ do
+                            H.footer ! class_ "footer" $ do
+                                H.span $ "Powered by "
+                                a ! href "http://happstack.com" $ "Happstack7"
 
     template5 title body = toResponse $ do
         H.html $ do

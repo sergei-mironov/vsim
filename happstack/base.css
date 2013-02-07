@@ -272,3 +272,8 @@ a.bttn {
     color : darkred;
 }
 
+.footer {
+	font-family: Menlo, 'Panic Sans', monospace;
+    font-size:small;
+    color: lightgrey;
+}
