@@ -468,7 +468,7 @@ gen_module ts = HS.Module noLoc (ModuleName "Main") pragmas Nothing Nothing impo
         , gen_main
         ]
     pragmas = [
-          LanguagePragma noLoc [Ident "RecursiveDo"]
+          LanguagePragma noLoc [Ident "DoRec"]
         ]
 
 prettyPrintM tops = putStrLn $ prettyPrint $ gen_module tops
