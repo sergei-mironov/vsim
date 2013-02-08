@@ -49,15 +49,17 @@ gensim() { (
 	comment "gensim FILE.vhd : Generate Haskell code out of FILE.vhdl"
 	chkroot
 	cabal build &&
-	runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
+	runtr "$@" | xargs_ dist/build/VSim/VSim
 ) }
 
 runsim() { (
 	comment "runsim FILE.vhd : Generate and run the binary out of FILE.vhdl"
 	chkroot
-	gensim $1 &&
-	ghc --make -isrc_r src_r/Test/Autogen.hs -o src_r/Test/Autogen.exe &&
-	stime src_r/Test/Autogen.exe
+	WORK=.vsim
+	mkdir $WORK >/dev/null 2>&1 
+	gensim $1 > $WORK/Autogen.hs
+	ghc --make -isrc_r $WORK/Autogen.hs -o $WORK/Autogen.exe &&
+	stime $WORK/Autogen.exe
 ) }
 
 
@@ -83,6 +85,8 @@ runtest() { (
 		die "TEST_NAME argument is required"
 	fi
 
+	WORK=.vsim
+	mkdir $WORK >/dev/null 2>&1 
 	VSIM=dist/build/VSim/VSim
 	test -x "$VSIM" ||
 		die "$VSIM is not an executable"
@@ -94,7 +98,7 @@ runtest() { (
 	echo "$TNAME" >$out/NAME
 	date >$out/DATE
 
-	TST=src_r/Test/$TNAME
+	TST=$WORK/$TNAME
 	if test -f "$TST" ; then
 		rm -rf "$TST" ||
 			die "error: File $TST exists and I can't delete it"
@@ -105,18 +109,20 @@ runtest() { (
 			die "error: File $TST.hs exists and I can't delete it"
 	fi
 
-	( runtr "$tn" ; echo $? >&2 ; ) 2> $out/transl.log |
-	( read -r x ; 
-	  cat $x > $out/transl.vir ;
-	  dist/build/VSim/VSim $x ;
-	  echo $? >&2 ;
+	( runtr "$tn"
+	  echo $? >&2
+	) 2> $out/transl.log |
+	( read -r x 
+	  cat $x > $out/transl.vir
+	  dist/build/VSim/VSim $x
+	  echo $? >&2
 	) 2> $out/vsim.log |
 	tee $TST.hs > $out/sim.hs
 
 	GHC_SRC=`ospath $TST.hs`
 	GHC_OUT=`ospath $TST`
 
-	words=`wc -w $out/sim.hs | awk '{print $1}'`
+	words=`wc -w $GHC_SRC | awk '{print $1}'`
 
 	if [ "$words" != "0" ] ; then
 		( set -x
