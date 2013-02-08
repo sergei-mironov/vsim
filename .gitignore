@@ -10,5 +10,4 @@ tags
 Autogen.hs
 tr/bin/*
 history/*
-src_r/Test/*
 hakyll/*
