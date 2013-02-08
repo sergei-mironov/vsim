@@ -127,7 +127,8 @@ runtest() { (
 		( set -x
 		  ghc --version
 		  stime -o $out/ghc.time \
-			ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
+			#ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
+			ghc --make -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
 		  echo $?
 		) | tee $out/ghc.log
 		if ! test -x "$TST" ; then
