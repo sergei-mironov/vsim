@@ -33,22 +33,37 @@ stime() {
 	`which time` -f '%e' "$@"
 }
 
-vircheck() {
+chkroot() {
+	test -f ./vsim.cabal || die "Please run from project root directory"
+}
+
+vircheck() { (
 	comment "vircheck FILE.vhdl : Cnvert FILE.vhdl to FILE.vir and view it"
+	chkroot
 	local f=`mktemp`
 	runtr "$@" | xargs_ dist/build/VirCheck/VirCheck > $f
 	vim -c "set ft=haskell" `ospath $f`
-}
+) }
 
-gensim() {
-	comment "gensim FILE.vhdl : Generate Haskell code for FILE.vhdl"
+gensim() { (
+	comment "gensim FILE.vhd : Generate Haskell code out of FILE.vhdl"
+	chkroot
 	cabal build &&
 	runtr "$@" | xargs_ dist/build/VSim/VSim | tee src_r/Test/Autogen.hs
-}
+) }
+
+runsim() { (
+	comment "runsim FILE.vhd : Generate and run the binary out of FILE.vhdl"
+	chkroot
+	gensim $1 &&
+	ghc --make -isrc_r src_r/Test/Autogen.hs -o src_r/Test/Autogen.exe &&
+	stime src_r/Test/Autogen.exe
+) }
 
 
 runtest() { (
 	comment "runtest [-o LOGDIR] vhdl/FILE.vhd : Compile and run the test. Return the path to the LOGDIR"
+	chkroot
 	local tn=""
 	local out=""
 	while test -n "$1" ; do
@@ -151,6 +166,7 @@ viewtr() {
 
 runaldec() { (
 	comment "runaldec FILE.vhd : Run the aldec simulator"
+	chkroot
 
 	CWD=`pwd`
 	case $1 in
@@ -193,6 +209,7 @@ aldecwave() {
 
 runghdl() { (
 	comment "runghdl FILE.vhdl : Run ghdl simulator"
+	chkroot
 	CWD=`pwd`
 	case $1 in
 		/*vhd|/*vhdl) VHD=$1 ;;
@@ -217,6 +234,7 @@ runghdl() { (
 
 runtr() { (
 	comment "runtr FILE.vhdl : run java translator"
+	chkroot
 	CWD=`pwd`
 	case $1 in
 		/*vhd|/*vhdl) VHD=$1 ;;
@@ -289,11 +307,12 @@ countlines() {
 		awk '{print $1}'
 }
 
-linesofcode() {
+linesofcode() { (
 	comment "linesofcode : Count the size of a project in lines of code"
+	chkroot
 	printf "runtime %s lines\n" `countlines src_r`
 	printf "all     %s lines\n" `countlines .`
-}
+) }
 
 help() {
 	declare -f | grep -v grep | sed -n 's@.*comment.*"\(.*\)".*@\1@g p' |

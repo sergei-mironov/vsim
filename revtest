@@ -26,6 +26,7 @@ checkout() { (
 	echo "Checkouting in $tmpdir" >&2
 	( set -x
 	  git clone $rev $REPO .
+	  git log $rev^..$rev > commit
 	  ./build-minimal.sh
 	)>&2
 	echo "$tmpdir"
@@ -57,6 +58,7 @@ mkdir -p $REVREC >/dev/null ||
 
 		echo "Cloned in $repo" >&2
 		cd "$repo"
+		cp commit $REVREC
 
 		. ./simenv
 
