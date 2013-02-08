@@ -35,9 +35,9 @@ instance (Representable t) => Representable (ArrayT t) where
     type VR (ArrayT t) = ArrayR (VR t)
     type CR (ArrayT t) = ArrayR (CR t)
 
-replace_unconstr UnconstrT x = x
-replace_unconstr (RangeT l u) _ = RangeT l u
-replace_unconstr NullRangeT _ = NullRangeT
+fixup_range UnconstrT    a2 = (Array2.scanRange a2)
+fixup_range (RangeT l u) _  = RangeT l u
+fixup_range NullRangeT   _  = NullRangeT
 
 item_name :: String -> Int -> String
 item_name n i = printf "%s[%d]" n i
@@ -62,8 +62,9 @@ fixup_array (Value n t a2) = do
         process (i,Just x) = do
             item <- fixup (Value (item_name n i) (aconstr t) x)
             return (i,vr item)
-    l <- forM (Array2.toList (arange t) a2) process
-    return (Value n t (Array2.fromList l))
+    let rg' = fixup_range (arange t) a2
+    l <- forM (Array2.toList rg' a2) process
+    return (Value n t{arange = rg'} (Array2.fromList l))
 
 instance (Createable m t x)
     => Createable m (ArrayT t) (ArrayR x) where
