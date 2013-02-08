@@ -582,7 +582,7 @@ expr :: {  IRExpr  }
     | loc int { IEInt $1 $2 }
     | loc double { IEDouble $1 $2 }
     | '{' withloc_int128 withloc_identifier '}' { IEPhysical $2 $3 }
-    | '(' withloc_hier_name exprs loc ')' { IEFunctionCall $2 $3 $4 }
+    | '(' withloc_hier_name_wpath exprs loc ')' { IEFunctionCall $2 $3 $4 }
 
 
     | '(' loc '=' type_descr expr expr ')' { IERelOp $2 IEq $4 $5 $6 }

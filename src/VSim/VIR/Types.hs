@@ -199,7 +199,7 @@ data IRExpr
     | IEInt        Loc TInt
     | IEDouble     Loc Double
     | IEPhysical   (WithLoc Int128) (WithLoc Ident)
-    | IEFunctionCall (WithLoc Ident) IREGList Loc
+    | IEFunctionCall WLHierNameWPath IREGList Loc
     | IERelOp      Loc IRRelOp IRTypeDescr IRExpr IRExpr
     | IEGenericBinop Loc IRGenericBinOp
         IRTypeDescr IRTypeDescr IRExpr IRExpr

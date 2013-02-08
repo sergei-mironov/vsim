@@ -131,21 +131,29 @@ for (ma,dir,mb) body = do
         indexes Downto = [b..a]
     forM_ (indexes dir) body
 
-call :: Elab (VProc l2) (VProc l1 l1) -> VProc l2 l1
-call e = do
+callf :: Elab (VProc l2) (VProc l1 ()) -> VProc l2 l1
+callf e = do
+    (p,_) <- runElab e
+    e <- catchEarlyV p
+    case e of
+        Left ret -> return ret
+        Right () -> fail "function didn't call return"
+
+callp :: Elab (VProc l2) (VProc () ()) -> VProc l2 ()
+callp e = do
     (p,_) <- runElab e
     catchEarlyV p
+    return ()
 
 (<<) :: Monad m => (a -> m b) -> m a -> m b
 (<<) = (=<<)
 infixl 1 <<
 
--- retf :: t -> VProc l l -> VProc l ()
--- retf _ ml = ml >>= \l -> VProc (earlyBP l)
-
 retf :: VProc l l -> VProc l ()
 retf ml = ml >>= \l -> VProc (earlyBP l)
 
-retp :: VProc () ()
-retp = VProc (earlyBP ())
+retp :: () -> VProc () ()
+retp () = VProc (earlyBP ())
+
+nop () = return ()
 

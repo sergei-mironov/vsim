@@ -84,11 +84,11 @@ haltBP e = BP $ \_ cont -> cont (Left e) (haltBP e)
 earlyBP :: (Monad m) => l -> BP l e m ()
 earlyBP l = BP $ \_ cont -> cont (Right l) (earlyBP l)
 
-catchEarly :: (Monad m) => BP l e m l -> BP x e m l
+catchEarly :: (Monad m) => BP l e m r -> BP x e m (Either l r)
 catchEarly bp = BP $ \done cont ->
-    let i_done a = done a
+    let i_done a = done (Right a)
         i_cont (Left e) k = cont (Left e) (catchEarly k)
-        i_cont (Right l) _ = done l
+        i_cont (Right l) _ = done (Left l)
     in unBP bp i_done i_cont
 
 

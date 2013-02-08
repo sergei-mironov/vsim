@@ -16,7 +16,6 @@ import VSim.Runtime.Ptr
 
 defval x = return x
 
-
 -- | Something that can be created in monad m, having type t
 -- class (MonadPtr m) => Createable m t x where
 --     alloc :: String -> t -> Agg m (Value t x) -> m (Value t x)
@@ -43,8 +42,8 @@ assign mv t = (hug mv) >>= \v -> assign' v t
 class (MonadPtr m) => Indexable m container item | container -> item where
     index' :: Int -> container -> m item
 
-index mi mv = mi >>= \i -> mv >>= \v -> index' i v
-
+index :: (Indexable m container b, Valueable m idx) => m idx -> m container -> m b
+index mi mv = (mi >>= val) >>= \i -> mv >>= \v -> index' i v
 
 -- | Class of accessable containers
 class (MonadPtr m) => Accessable m container item | container -> item where
@@ -54,9 +53,5 @@ class (MonadPtr m) => Accessable m container item | container -> item where
 access :: (Accessable m container item, Parent m mi, Valueable mi idx)
     => mi idx -> (Agg m item) -> container -> m container 
 access midx a c = (hug $ val =<< midx) >>= \i -> access' i a c
-
-
--- class (MonadPtr m) => Fieldable m sel container item where
---     setfld :: sel -> Agg m item -> container -> m container
 
 

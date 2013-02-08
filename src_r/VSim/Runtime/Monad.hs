@@ -300,7 +300,7 @@ runVProc (VProc r) s = do
         Left (x,k) -> return (x, VProc k)
         Right _ -> error "runVProc: some process has been terminated"
 
-catchEarlyV :: VProc l1 l1 -> VProc l2 l1
+catchEarlyV :: VProc l r -> VProc l2 (Either l r)
 catchEarlyV (VProc bp) = VProc (catchEarly bp)
 
 terminate :: (MonadBP Pause m) => Time -> String -> m ()

@@ -315,7 +315,7 @@ gen_elab ts = [
 
     gen_elab_expr (IEInt loc i) = gen_appl "int" [gen_int i]
     gen_elab_expr (IEName loc n) = gen_name gen_elab_expr n
-    gen_elab_expr e = perror "gen_elab_expr: int constants only, please (got %s)" (show e)
+    gen_elab_expr e = perror "%s\ngen_elab_expr: int constants only, please" (show_noloc e)
 
     gen_alloc_process (IRProcess p ns lets s) = [
           gen_function_ret (unHierPath p) "alloc_process_let" [
@@ -404,7 +404,7 @@ gen_elab ts = [
                     , gen_assign_or_aggregate gen_expr e
                     ]
 
-        gen_stmt (ISNop loc) = [gen_function_ "return" [unit_con]]
+        gen_stmt (ISNop loc) = [gen_function_ "nop" [unit_con]]
         gen_stmt (ISNil) = [gen_function_ "return" [unit_con]]
         gen_stmt (ISIf loc e s1 s2) = [
               gen_function_ "iF" [
@@ -426,7 +426,7 @@ gen_elab ts = [
                     (gen_assign_or_aggregate gen_expr e)
                 ]
             ]
-        gen_stmt (ISProcCall n args loc) = [gen_function_ "call" [
+        gen_stmt (ISProcCall n args loc) = [gen_function_ "callp" [
             gen_op_chain "<<" (gen_ident (unHierPath n) : map (gen_expr . snd) args)
             ]]
         gen_stmt e = error $ "gen_stmt: unknown stmt: " ++ show e
@@ -453,8 +453,8 @@ gen_elab ts = [
         --     | otherwise = perror "%s\ngen_expr: image integers only, please" (show t)
         gen_expr (IETypeValueAttr loc T_image e t) = gen_appl "t_image" [
             gen_expr e, gen_type_ident t]
-        gen_expr (IEFunctionCall n args loc) = gen_appl "call" [
-              gen_op_chain "<<" (gen_ident n : map (gen_expr . snd) args)
+        gen_expr (IEFunctionCall n args loc) = gen_appl "callf" [
+              gen_op_chain "<<" (gen_ident (unHierPath n) : map (gen_expr . snd) args)
             ]
         gen_expr a@(IEArrayAttr loc attr e n) = w`seq`gen_appl attr' [gen_name gen_expr n] where
             w = warning $ printf "%s\ngen_expr (attr): ignoring expression: %s\n"
