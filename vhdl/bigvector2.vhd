@@ -21,8 +21,8 @@ begin
 	begin
 		if clk >= CYCLES then
 			assert false report "end of simulation" severity failure;
-		else
-			report "tick";
+		-- else
+		-- 	report "tick";
 		end if;
 	end process;
 
