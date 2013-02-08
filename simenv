@@ -48,7 +48,7 @@ vircheck() { (
 gensim() { (
 	comment "gensim FILE.vhd : Generate Haskell code out of FILE.vhdl"
 	chkroot
-	cabal build &&
+	cabal build >&2 &&
 	runtr "$@" | xargs_ dist/build/VSim/VSim
 ) }
 
@@ -56,12 +56,11 @@ runsim() { (
 	comment "runsim FILE.vhd : Generate and run the binary out of FILE.vhdl"
 	chkroot
 	WORK=.vsim
-	mkdir $WORK >/dev/null 2>&1 
+	mkdir $WORK >/dev/null 2>&1
 	gensim $1 > $WORK/Autogen.hs
 	ghc --make -isrc_r $WORK/Autogen.hs -o $WORK/Autogen.exe &&
 	stime $WORK/Autogen.exe
 ) }
-
 
 runtest() { (
 	comment "runtest [-o LOGDIR] vhdl/FILE.vhd : Compile and run the test. Return the path to the LOGDIR"

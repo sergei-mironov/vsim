@@ -9,14 +9,15 @@ die() {
 
 checkout() { (
 
-	local rev="$2"
+	local rev="$1"
+	local rev_flag=""
 
 	test -n "$REPO" ||
 		die "REPO is not specifiied"
 
 	case $rev in
-		"") rev="" ;;
-		*) rev="-b $rev" ;;
+		"") rev="HEAD" ; rev_flag="-b HEAD";;
+		*) rev_flag="-b $rev" ;;
 	esac
 
 	set -e
@@ -25,7 +26,8 @@ checkout() { (
 	cd "$tmpdir"
 	echo "Checkouting in $tmpdir" >&2
 	( set -x
-	  git clone $rev $REPO .
+	  git clone $REPO .
+	  git checkout $rev
 	  git log $rev^..$rev > commit
 	  ./build-minimal.sh
 	)>&2
@@ -56,6 +58,7 @@ mkdir -p $REVREC >/dev/null ||
 	checkout $REV | (
 		read repo
 
+		test -d "$repo" || die "error reading REPO ($repo)"
 		echo "Cloned in $repo" >&2
 		cd "$repo"
 		cp commit $REVREC
