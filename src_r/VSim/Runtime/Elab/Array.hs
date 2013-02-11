@@ -9,9 +9,11 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Text.Printf
+import Data.Array.IArray (IArray)
+import qualified Data.Array as Array (Array)
+import Data.Array2 as Array2
 import Data.Maybe
 import Data.IntMap as IntMap
-import Data.Array2 as Array2
 import Data.Range as Range
 
 import VSim.Runtime.Waveform
@@ -44,7 +46,7 @@ item_name n i = printf "%s[%d]" n i
 
 {- Indexable -}
 
-instance (MonadPtr m) => Indexable m (Array t x) (Value t x) where
+instance (IArray Array.Array x, MonadPtr m) => Indexable m (Array t x) (Value t x) where
     index' i (Value n (ArrayT t UnconstrT) _) = do
             pfail "index: not constrained: array %s" n
     index' i (Value n (ArrayT et rg) a2) = do
@@ -64,9 +66,9 @@ fixup_array (Value n t a2) = do
             return (i,vr item)
     let rg' = fixup_range (arange t) a2
     l <- forM (Array2.toList rg' a2) process
-    return (Value n t{arange = rg'} (Array2.fromList l))
+    return (Value n t{arange = rg'} (Array2.toArrayForm rg' l))
 
-instance (Createable m t x)
+instance (IArray Array.Array x, Createable m t x)
     => Createable m (ArrayT t) (ArrayR x) where
         alloc n t = return (Value n t Array2.empty)
         fixup = fixup_array
@@ -86,12 +88,12 @@ elab_access_all f arr@(Value n (ArrayT t rg) a2) = array_access_all' rg where
         loopM arr (Range.toList rg) $ \arr i -> do
             access' i f arr
 
-instance (Createable (Clone m) t x)
+instance (IArray Array.Array x, Createable (Clone m) t x)
     => Accessable (Clone m) (Array t x) (Value t x) where
         access' = elab_access
         access_all = elab_access_all
 
-instance (Createable (Link m) t x)
+instance (IArray Array.Array x, Createable (Link m) t x)
     => Accessable (Link m) (Array t x) (Value t x) where
         access' = elab_access
         access_all = elab_access_all
@@ -103,7 +105,7 @@ proc_access i f val@(Value n (ArrayT et _) a2) = do
     f (Value en et item)
     return val
 
-instance Accessable (Assign l) (Array t x) (Value t x) where
+instance (IArray Array.Array x) => Accessable (Assign l) (Array t x) (Value t x) where
     access' = proc_access
     access_all = elab_access_all
 
@@ -118,6 +120,7 @@ elab_assign rh@(Value n' t' a2') lh@(Value n t a2) = do
     return (Value n t a2')
 
 instance (
+    IArray Array.Array x,
     Createable (Clone m) t x,
     Assignable (Clone m) (Value t x) (Value t x),
     Indexable (Clone m) (Array t x) (Value t x))
@@ -125,6 +128,7 @@ instance (
         assign' = elab_assign
 
 instance (
+    IArray Array.Array x,
     Createable (Link m) t x,
     Assignable (Link m) (Value t x) (Value t x),
     Indexable (Link m) (Array t x) (Value t x))

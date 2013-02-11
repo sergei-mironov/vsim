@@ -26,12 +26,15 @@ instance MonadPtr m => MonadPtr (StateT s m)
 instance MonadPtr m => MonadPtr (ReaderT r m)
 instance MonadPtr m => MonadPtr (BP l e m)
 
+{-# INLINE allocM #-}
 allocM :: (MonadIO m) => a -> m (Ptr a)
 allocM a = liftIO $ newIORef a
 
+{-# INLINE writeM #-}
 writeM :: (MonadIO m) => Ptr a -> a -> m ()
 writeM ptr a = liftIO (writeIORef ptr a)
 
+{-# INLINE derefM #-}
 derefM :: (MonadIO m) => Ptr a -> m a
 derefM ptr = liftIO $ readIORef ptr
 
@@ -40,6 +43,7 @@ maybeDerefM fail f r = derefM r >>= check . f where
     check (Just b) = return b
     check (Nothing) = fail
 
+{-# INLINE updateM #-}
 updateM :: (MonadIO m) => (a->a) -> Ptr a -> m ()
 updateM f ptr = derefM ptr >>= writeM ptr . f
 
