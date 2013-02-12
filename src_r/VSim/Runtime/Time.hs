@@ -72,7 +72,7 @@ femtoSecond  = 1
 instance Arbitrary NextTime where
     arbitrary = suchThat (NextTime <$> arbitrary) (\t -> t>=minBound && t<=maxBound)
 
--- | Helper for testing purposes. Generates a pir of Time and NextTime
+-- | Helper for testing purposes. Generates a pair of Time and NextTime
 -- which represent the same moment of time.
 data TestTime = TestTime NextTime Time
     deriving(Show)

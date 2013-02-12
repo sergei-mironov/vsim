@@ -21,7 +21,7 @@ import Prelude hiding(until)
 
 import VSim.Runtime.Time
 
--- | Change is a part of a waveform. It's semantic is:
+-- | Change is a part of a waveform. Semantic is:
 -- foreach t . t < until => (value `at_time` t) == cvalue
 --             t >= until => value is undefined
 data Change a = Change {
@@ -45,6 +45,9 @@ wcons c@(Change t1 v1) cs@((Change t2 v2):l)
 wappend :: (Eq a) => [Change a] -> [Change a] -> [Change a]
 wappend [] f = f
 wappend p f = (init p) ++ ((last p) `wcons` f)
+
+lsevt :: Waveform a -> [NextTime]
+lsevt w = map until (init $ wchanges w)
 
 -- | Non-empty list of changes, sorted by (until::Time). The last element should
 -- specify value of the waveform at +infinity time
@@ -132,24 +135,32 @@ unPW w (PW s w') = concatAt s w w'
 appendPW :: (Eq a) => ProjectedWaveform a -> ProjectedWaveform a -> ProjectedWaveform a
 appendPW (PW s1 w1) (PW s2 w2) = PW (s1 `min` s2) (concatAt (s1`max`s2) w1 w2)
 
+-- new_changes :: Waveform a -> Waveform a -> [NextTime]
+-- new_changes wf
+
 {- Tests -}
 
 instance (Arbitrary a) => Arbitrary (Change a) where
     arbitrary = Change <$> arbitrary <*> arbitrary
 
 instance (Eq a, Arbitrary a) => Arbitrary (Waveform a) where
-    arbitrary =  (infinity <$> arbitrary) >>= wf 5 . (\s -> [s]) >>= return . Waveform where
-        wf n x@((Change t v):cs)
-            | n == 0 = return x
-            | n > 0 = wcons <$> (suchThat arbitrary earlier) <*> (pure x)
-            where 
-                earlier (Change t' _) = t' < t
+    arbitrary = do
+        Ordered ts <- arbitrary
+        cinf <- infinity <$> arbitrary
+        Waveform <$> foldM f [cinf] (reverse ts)
+            where f cs t = wcons <$> (Change <$> pure t <*> arbitrary) <*> pure cs
 
 instance (Eq a, Arbitrary a) => Arbitrary (ProjectedWaveform a) where
     arbitrary = do
         w@(Waveform (c:_)) <- arbitrary
         s <- suchThat arbitrary (<=(until c))
         return $ PW s w
+
+newtype EvenTimes = EvenTimes [NextTime]
+    deriving(Show, Eq)
+
+instance Arbitrary EvenTimes where
+    arbitrary = EvenTimes <$> (lsevt <$> (arbitrary :: Gen (Waveform Int)))
 
 prop_inv w = invariant w
 
