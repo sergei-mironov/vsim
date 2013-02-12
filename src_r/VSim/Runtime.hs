@@ -15,7 +15,6 @@ module VSim.Runtime (
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.BP
 import Control.Monad.Trans
 import Data.NestedTuple
 import Text.Printf
@@ -40,18 +39,18 @@ askBreak = hGetChar stdin >>= filter where
 
 sim' :: Memory -> VSim () -> IO ()
 sim' m k = do
-    e <- runVSim k (m,[])
-    case e of
-        Right () -> do
+    (VState m' _ p, ek) <- runVSim k (VState m [] Nothing)
+    case (ek,p) of
+        (Right (), Nothing) -> do
             printf "end-of-sim\n"
             return ()
-        Left (Report t Low msg, m', k') -> do
+        (Left k', Just (Report t Low msg)) -> do
             printf "report: time %d text %s\n" (watch t) msg
             sim' m' k'
-        Left (Report t High msg, m', _) -> do
+        (Left k', Just (Report t High msg)) -> do
             printf "assert: time %d text %s\n" (watch t) msg
             return ()
-        Left (BreakHit t b, m', k') -> do
+        (Left k', Just (BreakHit t b)) -> do
             printf "breakpoint: time %d id %d\n" (watch t) b
             printSignalsM m'
             b <- askBreak

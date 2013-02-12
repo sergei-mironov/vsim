@@ -10,7 +10,7 @@
 module VSim.Runtime.Monad where
 
 import Control.Applicative
-import Control.Monad.BP
+import Control.Monad.BP2 as BP
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Identity
@@ -159,13 +159,7 @@ type Accessor r f = (r -> f)
 
 type Record t x = Value (RecordT t) (RecordR x)
 
--- | State of a VHDL process
-data PS = PS {
-      ptime :: Time
-    , passignments :: [Assignment Int]
-    } deriving(Show)
-
-now :: (MonadState PS m) => m Time
+now :: (MonadProc m) => m Time
 now = ptime `liftM` get
 
 type ProcessHandler = VProc () ()
@@ -237,6 +231,8 @@ start_step :: Memory -> (Time, SimStep)
 start_step m = (minBound, SimStep (Set.fromList $ mprocesses m))
 
 
+{- VSim monad -}
+
 data Severity = Low | High
     deriving(Show)
 
@@ -246,77 +242,91 @@ data Pause =
     | BreakHit Time Int
     deriving(Show)
 
-type VState = (Memory, [Int])
+data VState = VState {
+      vsmem :: Memory
+    , vsbps :: [Int]
+    , vspause :: Maybe Pause
+    } deriving(Show)
 
 -- | Main simulation monad. Supports breakpoints and IO. [Int] is a list of
 -- active breakpoint identifiers
-newtype VSim a = VSim { unVSim :: BP () Pause (StateT VState IO) a }
-    deriving(Monad, MonadIO, Functor, Applicative, MonadBP Pause, 
-        MonadState VState, MonadPtr)
-
-class (MonadPtr m, MonadBP Pause m) => MonadSim m
-
-instance MonadMem VSim where
-    get_mem = get >>= \ (m,_) -> return m
-    put_mem m = modify (\(_,b) -> (m,b))
-
-instance MonadSim VSim
+newtype VSim a = VSim { unVSim :: BP () VState IO a }
+    deriving(Monad, MonadIO, Functor, Applicative, MonadPtr, MonadState VState)
 
 -- | Runs simulation monad. BPS is a list of breakpoints to stop at.
-runVSim :: VSim a -> VState -> IO (Either (Pause, Memory, VSim a) a)
+runVSim :: VSim a -> VState -> IO (VState, Either (VSim a) a)
 runVSim sim st = do
-    (e, (m,_)) <- runStateT (runBP (unVSim sim)) st
+    (st', e) <- runBP (unVSim sim) st
     case e of
-        Left (p,bp) -> return (Left (p, m, VSim bp))
-        Right a -> return (Right a)
+        Left k -> return (st', Left (VSim k))
+        Right a -> return (st', Right a)
+        
+class (MonadPtr m) => MonadSim m where
+    pause :: Pause -> m ()
 
+instance MonadSim VSim where
+    pause p = VSim $ pauseBP $ \s -> s{vspause = Just p}
+
+instance MonadMem VSim where
+    get_mem = vsmem <$> get
+    put_mem m' = modify (\s -> s{vsmem = m'})
+
+terminate :: (MonadSim m) => Time -> String -> m ()
+terminate t s = pause $ Report t High s
+
+{- VProc monad -}
+
+-- | The reason, VHDL process is being paused
 data ProcPause = PP [Ptr (SigR Int)] (Maybe NextTime)
     deriving (Show)
 
+-- | State of a VHDL process
+data PS = PS {
+      ptime :: Time
+    , passignments :: [Assignment Int]
+    , ppause :: Maybe ProcPause
+    } deriving(Show)
+
 -- | Monad for process execution.
-newtype VProc l a = VProc { unProc :: BP l (ProcPause,PS) (StateT PS VSim) a }
+newtype VProc l a = VProc { unProc :: BP l PS VSim a }
     deriving (Monad, MonadIO, MonadPtr, Functor, Applicative, MonadState PS)
 
-class (MonadPtr m, MonadState PS m) => MonadProc m
-
-instance MonadProc (VProc l)
-
-class (MonadProc m, MonadBP Pause m) => MonadWait m where
+class (MonadSim m, MonadState PS m) => MonadProc m where
     wait_until :: NextTime -> m ()
     wait_on :: [Ptr (SigR Int)] -> m ()
 
-instance MonadBP Pause (VProc l) where
-    pause = VProc . lift . lift . pause
-    halt =  VProc . lift . lift . halt
+instance MonadProc (VProc l) where
+    wait_until nt = VProc $ pauseBP $ \s -> s{ppause = Just (PP [] (Just nt))}
+    wait_on ss = VProc $ pauseBP $ \s -> s{ppause = Just (PP ss Nothing)}
 
-instance MonadWait (VProc l) where
-    wait_until nt = get >>= \s -> VProc (pause (PP [] (Just nt),s))
-    wait_on ss = get >>= \s -> VProc (pause (PP ss Nothing,s))
+instance MonadSim (VProc l) where
+    pause = VProc . lift . pause
 
-runVProc :: VProc () () -> PS -> VSim ((ProcPause,PS),VProc () ())
+runVProc :: VProc () () -> PS -> VSim (PS,VProc () ())
 runVProc (VProc r) s = do
-    (e,s') <- runStateT (runBP r) s
-    case e of
-        Left (x,k) -> return (x, VProc k)
-        Right _ -> error "runVProc: some process has been terminated"
+    (s',er) <- runBP r s
+    case er of
+        Left k -> return (s', VProc k)
+        Right _ -> fail "runVProc: process has been terminated"
 
 catchEarlyV :: VProc l r -> VProc l2 (Either l r)
 catchEarlyV (VProc bp) = VProc (catchEarly bp)
 
-terminate :: (MonadBP Pause m) => Time -> String -> m ()
-terminate t s = halt $ Report t High s
-
 -- | Pauses process with the report
-report :: (MonadBP Pause m, MonadWait m) => m String -> m ()
+report :: (MonadProc m) => m String -> m ()
 report s = pause =<< (Report <$> now <*> pure Low <*> s)
 
 -- | Pauses process with the assertion
-assert :: (MonadWait m) => m ()
+assert :: (MonadProc m) => m ()
 assert = pause =<< (Report <$> now <*> pure High <*> pure "assert")
 
 -- | Pauses process with the breakpoint
-breakpoint :: (MonadWait m) => m ()
+breakpoint :: (MonadProc m) => m ()
 breakpoint = pause =<< (BreakHit <$> now <*> pure 0)
+
+
+
+{- Elab monad -}
 
 class (MonadMem m) => MonadElab m
 
@@ -335,6 +345,8 @@ int = return
 -- | Type hint for strings
 str :: (Monad m) => String -> m String
 str = return
+
+
 
 data EnumT = EnumT {
       esize :: Int

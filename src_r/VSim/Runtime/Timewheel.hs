@@ -34,11 +34,13 @@ class Eventable x where
     next_event :: (MonadMem m) => x -> m (NextTime, Event)
 
 instance Eventable AnyPrimitiveSignal where
+    {-# INLINE next_event #-}
     next_event s@(AnyPrimitiveSignal v) = do
         (t,_) <- event <$> swave <$> derefM (vr v)
         return (t, Event [s] [])
 
 instance Eventable (Ptr Process) where
+    {-# INLINE next_event #-}
     next_event r = chk <$> pawake <$> derefM r where
         chk Nothing  = (maxBound, Event [] [])
         chk (Just t) = (t       , Event [] [r])
@@ -66,7 +68,7 @@ timewheel (t, SimStep ps) = do
         kick_processes = concat <$> mapM kick (Set.toList ps) where
             kick r = do
                 p <- derefM r
-                ((PP ss nt, PS _ as), h') <- runVProc (phandler p) (PS t [])
+                (PS _ as (Just (PP ss nt)), h') <- runVProc (phandler p) (PS t [] Nothing)
                 rewind r h' nt
                 relink r ss
                 return as

@@ -11,10 +11,11 @@ import Data.List
 import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Control.Applicative
+import Control.Monad.Loop
 import Control.Monad.Trans
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.BP
+import Control.Monad.BP2
 import Control.Monad
 import Text.Printf
 
@@ -48,7 +49,7 @@ fs t = ticked <$> now <*> (pure $ t * femtoSecond)
 next :: (MonadProc m) => m NextTime
 next = fs 1
 
-wait :: (MonadWait m) => m NextTime -> m ()
+wait :: (MonadProc m) => m NextTime -> m ()
 wait nt = nt >>= wait_until
 
 plan'n'rsort ::
@@ -124,12 +125,10 @@ data ForDirection = To | Downto
 
 -- | Monadic for
 for :: (MonadProc m) => (m Int, ForDirection, m Int) -> (Int -> m ()) -> m ()
-for (ma,dir,mb) body = do
-    a <- ma
-    b <- mb
-    let indexes To = [a..b]
-        indexes Downto = [b..a]
-    forM_ (indexes dir) body
+for (ma,dir,mb) body = join $ for' <$> ma <*> pure dir <*> mb <*> pure body
+
+for' a To b body = loopM_ a $ \i -> body i >> return (i+1,i==b)
+for' a Downto b body = loopM_ b $ \i -> body i >> return (b-1,i==a)
 
 callf :: Elab (VProc l2) (VProc l1 ()) -> VProc l2 l1
 callf e = do
@@ -150,10 +149,10 @@ callp e = do
 infixl 1 <<
 
 retf :: VProc l l -> VProc l ()
-retf ml = ml >>= \l -> VProc (earlyBP l)
+retf ml = ml >>= \l -> VProc (retBP l)
 
 retp :: () -> VProc () ()
-retp () = VProc (earlyBP ())
+retp () = VProc (retBP ())
 
 nop () = return ()
 

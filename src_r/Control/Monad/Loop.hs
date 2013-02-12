@@ -13,4 +13,3 @@ loopM_ :: (Monad m) => s -> (s -> m (s,Bool)) -> m ()
 loopM_ s f = do
     (s', stop) <- f s
     if stop then return () else loopM_ s' f
-

@@ -9,7 +9,7 @@ import Control.Applicative
 import Control.Monad.Trans
 import Control.Monad.State
 import Control.Monad.Reader
-import Control.Monad.BP
+import Control.Monad.BP2
 import Data.IORef
 import Data.Unique
 import Text.Printf
