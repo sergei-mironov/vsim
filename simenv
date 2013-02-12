@@ -63,17 +63,34 @@ runsim() { (
 ) }
 
 runtest() { (
-	comment "runtest [-o LOGDIR] vhdl/FILE.vhd : Compile and run the test. Return the path to the LOGDIR"
+	comment "runtest [-o LOGDIR] [-p] vhdl/FILE.vhd : Compile and run the test. Return the path to the LOGDIR"
 	chkroot
 	local tn=""
 	local out=""
+	local prof=""
+
+	local GHC_ARGS=""
+	local RTS_ARGS=""
+	local argmode=def
+
 	while test -n "$1" ; do
 		case "$1" in
 			-o) out="$2"; shift;;
-			*) tn="$1" ;;
+			+GHC) argmode=ghc ;;
+			+RTS) argmode=rts ; RTS_ARGS="+RTS";;
+			-RTS) argmode=def ;;
+			*) case $argmode in 
+				ghc) GHC_ARGS="$GHC_ARGS $1" ;;
+				rts) RTS_ARGS="$RTS_ARGS $1" ;;
+				*) tn="$1" ;;
+			   esac
 		esac
 		shift
 	done
+
+	if test -z "$GHC_ARGS" -a -n "$RTS_ARGS" ; then
+		GHC_ARGS="-prof -auto-all"
+	fi
 
 	if test -z "$out" ; then
 		out=`mktemp -d`
@@ -127,15 +144,19 @@ runtest() { (
 		( set -x
 		  ghc --version
 		  stime -o $out/ghc.time \
-			#ghc --make -O2 -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
-			ghc --make -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
+			ghc --make -O -fforce-recomp $GHC_ARGS -isrc_r "$GHC_SRC" -o $GHC_OUT 2>&1
 		  echo $?
 		) | tee $out/ghc.log
 		if ! test -x "$TST" ; then
 			die "$TST is not an executable"
 		fi
 
-		( stime -o $out/binary.time $TST 2>&1 ; echo $? ; ) | tee $out/binary.log
+		( set -x
+		  stime -o $out/binary.time $TST $RTS_ARGS 2>&1 ;
+		  echo $? ;
+		) | tee $out/binary.log
+
+		cat $out/binary.time
 	else
 		echo "sim.hs is empty, removing" >&2
 		rm $out/sim.hs
@@ -164,6 +185,16 @@ catall() {
 		)
 	done
 }
+
+viewprof() { (
+	set -e
+	set -x
+	FILE=`basename $1 .hp`
+	CWD=`pwd`
+	hp2ps.exe -c $1
+	ps2pdf $FILE.ps
+	/cygdrive/c/Program\ Files\ \(x86\)/Adobe/Reader\ 10.0/Reader/AcroRd32.exe `ospath $CWD/$FILE.pdf`
+) }
 
 viewtr() {
 	comment "viewtr FILE.vhdl : Generate FILE.vir and view it"
@@ -199,7 +230,7 @@ runaldec() { (
 	echo vcom -work work `ospath $VHD`
 
 	echo vsim work.$ENTITY
-	echo trace -verbose '*'
+	# echo trace -verbose '*'
 	echo run 9999ms
 	) > './a.do'
 
