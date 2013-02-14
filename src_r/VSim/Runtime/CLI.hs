@@ -4,6 +4,8 @@ module VSim.Runtime.CLI where
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
+import Data.Set as Set
+import Data.List as List
 import Text.Printf
 
 import VSim.Runtime.Monad
@@ -12,7 +14,7 @@ import VSim.Runtime.Time
 import VSim.Runtime.Ptr
 
 printWaveform :: (Show a) => Waveform a -> String
-printWaveform (Waveform cs) = concat $ map pc cs where
+printWaveform (Waveform cs) = concat $ List.map pc cs where
     pc (Change t c)
         | t < maxBound = printf "< %s until %d >" (show c) ((watch t) - 1)
         | otherwise = printf "< %s until inf >" (show c)
@@ -28,7 +30,7 @@ printSignalsM m = liftIO $ (mapM printSignalM >=> mapM_ putStrLn) $ (allSignals 
 
 printProcessesM :: (MonadIO m) => Memory -> m ()
 printProcessesM m = do
-    forM_ (mprocesses m) $ \r -> do
+    forM_ (Set.toList $ mprocesses m) $ \r -> do
         p <- derefM r
-        liftIO $ printf "proc %s active %s\n" (pname p) (show $ pawake p)
+        liftIO $ printf "proc %s\n" (pname p)
 

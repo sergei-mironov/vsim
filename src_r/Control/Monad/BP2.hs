@@ -75,13 +75,13 @@ instance (Monad m) => MonadState s (BP l s m) where
 
 -- | Pauses execution
 {-# INLINE pauseBP #-}
-pauseBP :: (Monad m) => (s->s) -> BP l s m ()
-pauseBP fs = BP $ \s _ _ cont -> cont (fs s) (return ())
+pauseBP :: (Monad m) => BP l s m ()
+pauseBP = BP $ \s _ _ cont -> cont s (return ())
 
 -- | Pauses execution without allowing it to continue
 {-# INLINE haltBP #-}
-haltBP :: (Monad m) => (s->s) -> BP l s m ()
-haltBP fs = BP $ \s _ _ cont -> cont (fs s) (haltBP fs)
+haltBP :: (Monad m) => BP l s m ()
+haltBP = BP $ \s _ _ cont -> cont s (haltBP)
 
 -- | Returns early result
 {-# INLINE retBP #-}

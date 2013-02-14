@@ -33,6 +33,7 @@ import Control.Applicative
 import Data.IntMap as IntMap
 import Data.IORef
 import Data.Range
+import Data.Set as Set
 import Data.Unique
 import Text.Printf
 import System.IO
@@ -88,20 +89,19 @@ alloc_constant :: (MonadPtr m, Createable m t (CR t))
 alloc_constant t f = alloc [] t >>= unClone . f >>= fixup
 
 -- | Register the process in memory. Updates list of signal reactions
-alloc_process :: (MonadElab m)
-    => String -> [Signal Int] -> ProcessHandler -> m (Ptr Process)
+alloc_process :: (MonadElab m, Ord t, Show t)
+    => String -> [Signal t] -> ProcessHandler -> m (Ptr Process)
 alloc_process n ss h = do
-    let encycle [] = forever h
-        encycle xs = forever (h >> wait_on (Prelude.map vr xs))
+    let withwait [] = h
+        withwait xs = h >> wait_on xs
     u <- liftIO (hashUnique <$> newUnique)
-    p <- allocM (Process n (encycle ss) Nothing [] u)
-    modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
+    p <- allocM (Process n (withwait ss) (Right ()) u)
+    modify_mem $ \(Memory rs ps) -> Memory rs (Set.insert p ps)
     return p
 
 alloc_process_let :: (MonadElab m)
     => String -> [Signal Int] -> m ProcessHandler -> m (Ptr Process)
 alloc_process_let n ss lh = lh >>= alloc_process n ss
-
 
 -- | Allocate a subtype for a type t. Just create new type for now..
 alloc_subtype :: (MonadElab m) => m RangeT -> (PrimitiveT Int) -> m (PrimitiveT Int)

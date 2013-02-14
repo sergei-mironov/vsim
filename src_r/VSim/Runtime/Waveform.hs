@@ -35,10 +35,14 @@ fromPair (a,b) = Change a b
 infinity :: a -> Change a
 infinity v = Change maxBound v
 
+-- FIXME: Think about removing special cons/append functions and use default
+-- instead. That way we will need filtering in event functions. Pros: simpler
+-- invariants, Cons: greater memory usage
 wcons :: (Eq a) => Change a -> [Change a] -> [Change a]
 wcons c [] = [c]
 wcons c@(Change t1 v1) cs@((Change t2 v2):l)
     | v1 == v2 = cs
+    | t1 > t2 = error "wcons: t1 > t2"
     | t1 == t2 = c:l
     | otherwise = c:cs
 
@@ -135,8 +139,9 @@ unPW w (PW s w') = concatAt s w w'
 appendPW :: (Eq a) => ProjectedWaveform a -> ProjectedWaveform a -> ProjectedWaveform a
 appendPW (PW s1 w1) (PW s2 w2) = PW (s1 `min` s2) (concatAt (s1`max`s2) w1 w2)
 
--- new_changes :: Waveform a -> Waveform a -> [NextTime]
--- new_changes wf
+-- | Returns events which do exists in w2 but not in w1
+new_changes :: Waveform a -> Waveform a -> [NextTime]
+new_changes w1 w2 = lsevt w2 \\ lsevt w1
 
 {- Tests -}
 

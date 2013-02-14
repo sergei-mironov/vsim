@@ -14,6 +14,7 @@ import Control.Monad.State
 import Data.IntMap as IntMap
 import Data.Unique
 import Data.Range
+import Data.Set as Set
 import Text.Printf
 import System.Random
 
@@ -37,7 +38,7 @@ fixup_signal tgt@(Value n t r)
     | not (isNull r) = return tgt
     | otherwise = do
         u <- liftIO (hashUnique <$> newUnique)
-        r' <- allocM $ SigR (wconst (typeval t)) [] u
+        r' <- allocM $ SigR (wconst (typeval t)) Set.empty u
         return tgt{vr = r'}
 
 fixup_variable tgt@(Value n t r)

@@ -18,7 +18,6 @@ elab = do
 
     proc1 <- alloc_process "main" [clk] $ do
         breakpoint
-        -- (pure s1)  .<=. (fs 5, assign (pure clk))
         (pure clk) .<=. (us 1, assign $ ((int 1) .+. (pure clk)))
         report (str "muhaha")
         return ()

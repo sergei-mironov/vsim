@@ -49,9 +49,11 @@ fs t = ticked <$> now <*> (pure $ t * femtoSecond)
 next :: (MonadProc m) => m NextTime
 next = fs 1
 
-wait :: (MonadProc m) => m NextTime -> m ()
-wait nt = nt >>= wait_until
+wait_until nt = nt >>= \t -> wait (PPtime t)
 
+wait_on ss = wait (PPsig $ map AnyPrimitiveSignal ss)
+
+{-
 plan'n'rsort ::
     VProc l x -> [(VProc l NextTime, Agg (Assign l) x)] -> VProc l [(NextTime,Plan)]
 plan'n'rsort mr ls = do
@@ -60,10 +62,12 @@ plan'n'rsort mr ls = do
             t <- mt
             p <- runAssign (f r)
             return (t,p)
+    -- reverse sorting should optimize future
+    -- merging (see merge from makePW)
     let tcomp (t1,_) (t2,_) = t1`compare`t2
     return (reverse $ sortBy tcomp ls')
 
--- | Converts time-value pairs to the list of assignments
+-- | Converts time-value pairs into the list of assignments
 makePW :: (MonadPtr m) => [(NextTime,Plan)] -> m [Assignment Int]
 makePW ls = do
     let retlist = return . map snd . IntMap.toList
@@ -80,14 +84,16 @@ makePW ls = do
 (.<<=.) :: VProc l x -> [(VProc l NextTime, Agg (Assign l) x)] -> VProc l ()
 (.<<=.) mr ls = do
     plan'n'rsort mr ls >>= makePW >>= mapM_ (modify . add_assignment)
+-}
 
 (.<=.) :: VProc l x -> (VProc l NextTime, Agg (Assign l) x) -> VProc l ()
 (.<=.) mr (mt,f) = do
-    time <- mt
+    t <- mt
     r <- mr
     plan <- runAssign (f r)
-    forM_ plan $ \(sig@(Value t n r),v) -> do
-        modify $ add_assignment (Assignment sig (PW time (wconst v)))
+    forM_ plan (\(s,v) -> do
+        wv <- swave <$> derefM (vr s)
+        modify $ track $ add_assignment_simple s t wv v)
 
 (.=.) :: VProc l Variable -> (Agg (Assign l) Variable) -> VProc l ()
 (.=.) mr f = mr >>= \r -> runAssign (f r) >> return ()
