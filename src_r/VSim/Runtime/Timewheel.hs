@@ -10,7 +10,7 @@ module VSim.Runtime.Timewheel (
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.List as List
 import Data.Maybe
 import Data.Monoid

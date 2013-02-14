@@ -7,7 +7,7 @@ module VSim.Runtime.Ptr where
 
 import Control.Applicative
 import Control.Monad.Trans
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Control.Monad.BP2
 import Data.IORef

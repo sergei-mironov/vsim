@@ -10,7 +10,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.IntMap as IntMap
 import Data.Unique
 import Data.Range
@@ -39,13 +39,13 @@ fixup_signal tgt@(Value n t r)
     | otherwise = do
         u <- liftIO (hashUnique <$> newUnique)
         r' <- allocM $ SigR (wconst (typeval t)) Set.empty u
-        return tgt{vr = r'}
+        return $ Value n t r'
 
 fixup_variable tgt@(Value n t r)
     | not (isNull r) = return tgt
     | otherwise = do
         r' <- allocM $ VarR (typeval t)
-        return tgt{vr = r'}
+        return $ Value n t r'
 
 convert (Value n t r) = Value n t r
 
@@ -71,19 +71,19 @@ instance (MonadPtr m) => Createable m (PrimitiveT t) t where
 
 {- Assignable -}
 
-elab_sig_link src tgt = do
-    return tgt{vr = vr src}
+elab_sig_link src@(Value _ _ r') (Value n t _) = do
+    return $ Value n t r'
 
 elab_sig_clone vv tgt = do
-    tgt' <- fixup_signal tgt
+    tgt'@(Value _ _ r') <- fixup_signal tgt
     v <- hug (val vv)
-    p <- updateM (\s -> s { swave = (wconst v)}) (vr tgt')
+    p <- updateM (\s -> s { swave = (wconst v)}) r'
     return tgt'
 
 elab_var_clone vv tgt = do
-    tgt' <- fixup_variable tgt
+    tgt'@(Value _ _ r') <- fixup_variable tgt
     v <- Clone (val vv)
-    p <- updateM (\var -> var{ vval = v} ) (vr tgt')
+    p <- updateM (\var -> var{ vval = v} ) r'
     return tgt'
 
 -- | Generate request for signal update in the process monad.
@@ -92,15 +92,15 @@ proc_sig_update vv tgt = do
     modify (\plan -> ((tgt,v):plan))
     return tgt
 
-proc_var_update vv tgt@(var) = do
+proc_var_update vv tgt@(Value n t r) = do
     v <- hug (val vv)
-    updateM (\var -> var{ vval = v }) (vr var)
-    ccheck var
+    updateM (\var -> var{ vval = v }) r
+    ccheck tgt
     return tgt
 
-const_var_update vv tgt@(var) = do
+const_var_update vv tgt@(Value n t r) = do
     v <- hug (val vv)
-    return tgt{vr = v}
+    return $ Value n t v
 
 instance (MonadPtr m) => Assignable (Link m) (Signal Int) (Signal Int) where
         assign' = elab_sig_link

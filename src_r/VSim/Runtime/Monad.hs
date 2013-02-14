@@ -11,7 +11,7 @@ module VSim.Runtime.Monad where
 
 import Control.Applicative
 import Control.Monad.BP2 as BP
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Monad.Trans
@@ -53,21 +53,22 @@ instance (MonadMem m) => MonadMem (BP l e m) where
 modify_mem :: MonadMem m => (Memory -> Memory) -> m ()
 modify_mem f = get_mem >>= \m -> put_mem (f m)
 
-data Safe
-data Unsafe
+-- data Value t x = Value {-# UNPACK #-} !String {-# UNPACK #-} !t {-# UNPACK #-} !x
+data Value t x = Value String t x
+    deriving(Show)
 
-data Value t x = Value {
-      vn :: String
-    , vt :: t
-    , vr :: x
-    } deriving(Show)
+vn (Value n _ _) = n
+vt (Value _ t _) = t
+vr (Value _ _ r) = r
 
 -- | VHDL primitive type can are described with it's upper and lower bounds. Use
 -- of Ints is a limitation of a current implementation.
-data PrimitiveT t = PrimitiveT {
-      lower :: t
-    , upper :: t
-    } deriving(Show)
+-- data PrimitiveT t = PrimitiveT {-# UNPACK #-} !t {-# UNPACK #-} !t
+data PrimitiveT t = PrimitiveT t t
+    deriving(Show)
+
+lower (PrimitiveT x _) = x
+upper (PrimitiveT _ x) = x
 
 ranged :: Int -> Int -> PrimitiveT Int
 ranged a b = PrimitiveT a b
@@ -216,16 +217,6 @@ siglisten r ss = do
 
 
 debug s = liftIO . putStrLn $ "debug: " ++ s
-
--- extract_processes :: (MonadSim m) => AnyPrimitiveSignal -> m Processes
--- extract_processes (AnyPrimitiveSignal v) = do
---     s <- derefM (vr v)
---     writeM (vr v) s{ sproc = Set.empty }
---     return (sproc s)
-
--- | Update process handler and time
--- rewind :: (MonadSim m) => Ptr Process -> ProcessHandler -> m ()
--- rewind r h = updateM (\p -> p{phandler = h}) r
 
 data Memory = Memory {
       msignals :: IntMap [AnyPrimitiveSignal]

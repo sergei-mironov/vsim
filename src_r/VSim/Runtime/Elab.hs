@@ -28,7 +28,7 @@ module VSim.Runtime.Elab (
     ) where
 
 import Control.Monad.Trans
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Applicative
 import Data.IntMap as IntMap
 import Data.IORef
