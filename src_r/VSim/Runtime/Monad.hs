@@ -18,16 +18,11 @@ import Control.Monad.Trans
 import Data.Monoid
 import qualified Data.IntMap as IntMap
 import Data.List as List
-import Data.Map as Map
 import Data.Range
 import Data.IntMap as IntMap
 import Data.Array2
 import Data.Set as Set
-import Data.HashMap.Lazy as HM
-import Data.HashSet as HS
 import Text.Printf
-
-import System.IO.Unsafe (unsafePerformIO)
 
 import VSim.Runtime.Class
 import VSim.Runtime.Time
@@ -84,13 +79,10 @@ newtype VarR t = VarR { vval :: t } deriving(Show)
 
 type Variable = Value (PrimitiveT Int) (Ptr (VarR Int))
 
-
-type Processes = Set.Set (Ptr Process)
-
 -- | VHDL primitive signal
 data SigR t = SigR {
       swave :: Waveform t
-    , sproc :: Processes
+    , sproc :: Set.Set (Ptr Process)
     , suniq :: Int
     } deriving(Show)
 
@@ -99,25 +91,19 @@ instance HasUniq (SigR t) where
 
 type Signal t = Value (PrimitiveT t) (Ptr (SigR t))
 
-
--- | Don't know the degree it is safe up to. Probably, forcing strict evaluation
--- of signals in the timewheel is enough.
-unsafeWaveform :: Signal t -> Waveform t
-unsafeWaveform (Value _ _ r) = unsafePerformIO (swave <$> derefM r)
-
 type Constant = Value (PrimitiveT Int) Int
 
 signalUniqIq :: (MonadPtr m) => Signal Int -> m Int
 signalUniqIq s = suniq <$> derefM (vr s)
 
-in_range :: (Ord t) => (PrimitiveT t) -> t -> Bool
+in_range :: (PrimitiveT Int) -> Int -> Bool
 in_range (PrimitiveT l u) v = v >= l && v <= u
 
-in_range_w :: (Ord t) => PrimitiveT t -> Waveform t -> Bool
+in_range_w :: PrimitiveT Int -> Waveform Int -> Bool
 in_range_w t w = and $ List.map f $ wchanges w where
     f (Change _ v) = in_range t v
 
-instance (MonadPtr m, Show t, Ord t) => Constrained m (Signal t) where
+instance (MonadPtr m) => Constrained m (Signal Int) where
     ccheck (Value n t r) = derefM r >>= \s -> do
         when (not $ in_range_w t (swave s)) $ do
             pfail3 "constrained failed: name %s type (%s) val (%s)" n (show t) (show (swave s))
@@ -125,24 +111,17 @@ instance (MonadPtr m, Show t, Ord t) => Constrained m (Signal t) where
 instance (MonadPtr m) => Constrained m Variable where
     ccheck (Value n t r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
-sigassign1 :: (MonadSim m) => AnyPrimitive Assignment -> m ()
-sigassign1 (AnyPrimitive (Assignment v w')) = do
-    updateM (\s -> s{swave = w'}) (vr v)
+sigassign1 :: (MonadPtr m, Constrained m (Signal Int)) => Assignment Int -> m ()
+sigassign1 (Assignment v pw) = do
+    s <- derefM (vr v)
+    writeM (vr v) s{ swave = unPW (swave s) pw }
     ccheck v
 
-sigassign2 :: (MonadSim m) => NextTime -> AnyPrimitiveSignal -> m Processes
-sigassign2 t (AnyPrimitiveSignal v) = do
+sigassign2 :: (MonadPtr m) => (Signal t) -> m (Set.Set (Ptr Process))
+sigassign2 v = do
     s <- derefM (vr v)
-    let (t',w') = event (swave s)
-    case compare t t' of
-        LT -> pfail3 "sigassign2: miss event: name %s time %s now %s"
-                (show v) (show t') (show t)
-        GT -> liftIO $ do
-            putStrLn $ printf "sigassign2: early event: name %s" (show v)
-            return (Set.empty)
-        EQ -> do
-            writeM (vr v) s{swave = w', sproc = Set.empty}
-            return (sproc s)
+    writeM (vr v) s{swave = (snd . event . swave $ s)}
+    return (sproc s)
 
 -- | VHDL array type
 data ArrayT t = ArrayT {
@@ -160,11 +139,12 @@ type Array t e = Value (ArrayT t) (ArrayR e)
 
 -- | Assignment event, list of them is the result of process execution
 data Assignment t = Assignment {
-      -- | Signal to assign to
       acurr :: Signal t
-      -- | New waveform for this signal
-    , aswave :: Waveform t
+    , anext :: ProjectedWaveform t
     } deriving(Show)
+
+add_assignment :: Assignment Int -> PS -> PS
+add_assignment a ps = ps { passignments = a:(passignments ps) }
 
 -- | VHDL record type
 newtype RecordT x = RecordT {
@@ -189,11 +169,10 @@ type ProcessHandler = VProc () ()
 data Process = Process {
       pname :: String
     -- ^ The name of a process
-    , pstart :: ProcessHandler
-    , pcont :: Either ProcessHandler ()
+    , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
-    -- , pawake :: Maybe NextTime
-    -- , psignals :: [AnyPrimitiveSignal]
+    , pawake :: Maybe NextTime
+    , psignals :: [Ptr (SigR Int)]
     , puniq :: Int
     -- ^ Unique identifier
     }
@@ -204,30 +183,33 @@ instance Show Process where
 instance HasUniq Process where
     getUniq = puniq
 
-phandler :: Process -> ProcessHandler
-phandler p = peek (pcont p) where
-    peek (Left h) = h
-    peek (Right ()) = pstart p
-
-siglisten :: (MonadSim m) => Ptr Process -> [AnyPrimitiveSignal] -> m ()
-siglisten r ss = do
-    forM_ ss $ \(AnyPrimitiveSignal s) -> do
-        flip updateM (vr s) $ \rs ->
-            rs{ sproc = Set.insert r (sproc rs) }
-
-
 debug s = liftIO . putStrLn $ "debug: " ++ s
+
+relink :: (MonadPtr m) => Ptr Process -> [Ptr (SigR Int)] -> m ()
+relink r ss = do
+    p <- derefM r
+    mapM_ (updateM (rmproc r)) (psignals p)
+    mapM_ (updateM (addproc r)) ss
+    writeM r p{psignals = ss}
+    where 
+        rmproc r s = s{ sproc = Set.delete r (sproc s)}
+        addproc r s = s{ sproc = Set.insert r (sproc s)}
+
+rewind :: (MonadSim m) => Ptr Process -> ProcessHandler -> Maybe NextTime -> m ()
+rewind r h nt = do
+    p <- derefM r
+    writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
       msignals :: IntMap [AnyPrimitiveSignal]
-    , mprocesses :: Set.Set (Ptr Process)
+    , mprocesses :: [Ptr Process]
     } deriving(Show)
 
-noProcesses (Memory _ s) | Set.null s = True
-                         | otherwise = False
+noProcesses (Memory _ []) = True
+noProcesses (Memory _ _) = False
 
 emptyMem :: Memory
-emptyMem = Memory IntMap.empty Set.empty
+emptyMem = Memory IntMap.empty []
 
 -- | Add the signal to memory.
 addToMem :: (MonadPtr m, Show t) => Signal t -> Memory -> m Memory
@@ -244,15 +226,12 @@ uniqSignals m = List.map (head . snd) (IntMap.toList (msignals m))
 allSignals :: Memory -> [AnyPrimitiveSignal]
 allSignals m = List.concat $ List.map snd $ IntMap.toList (msignals m) where
 
--- | Simulation step state
-data SimStep = SimStep {
-      ssp :: Set.Set (Ptr Process)
-    , ssq :: Map.Map NextTime Event
-    }
+-- | Simulation event
+newtype SimStep = SimStep (Set.Set (Ptr Process))
     deriving(Show)
 
 start_step :: Memory -> (Time, SimStep)
-start_step m = (minBound, SimStep (mprocesses m) (Map.empty))
+start_step m = (minBound, SimStep (Set.fromList $ mprocesses m))
 
 
 {- VSim monad -}
@@ -266,22 +245,11 @@ data Pause =
     | BreakHit Time Int
     deriving(Show)
 
-data Event = Event [AnyPrimitiveSignal] Processes
-    deriving(Show)
-
-instance Monoid Event where
-    mempty = Event mempty mempty
-    mappend (Event [a] b) (Event a2 b2) = Event (a:a2) (b`mappend`b2)
-    mappend (Event a b) (Event a2 b2) = Event (a`mappend`a2) (b`mappend`b2)
-
 data VState = VState {
       vsmem :: Memory
     , vsbps :: [Int]
     , vspause :: Maybe Pause
     } deriving(Show)
-
-vstate :: Memory -> VState
-vstate m = VState m [] Nothing
 
 -- | Main simulation monad. Supports breakpoints and IO. [Int] is a list of
 -- active breakpoint identifiers
@@ -311,46 +279,16 @@ terminate t s = pause $ Report t High s
 
 {- VProc monad -}
 
--- | The reason VHDL process is being paused
-data ProcPause = PPsig [AnyPrimitiveSignal] | PPtime NextTime
+-- | The reason, VHDL process is being paused
+data ProcPause = PP [Ptr (SigR Int)] (Maybe NextTime)
     deriving (Show)
 
-data AssignTracker = AT {
-      aas :: [AnyPrimitive Assignment]
-    , ats :: Map.Map NextTime Event
-    } deriving(Show)
-
-instance Monoid AssignTracker where
-    mempty = AT [] Map.empty
-    mappend = mergeTrackers
-
-mergeTrackers :: AssignTracker -> AssignTracker -> AssignTracker
-mergeTrackers a1 a2 = AT ((aas a1) ++ (aas a2)) (Map.unionWith mappend (ats a1) (ats a2))
-
-add_assignment_simple :: (Ord x, Show x) =>
-    Signal x -> NextTime -> Waveform x -> x -> AssignTracker -> AssignTracker
-add_assignment_simple s t wv v (AT aas ats) = AT (a':aas) (Map.insertWith mappend t e' ats) where
-    e' = Event [AnyPrimitiveSignal s] mempty
-    a' = AnyPrimitive (Assignment s (concatAt t wv (wconst v)))
-
-add_process_kick :: Ptr Process -> NextTime -> AssignTracker -> AssignTracker
-add_process_kick p t (AT aas ats) = AT aas (Map.insertWith mappend t e' ats) where
-        e' = Event [] (Set.singleton p)
-
--- | The state of a VHDL process
+-- | State of a VHDL process
 data PS = PS {
-    -- | Current simulation time
       ptime :: Time
-    -- | Old-style assignments
-    -- , passignments :: [Assignment Int]
-    -- | New-style assignment tracker
-    , passgnt :: AssignTracker
-    -- | Reason the process is being paused
+    , passignments :: [Assignment Int]
     , ppause :: Maybe ProcPause
     } deriving(Show)
-
-track :: (AssignTracker -> AssignTracker) ->  PS -> PS
-track fat ps = ps { passgnt = fat (passgnt ps) } where
 
 -- | Monad for process execution.
 newtype VProc l a = VProc { unProc :: BP l PS VSim a }
@@ -360,30 +298,17 @@ class (MonadSim m, MonadState PS m) => MonadProc m where
     wait :: ProcPause -> m ()
 
 instance MonadProc (VProc l) where
-    wait pp = modify (\s -> s {ppause = Just pp}) >> VProc pauseBP
+    wait pp = modify (\s -> s{ppause = Just pp}) >> (VProc pauseBP) 
 
 instance MonadSim (VProc l) where
     pause = VProc . lift . pause
 
-runVProc :: VProc () () -> PS -> VSim (PS, Either ProcessHandler ())
+runVProc :: VProc () () -> PS -> VSim (PS,VProc () ())
 runVProc (VProc r) s = do
-    (s', eh) <- runBP r s
-    return (s', case eh of Left h -> Left (VProc h)
-                           Right () -> Right ())
-
-runProcess :: Ptr Process -> PS -> VSim PS
-runProcess r s = do
-    p <- derefM r
-    (s',p') <- runProcess' p s
-    writeM r p'
-    return s'
-
-runProcess' :: Process -> PS -> VSim (PS, Process)
-runProcess' p s = do
-    (s', eh) <- runVProc (phandler p) s
-    case eh of
-        Left h' -> return (s', p{pcont = eh})
-        Right () -> runProcess' p{pcont = eh} s'
+    (s',er) <- runBP r s
+    case er of
+        Left k -> return (s', VProc k)
+        Right _ -> fail "runVProc: process has been terminated"
 
 catchEarlyV :: VProc l r -> VProc l2 (Either l r)
 catchEarlyV (VProc bp) = VProc (catchEarly bp)
@@ -479,13 +404,6 @@ evalAssign mx = evalStateT (unAssign mx) []
 instance (Monad m) => Parent (Assign m) m where
     hug me = Assign (lift me)
     unM = evalAssign
-
--- | Container for the data referencing to primitive values
-data AnyPrimitive c where
-    AnyPrimitive :: (Show t, Show (c t), Ord t) => c t -> AnyPrimitive c
-
-instance Show (AnyPrimitive c) where
-    show (AnyPrimitive x) = printf "AnyPrimitive %s" (show x)
 
 -- | Container for primitive signals
 data AnyPrimitiveSignal where

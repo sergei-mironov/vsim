@@ -39,9 +39,7 @@ askBreak = hGetChar stdin >>= filter where
 
 sim' :: Memory -> VSim () -> IO ()
 sim' m k = do
-    (vs, ek) <- runVSim k (vstate m)
-    let m' = vsmem vs
-    let p = vspause vs
+    (VState m' _ p, ek) <- runVSim k (VState m [] Nothing)
     case (ek,p) of
         (Right (), Nothing) -> do
             printf "end-of-sim\n"
@@ -61,7 +59,6 @@ sim' m k = do
 loop :: NextTime -> (Time,SimStep) -> VSim ()
 loop et (t,e) = do
     (nt,e') <- timewheel (t,e)
-    -- debug (show e')
     case move_time nt et of
         Just t' -> loop et (t',e')
         Nothing -> return ()

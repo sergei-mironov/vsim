@@ -12,9 +12,9 @@ import Control.Monad.Trans
 import Control.Monad.Reader
 import Control.Monad.State.Strict
 import Data.IntMap as IntMap
+import Data.Set as Set
 import Data.Unique
 import Data.Range
-import Data.Set as Set
 import Text.Printf
 import System.Random
 
