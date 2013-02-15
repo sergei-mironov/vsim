@@ -153,16 +153,16 @@ instance (Monad m) => Valueable m Constant where
     val v = return (vr v)
 
 instance (MonadPtr m) => Valueable m Variable where
-    val v = vval <$> derefM (vr v)
+    val v = liftPtr $ vval <$> derefM (vr v)
 
 instance Valueable (VProc l) (Signal Int) where
-    val v = valueAt1 <$> now <*> (swave <$> derefM (vr v))
+    val (Value n t r) = now >>= \t -> liftPtr $ valueAt1 t <$> (swave <$> derefM r)
 
 instance (MonadPtr m) => Valueable (Elab m) (Signal Int) where
     -- FIXME: I am not sure that it is ok to ask minBound in Elab monad
-    val v = valueAt <$> (pure minBound) <*> (swave <$> derefM (vr v))
+    val (Value n t r) = liftPtr $ valueAt minBound <$> (swave <$> derefM r)
 
--- Imageable
+{- Imageable -}
 
 instance (MonadProc m) => Imageable m (Signal Int) (PrimitiveT Int) where
     t_image mr _ = show <$> (valueAt1 <$> now <*> (swave <$> (derefM =<< (vr <$> mr))))

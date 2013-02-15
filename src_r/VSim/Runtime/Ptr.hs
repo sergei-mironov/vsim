@@ -20,11 +20,13 @@ import VSim.Runtime.Class
 -- | Pointer type used everywhere in the simulator
 type Ptr x = IORef x
 
-class (MonadIO m, Applicative m, Functor m) => MonadPtr m
-instance MonadPtr IO
-instance MonadPtr m => MonadPtr (StateT s m)
-instance MonadPtr m => MonadPtr (ReaderT r m)
-instance MonadPtr m => MonadPtr (BP l e m)
+class (MonadIO m, Applicative m, Functor m) => MonadPtr m where
+    liftPtr :: IO a -> m a
+
+instance MonadPtr IO where liftPtr = liftIO
+instance MonadPtr m => MonadPtr (StateT s m) where liftPtr = liftIO
+instance MonadPtr m => MonadPtr (ReaderT r m) where liftPtr = liftIO
+instance MonadPtr m => MonadPtr (BP l e m) where liftPtr = liftIO
 
 {-# INLINE allocM #-}
 allocM :: (MonadIO m) => a -> m (Ptr a)

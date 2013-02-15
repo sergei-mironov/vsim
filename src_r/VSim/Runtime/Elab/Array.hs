@@ -49,7 +49,7 @@ item_name n i = printf "%s[%d]" n i
 instance (IArray Array.Array x, MonadPtr m) => Indexable m (Array t x) (Value t x) where
     index' i (Value n (ArrayT t UnconstrT) _) = do
             pfail "index: not constrained: array %s" n
-    index' i (Value n (ArrayT et rg) a2) = do
+    index' i (Value n (ArrayT et rg) a2) = liftPtr $ do
         let en = item_name n i
         er <- unMaybeM (Array2.index i a2) (
             pfail "index: failure: item %s" en)
