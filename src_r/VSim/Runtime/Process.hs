@@ -52,6 +52,7 @@ next = fs 1
 wait_until nt = nt >>= \t -> wait (PP [] (Just t))
 wait_on ss = wait (PP ss Nothing)
 
+{-
 plan'n'rsort :: (MonadProc m) =>
     m x -> [(m NextTime, Agg (Assign m) x)] -> m [(NextTime,Plan)]
 plan'n'rsort mr ls = do
@@ -81,13 +82,14 @@ makePW ls = do
 (.<<=.) mr ls = do
     plan'n'rsort mr ls >>= makePW >>= mapM_ (modify . add_assignment)
 
+-}
+
 (.<=.) :: (MonadProc m) => m x -> (m NextTime, Agg (Assign m) x) -> m ()
 (.<=.) mr (mt,f) = do
     time <- mt
     r <- mr
     plan <- runAssign (f r)
-    forM_ plan $ \(sig@(Value t n r),v) -> do
-        modify $ add_assignment (Assignment sig (PW time (wconst v)))
+    forM_ plan $ \(sig,v) -> apply_simple_assignment sig time v
 
 (.=.) :: (Monad m) => m Variable -> (Agg (Assign m) Variable) -> m ()
 (.=.) mr f = mr >>= \r -> runAssign (f r) >> return ()

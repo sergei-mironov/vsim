@@ -62,6 +62,11 @@ vr (Value _ _ r) = r
 data PrimitiveT t = PrimitiveT t t
     deriving(Show)
 
+instance Resolvable (PrimitiveT t) where
+    -- FIXME: stub. resolved types are not implemented
+    is_resolved _ = False
+
+
 lower (PrimitiveT x _) = x
 upper (PrimitiveT _ x) = x
 
@@ -112,9 +117,9 @@ instance (MonadPtr m) => Constrained m Variable where
     ccheck (Value n t r) = derefM r >>= \v -> ccfail_ifnot v (in_range t (vval v))
 
 sigassign1 :: (MonadPtr m, Constrained m (Signal Int)) => Assignment Int -> m ()
-sigassign1 (Assignment v pw) = do
+sigassign1 (Assignment v w') = do
     s <- derefM (vr v)
-    writeM (vr v) s{ swave = unPW (swave s) pw }
+    writeM (vr v) s{ swave = w' }
     ccheck v
 
 sigassign2 :: (MonadPtr m) => (Signal t) -> m (Set.Set (Ptr Process))
@@ -140,11 +145,20 @@ type Array t e = Value (ArrayT t) (ArrayR e)
 -- | Assignment event, list of them is the result of process execution
 data Assignment t = Assignment {
       acurr :: Signal t
-    , anext :: ProjectedWaveform t
+    , anext :: Waveform t
     } deriving(Show)
 
-add_assignment :: Assignment Int -> PS -> PS
-add_assignment a ps = ps { passignments = a:(passignments ps) }
+apply_simple_assignment :: (MonadProc m) => Signal Int -> NextTime -> Int -> m ()
+apply_simple_assignment s@(Value n t r) time val = do
+    w <- liftPtr $ swave <$> derefM r
+    let w' = concatAt time w (wconst val)
+    -- modify $ track ((Assignment s w'):)
+    case is_resolved t of
+        True -> modify $ track ((Assignment s w'):)
+        False -> do
+            -- FIXME: unable to detect multiple assignments
+            liftPtr $ updateM (\s->s{swave = w'}) r
+            ccheck s
 
 -- | VHDL record type
 newtype RecordT x = RecordT {
@@ -172,7 +186,6 @@ data Process = Process {
     , phandler :: ProcessHandler
     -- ^ Returns newly-assigned signals
     , pawake :: Maybe NextTime
-    , psignals :: [Ptr (SigR Int)]
     , puniq :: Int
     -- ^ Unique identifier
     }
@@ -186,30 +199,25 @@ instance HasUniq Process where
 debug s = liftIO . putStrLn $ "debug: " ++ s
 
 relink :: (MonadPtr m) => Ptr Process -> [Ptr (SigR Int)] -> m ()
-relink r ss = do
-    p <- derefM r
-    mapM_ (updateM (rmproc r)) (psignals p)
-    mapM_ (updateM (addproc r)) ss
-    writeM r p{psignals = ss}
-    where 
-        rmproc r s = s{ sproc = Set.delete r (sproc s)}
-        addproc r s = s{ sproc = Set.insert r (sproc s)}
+relink r ss = mapM_ (updateM (addproc r)) ss where 
+    addproc r s = s{ sproc = Set.insert r (sproc s)}
 
-rewind :: (MonadSim m) => Ptr Process -> ProcessHandler -> Maybe NextTime -> m ()
+rewind :: (MonadPtr m) => Ptr Process -> ProcessHandler -> Maybe NextTime -> m ()
 rewind r h nt = do
     p <- derefM r
     writeM r p{phandler = h, pawake = nt}
 
 data Memory = Memory {
       msignals :: IntMap [AnyPrimitiveSignal]
+    , muniqsignals :: [[AnyPrimitiveSignal]]
     , mprocesses :: [Ptr Process]
     } deriving(Show)
 
-noProcesses (Memory _ []) = True
-noProcesses (Memory _ _) = False
+noProcesses (Memory _ _ []) = True
+noProcesses (Memory _ _ _) = False
 
 emptyMem :: Memory
-emptyMem = Memory IntMap.empty []
+emptyMem = Memory IntMap.empty (error "emptyMem: no uniq signals yet") []
 
 -- | Add the signal to memory.
 addToMem :: (MonadPtr m, Show t) => Signal t -> Memory -> m Memory
@@ -293,6 +301,9 @@ data PS = PS {
 -- | Monad for process execution.
 newtype VProc l a = VProc { unProc :: BP l PS VSim a }
     deriving (Monad, MonadIO, MonadPtr, Functor, Applicative, MonadState PS)
+
+track :: ([Assignment Int] -> [Assignment Int]) -> PS -> PS
+track f ps = ps { passignments = f (passignments ps) }
 
 class (MonadSim m, MonadState PS m) => MonadProc m where
     wait :: ProcPause -> m ()
@@ -378,6 +389,7 @@ loopM a b f = foldM f a b
 
 
 class (Monad m, Monad mi) => Parent m mi | m -> mi where
+    -- FIXME: looks like hug is similar to lift
     hug :: mi x -> m x
     unM :: m x -> mi x
 

@@ -17,10 +17,6 @@ import VSim.Runtime.Ptr
 defval x = return x
 
 -- | Something that can be created in monad m, having type t
--- class (MonadPtr m) => Createable m t x where
---     alloc :: String -> t -> Agg m (Value t x) -> m (Value t x)
-
--- | Something that can be created in monad m, having type t
 class (MonadPtr m) => Createable m t x where
     alloc :: String -> t -> m (Value t x)
     fixup :: (Value t x) -> m (Value t x)

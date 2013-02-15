@@ -94,8 +94,8 @@ alloc_process n ss h = do
     let encycle [] = forever h
         encycle xs = forever (h >> wait_on (Prelude.map vr xs))
     u <- liftIO (hashUnique <$> newUnique)
-    p <- allocM (Process n (encycle ss) Nothing [] u)
-    modify_mem $ \(Memory rs ps) -> Memory rs (p:ps)
+    p <- allocM (Process n (encycle ss) Nothing u)
+    modify_mem $ \(Memory rs us ps) -> Memory rs us (p:ps)
     return p
 
 alloc_process_let :: (MonadElab m)

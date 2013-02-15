@@ -87,7 +87,7 @@ elab_var_clone vv tgt = do
     return tgt'
 
 -- | Generate request for signal update in the process monad.
-proc_sig_update vv tgt = do
+proc_sig_update vv tgt@(Value n t r) = do
     v <- hug (val vv)
     modify (\plan -> ((tgt,v):plan))
     return tgt
@@ -175,5 +175,4 @@ instance (MonadProc m) => Imageable m Constant (PrimitiveT Int) where
 
 instance (Show t, MonadProc m) => Imageable m t (PrimitiveT t) where
     t_image mr _ = show <$> mr
-
 

@@ -22,24 +22,11 @@ class Representable t where
     -- constants
     type CR t :: *
 
-constrM :: (Monad m, Applicative m) => t -> m y -> m (t,y)
-constrM t my = (\t y -> (t,y)) <$> (pure t) <*> my
-
-pairM ::  (Monad m, Applicative m) => m t -> m y -> m (t,y)
-pairM mt my = (\t y -> (t,y)) <$> mt <*> my
-
 class (Monad m) => Valueable m x where
     val :: x -> m Int
 
 instance (Monad m) => Valueable m Int where
     val r = return r
-
--- -- | Tuples newly-allocated value with type t
--- allocP n t = alloc n t >>= \r -> return (t,r)
-
--- | States that signal of type @t can be mapped from x
-class (Monad m, Representable t) => Mappable m t x where
-    portmap :: m (t, SR t) -> t -> m x -> m (t,SR t)
 
 -- | States that type t can be changed by applying the modifier (SM t)
 class Subtypeable t where
@@ -70,4 +57,7 @@ class Primitive t where
 class PrimitiveRange t where
     type PRIM t :: *
     make_ranged_type :: t -> PRIM t
+
+class Resolvable t where
+    is_resolved :: t -> Bool
 

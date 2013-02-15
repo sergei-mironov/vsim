@@ -20,7 +20,7 @@ elab = do
         breakpoint
         -- (pure s1)  .<=. (fs 5, assign (pure clk))
         (pure clk) .<=. (us 1, assign $ ((int 1) .+. (pure clk)))
-        report (str "muhaha")
+        report $ (str "muhaha: clk = " ) .++. (t_image (pure clk) t_int)
         return ()
  
     return ()

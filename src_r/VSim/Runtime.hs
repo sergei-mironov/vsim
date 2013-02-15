@@ -17,6 +17,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Data.NestedTuple
+import Data.List.Split
 import Text.Printf
 import System.IO
 import System.Exit
@@ -69,8 +70,9 @@ sim et elab = do
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
     (_,m) <- runElab elab
+    let m' = m{muniqsignals = chunksOf 20 (uniqSignals m)}
     case noProcesses m of
-        False -> sim' m (loop et (start_step m))
+        False -> sim' m' (loop et (start_step m'))
         True -> do
             hPutStrLn stderr "no processes to simulate"
             exitFailure
