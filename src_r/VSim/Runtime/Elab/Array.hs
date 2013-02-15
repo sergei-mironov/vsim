@@ -105,9 +105,10 @@ proc_access i f val@(Value n (ArrayT et _) a2) = do
     f (Value en et item)
     return val
 
-instance (IArray Array.Array x) => Accessable (Assign l) (Array t x) (Value t x) where
-    access' = proc_access
-    access_all = elab_access_all
+instance (MonadPtr m, IArray Array.Array x) =>
+    Accessable (Assign m) (Array t x) (Value t x) where
+        access' = proc_access
+        access_all = elab_access_all
 
 {- Assignable -}
 

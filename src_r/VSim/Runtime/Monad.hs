@@ -470,13 +470,13 @@ instance (Monad m) => Parent (Clone m) m where
     hug me = Clone me
     unM = unClone
 
-newtype Assign l a = Assign { unAssign :: StateT Plan (VProc l) a }
+newtype Assign m a = Assign { unAssign :: StateT Plan m a }
     deriving(Monad, Applicative, Functor, MonadIO, MonadPtr, MonadState Plan)
 
 runAssign mx = execStateT (unAssign mx) []
 evalAssign mx = evalStateT (unAssign mx) []
 
-instance Parent (Assign l) (VProc l) where
+instance (Monad m) => Parent (Assign m) m where
     hug me = Assign (lift me)
     unM = evalAssign
 

@@ -127,9 +127,9 @@ instance (MonadPtr m) => Assignable (Clone (Elab m)) Constant Variable where
 instance (MonadPtr m) => Assignable (Clone (Elab m)) Int Variable where
         assign' = elab_var_clone
 
-instance (Valueable (VProc l) v) => Assignable (Assign l) v (Signal Int) where
+instance (MonadPtr m, Valueable m v) => Assignable (Assign m) v (Signal Int) where
         assign' = proc_sig_update
-instance (Valueable (VProc l) v) => Assignable (Assign l) v Variable where
+instance (MonadPtr m, Valueable m v) => Assignable (Assign m) v Variable where
         assign' = proc_var_update
 
 

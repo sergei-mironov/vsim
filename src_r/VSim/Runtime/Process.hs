@@ -86,7 +86,7 @@ makePW ls = do
     plan'n'rsort mr ls >>= makePW >>= mapM_ (modify . add_assignment)
 -}
 
-(.<=.) :: VProc l x -> (VProc l NextTime, Agg (Assign l) x) -> VProc l ()
+(.<=.) :: (MonadProc m) => m x -> (m NextTime, Agg (Assign m) x) -> m ()
 (.<=.) mr (mt,f) = do
     t <- mt
     r <- mr
@@ -95,7 +95,7 @@ makePW ls = do
         wv <- swave <$> derefM (vr s)
         modify $ track $ add_assignment_simple s t wv v)
 
-(.=.) :: VProc l Variable -> (Agg (Assign l) Variable) -> VProc l ()
+(.=.) :: (Monad m) => m Variable -> (Agg (Assign m) Variable) -> m ()
 (.=.) mr f = mr >>= \r -> runAssign (f r) >> return ()
 
 add, (.+.) :: (MonadPtr m, Valueable m x, Valueable m y) => m x -> m y -> m Int
