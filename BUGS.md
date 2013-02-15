@@ -1,3 +1,7 @@
+### Transport assignments by default
+
+Default signal assignment is not inertial but transport
+
 ### MDo Bug
 
 MDo notation works weirdly and causes 'thread blocked indefinitely in an MVar
@@ -7,3 +11,8 @@ operation'. Testes on GHC 7.6.1 and 7.4.2
 
 All low-level array indexes should start with 0 independently
 of VHDL type. Currently they are mixed with first used user type.
+
+### No support for generics
+
+One have to implement those
+
