@@ -70,7 +70,8 @@ sim et elab = do
     hSetBuffering stdout NoBuffering
     hSetBuffering stdin NoBuffering
     (_,m) <- runElab elab
-    let m' = m{muniqsignals = chunksOf 20 (uniqSignals m)}
+    let us = uniqSignals m
+    let m' = m{muniqsignals = chunksOf ((length us) `div` 4) us}
     case noProcesses m of
         False -> sim' m' (loop et (start_step m'))
         True -> do

@@ -152,13 +152,13 @@ apply_simple_assignment :: (MonadProc m) => Signal Int -> NextTime -> Int -> m (
 apply_simple_assignment s@(Value n t r) time val = do
     w <- liftPtr $ swave <$> derefM r
     let w' = concatAt time w (wconst val)
-    -- modify $ track ((Assignment s w'):)
-    case is_resolved t of
-        True -> modify $ track ((Assignment s w'):)
-        False -> do
-            -- FIXME: unable to detect multiple assignments
-            liftPtr $ updateM (\s->s{swave = w'}) r
-            ccheck s
+    modify $ track ((Assignment s w'):)
+    -- case is_resolved t of
+    --     True -> modify $ track ((Assignment s w'):)
+    --     False -> do
+    --         -- FIXME: unable to detect multiple assignments
+    --         liftPtr $ updateM (\s->s{swave = w'}) r
+    --         ccheck s
 
 -- | VHDL record type
 newtype RecordT x = RecordT {

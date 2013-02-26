@@ -103,9 +103,9 @@ timewheel (t, SimStep ps) = do
             sss <- muniqsignals <$> get_mem
             ws <- mprocesses <$> get_mem
             liftPtr $ do
-                -- (Event t' ss' ps) <- scan_event_par (chunksOf 20 (uniqSignals m)) ws
-                (Event t' ss' ps) <- (scan_event (to_events ss) >=>
-                                      scan_event (to_events ws)) very_last_event
+                (Event t' ss' ps) <- scan_event_par (muniqsignals m) ws
+                -- (Event t' ss' ps) <- (scan_event (to_events ss) >=>
+                --                       scan_event (to_events ws)) very_last_event
                 pss <- mapM (\(AnyPrimitiveSignal v) -> sigassign2 v) ss'
                 return (t', SimStep (Set.unions (ps:pss)))
 
