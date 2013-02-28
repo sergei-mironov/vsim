@@ -10,7 +10,7 @@ abstract_literal ::= decimal_literal | based_literal
 access_type_definition ::= ACCESS subtype_indication
 
 actual_designator ::=
-    [ INERTIAL ] expression
+      [ INERTIAL ] expression
     | signal_name
     | variable_name
     | file_name
@@ -72,7 +72,7 @@ base ::= integer
 base_specifier ::= B | O | X | UB | UO | UX | SB | SO | SX | D
 
 
-based_integer ::= extended_digit { [ underline ] extended_digit } 
+based_integer ::= extended_digit { [ _ ] extended_digit } 
 
 based_literal ::= base # based_integer [ . based_integer ] # [ exponent ] 
 
@@ -80,13 +80,13 @@ basic_character ::= basic_graphic_character | format_effector
 
 basic_graphic_character ::= upper_case_letter | digit | special_character| space_character
 
-basic_identifier ::= letter { [ underline ] letter_or_digit } 
+basic_identifier ::= letter { [ _ ] letter_or_digit } 
 
 binding_indication ::= [ USE entity_aspect ] [ generic_map_aspect ] [ port_map_aspect ] 
 
 bit_string_literal ::= [ integer ] base_specifier " [ bit_value ] " 
 
-bit_value ::= graphic_character { [ underline ] graphic_character } 
+bit_value ::= graphic_character { [ _ ] graphic_character } 
 
 block_configuration ::= FOR block_specification { use_clause } { configuration_item } END FOR ; 
 
@@ -295,13 +295,19 @@ enumeration_type_definition ::= ( enumeration_literal { , enumeration_literal } 
 exit_statement ::= [ label : ] EXIT [ loop_label ] [ WHEN condition ] ; 
 
 exponent ::= E [ + ] integer | E – integer
+
 expression ::= condition_operator primary | logical_expression
 
 extended_digit ::= digit | letter 
+
 extended_identifier ::= \ graphic_character { graphic_character } \ 
+
 external_name ::= external_constant_name | external_signal_name | external_variable_name 
+
 external_constant_name ::= << CONSTANT external_pathname : subtype_indication >> 
+
 external_signal_name ::= << SIGNAL external_pathname : subtype_indication >> 
+
 external_variable_name ::= << VARIABLE external_pathname : subtype_indication >> 
 
 external_pathname ::= package_pathname | absolute_pathname | relative_pathname 
@@ -379,7 +385,7 @@ instantiated_unit ::=
 
 instantiation_list ::= instantiation_label { , instantiation_label } | OTHERS | ALL
 
-integer ::= digit { [ underline ] digit } 
+integer ::= digit { [ _ ] digit } 
 integer_type_definition ::= range_constraint 
 interface_constant_declaration ::= [ CONSTANT ] identifier_list : [ IN ] subtype_indication [ := static_expression ] 
 
