@@ -105,7 +105,7 @@ Design notes
   execution in wait statements and do C-style returns.
 
 * Elaboration is performed in Elab monad which is cabable of changing simulator
-  internall state called Memory.
+  internal state (mis)named Memory.
 
 * Main simulation routine is in src\_r/Vsim/Runtime/Timewheel.hs. timewheel
   function returns the time of next event plus set of processes to kick. It is
