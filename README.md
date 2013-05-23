@@ -98,7 +98,7 @@ Design notes
   values of type t. For Integers it is Int, for arrays it is (ArrayR Int [x])
 
 * The simulation is carried out by VSim monad which tracks running and breaking
-  in a breakpoints. Breakpoint placement is semi-automatical. You should
+  in breakpoints. Breakpoint placement is semi-automatical. You should
   manually place 'breakpoint' function in a Haskell program before compiling it
 
 * VHDL processes and procedures are VProc (which contains VSim). VProc can pause
