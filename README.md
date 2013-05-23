@@ -11,8 +11,9 @@ Simulator compile VHDL into Haskell in several steps.
 
 Firstly, VHDL is translated into VIR-file by a translator written in Java (see
 tr/ folder and runtr function in ./simenv shell script). VIR file is lisp-like
-file, describing vhdl entities in a less complex manner. For example, it
-contains all the port maps expanded.
+file, describing vhdl entities in a less complex manner. It contains all the
+port maps expanded, and concurrent signal assignments replaced with
+corresponding processes.
 
 Secondly, VSim tool is used to translate VIR into Haskell (see src/ folder and
 runsim functino in ./simenv). VSim is a small program which translates VIR
@@ -112,6 +113,8 @@ Design notes
   very inefficient since it scans every signal in the model in order to get it's
   time of activation. Suprisingly, this approach is the best I were able to
   implement (I've tried to sort global signal list and parallelisation)
+
+* Signal assignments work as if they were declared as 'transport' (BUG)
 
 Webserver
 ---------
