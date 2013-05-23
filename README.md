@@ -15,7 +15,7 @@ file, describing vhdl entities in a less complex manner. For example, it
 contains all the port maps expanded.
 
 Secondly, VSim tool is used to translate VIR into Haskell (see src/ folder and
-runsim functino in ./simenv). VSim is a small program which translates VIR 
+runsim functino in ./simenv). VSim is a small program which translates VIR
 line-by-line into Haskell program. haskell-src-exts is used to build the AST
 and print it to stdout.
 
@@ -86,28 +86,35 @@ Design notes
 
 * Java part is buggy and works better on Windows (cygwin)
 
-* ./simenv is a rich bash function collection to run all the stuff here.
-  ./revtest is a automatic testing tool
+* ./simenv is a bash function lib able to run all the stuff here.
+  ./revtest is an automatic testing tool
 
 * The simulation is live in Sim monad which tracks running and breaking in a
   breakpoints. Breakpoint placement is semi-automatical. You should manually
   place 'breakpoint' function in resulting Haskell program before compiling it
   :)
 
-* Every VHDL value represented 
+* Every VHDL value represented
 
     data Value t x = Value String t x
         deriving(Show)
 
 where t is a type and x is a (IORef r) where r is some structure representing
-values of type t. For Integers it is Int, for arrays it is (Array Int [x])
+values of type t. For Integers it is Int, for arrays it is (ArrayR Int [x])
 
-* Every VHDL process is a function of type VProc () (), where wproc is a monad
-  capable of stopping in a breakpoint or pausing on a wait- instructions.
+* Simulation is described by VSim monad, which is able to stop in a reakpoins.
+
+* VHDL processes and procedures are VProc (which contains VSim). VProc can pause
+  execution in wait statements and do C-style returns.
 
 * Elaboration is performed in Elab monad which is cabable of changing simulator
   internall state called Memory.
 
+* Main simulation routine is in src\_r/Vsim/Runtime/Timewheel.hs. timewheel
+  function returns the time of next event plus set of processes to kick. It is
+  very inefficient since it scans every signal in the model in order to get it's
+  time of activation. Suprisingly, this approach is the best I were able to
+  implement (I've tried to sort global signal list and parallelisation)
 
 Webserver
 ---------
@@ -120,19 +127,18 @@ database directory (see DB var in ./revtest).
 To run it on Windows as a service:
 
 	$ cygwin ~/proj/vsim $ cygrunsrv.exe -I websim \
-		--path `pwd`/happstack/WebServer.exe -c `pwd` --args . -i 
-	$ cygwin ~/proj/vsim $ cygrunsrv.exe -S websim                                                           
+		--path `pwd`/happstack/WebServer.exe -c `pwd` --args . -i
+	$ cygwin ~/proj/vsim $ cygrunsrv.exe -S websim
 
 On Linux just make a cronjob or alike
 
 Example
 -------
 
-Following VHDL program
+Here is a simple VHDL program
 
     entity test is
     end entity test;
-
 
     entity unit is
         port (
@@ -172,13 +178,13 @@ Following VHDL program
 
     end architecture test_arch;
 
-should be translated into equivalent Haskell code. Note, that Haskell code has
-bits of standard library included.
+It should be translated into equivalent Haskell code. Note, that Haskell code
+has bits of standard VHDL library included.
 
     {-# LANGUAGE RecursiveDo #-}
     module Main where
     import VSim.Runtime
-     
+
     elab :: Elab IO ()
     elab
       = mdo
@@ -245,8 +251,24 @@ Futher development
 ------------------
 
 VSim was developed as a part of VHDL project carried out by Prosoft company.
-Unfortunately, I can't support the code any more.  Hope, it still can be used as
+Unfortunately, I can't support the code any more. I hope it still can be used as
 an inspiration for someone.
+
+Tasks:
+
+* get rid of java-part. One have to write VHDL parser outputting VHDL AST. File
+  ./grammar/vhdl-grammar containes more or less formalized grammar, manually
+  extracted from VHDL2008\_Standard.pdf
+
+* Better track type information. Currently, VIR-files don't provide such info
+  for constants. It prevented me from implementing enum support
+
+* Work out {#- RecursiveDo #-} problem. RecursiveDo is a hack which makes
+  recursive calls possible. Unfortunately, GHC can't compile it in some cases.
+
+* VHDL allows using pure functions as initializers. Vsim requires functions to
+  live in (VProc VSim IO) monad which is not ready on elaboration phaze. Thus,
+  pure functions are not supported. Probably, one should redesign monad stack.
 
 Author
 ------
