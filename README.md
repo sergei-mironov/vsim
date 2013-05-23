@@ -1,11 +1,11 @@
 VSim
 ====
 
-VSim is a VHDL simulator project aimed to develop a methods of compiling VHDL
-code into a high-level language (Haskell). Currently it is able to compile
-simple VHDL programs, containing plain integer types, 1-dimentional arrays,
-records. It supports processes, procedures, functions (partly). Breakpoints and
-wait statements should work.
+VSim is a VHDL simulator project aimed to develop methods of compiling VHDL code
+into a high-level language (Haskell). Currently it is able to compile simple
+VHDL programs, containing plain integer types, 1-dimentional arrays, records. It
+supports processes, procedures, functions (partly). Breakpoints and wait
+statements should work.
 
 Simulator compile VHDL into Haskell in several steps.
 
