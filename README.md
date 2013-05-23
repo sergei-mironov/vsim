@@ -247,8 +247,8 @@ has bits of standard VHDL library included.
            return ()
     main = do sim maxBound elab
 
-Futher development
-------------------
+Further development
+-------------------
 
 VSim was developed as a part of VHDL project carried out by Prosoft company.
 Unfortunately, I can't support the code any more. I hope it still can be used as
