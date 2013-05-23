@@ -89,20 +89,17 @@ Design notes
 * ./simenv is a bash function lib able to run all the stuff here.
   ./revtest is an automatic testing tool
 
-* The simulation is live in Sim monad which tracks running and breaking in a
-  breakpoints. Breakpoint placement is semi-automatical. You should manually
-  place 'breakpoint' function in resulting Haskell program before compiling it
-  :)
-
 * Every VHDL value represented
 
     data Value t x = Value String t x
         deriving(Show)
 
-where t is a type and x is a (IORef r) where r is some structure representing
-values of type t. For Integers it is Int, for arrays it is (ArrayR Int [x])
+  where t is a type and x is a (IORef r) where r is some structure representing
+  values of type t. For Integers it is Int, for arrays it is (ArrayR Int [x])
 
-* Simulation is described by VSim monad, which is able to stop in a reakpoins.
+* The simulation is carried out by VSim monad which tracks running and breaking
+  in a breakpoints. Breakpoint placement is semi-automatical. You should
+  manually place 'breakpoint' function in a Haskell program before compiling it
 
 * VHDL processes and procedures are VProc (which contains VSim). VProc can pause
   execution in wait statements and do C-style returns.
