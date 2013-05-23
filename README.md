@@ -117,9 +117,9 @@ Webserver
 ---------
 
 Webserver located in happstack/ folder and was used to track progress in test
-coverage. Tests can be lauched with the help ov ./revtest shell script. It takes
-git revision as argument (current by default) and produces a record in test
-database directory (see DB var in ./revtest).
+coverage. Tests can be run using ./revtest script. It takes git revision as
+an argument (HEAD by default) and produces a record in test database directory
+(see DB var in ./revtest).
 
 To run it on Windows as a service:
 
