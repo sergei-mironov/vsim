@@ -263,9 +263,10 @@ Tasks:
 * Work out {#- RecursiveDo #-} problem. RecursiveDo is a hack which makes
   recursive calls possible. Unfortunately, GHC can't compile it in some cases.
 
-* VHDL allows using pure functions as initializers. Vsim requires functions to
-  live in (VProc VSim IO) monad which is not ready on elaboration phaze. Thus,
-  pure functions are not supported. Probably, one should redesign monad stack.
+* VHDL allows pure functions to be used as an initializers. Vsim requires
+  functions to live in (VProc VSim IO) monad which is not ready on elaboration
+  phaze. Thus, pure functions are not supported. Probably, one should redesign
+  monad stack.
 
 Author
 ------
