@@ -38,7 +38,7 @@ import GHC.Generics
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
-instance NFData LocalTime where rnf t = t`seq`()
+-- instance NFData LocalTime where rnf t = t`seq`()
 instance NFData TestSet where rnf = genericRnf
 instance NFData TestRecord where rnf = genericRnf
 
