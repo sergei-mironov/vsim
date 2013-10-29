@@ -1,34 +1,34 @@
 VSim
 ====
 
-VSim is a VHDL simulator project aimed to develop methods of compiling VHDL code
+VSim is a VHDL simulator project aimed at developing methods of compiling VHDL code
 into a high-level language (Haskell). Currently it is able to compile simple
 VHDL programs, containing plain integer types, 1-dimentional arrays, records. It
 supports processes, procedures, functions (partly). Breakpoints and wait
 statements should work.
 
-Simulator compile VHDL into Haskell in several steps.
+Simulator compiles VHDL into Haskell in several steps.
 
 Firstly, VHDL is translated into VIR-file by a translator written in Java (see
-tr/ folder and runtr function in ./simenv shell script). VIR file is lisp-like
+tr/ folder and runtr function in ./simenv shell script). VIR file is a lisp-like
 file, describing vhdl entities in a less complex manner. It contains all the
 port maps expanded, and concurrent signal assignments replaced with
 corresponding processes.
 
-Secondly, VSim tool is used to translate VIR into Haskell (see src/ folder and
-runsim functino in ./simenv). VSim is a small program which translates VIR
-line-by-line into Haskell program. haskell-src-exts is used to build the AST
+Secondly, the VSim tool is used to translate VIR into Haskell (see src/ 
+folder and runsim functino in ./simenv). VSim is a small program which translates VIR
+line-by-line into a Haskell program. haskell-src-exts is used to build the AST
 and print it to stdout.
 
-Finaly, Haskell program should be compiled into binary with ghc having runtime
+Finaly, the Haskell program should be compiled into binary with ghc with runtime
 library included (refer to src\_r/ folder and runsim function in ./simenv).
-The runtime is the heart of the simulator and it's largest part.
+The runtime is the heart of the simulator and is its largest part.
 
-Java part is a main headache, because it is big, unsupported and has bugs
-lurking here and there. Haskell part is smaller and cleaner, but VHDL-standard
-coverage is still poor. For example, signal assignments are working as if they
+The Java poption of code is our main headache, because it is big, unsupported and has bugs
+lurking here and there. The Haskell part is smaller and cleaner, but VHDL-standard
+coverage is very poor. For example, signal assignments are working as if they
 are declared with transport delay mechanism. Another problem is missing enum
-support except of some pre-defined.
+support except of several pre-defined types like Char or Boolean.
 
 Installing
 ----------
